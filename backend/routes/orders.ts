@@ -337,6 +337,87 @@ router.get('/api/orders/callback/:orderId', authenticateToken, async (req: AuthR
   }
 });
 
+// Client: compléter une commande incomplète (PENDING/FAILED) — relance du paiement Wave
+// Peut corriger/compléter les infos de livraison avant de payer
+router.post('/api/orders/:id/pay', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const order = await prisma.order.findFirst({
+      where: { id: req.params.id, userId: req.userId! },
+    });
+    if (!order) return res.status(404).json({ error: 'Commande non trouvée' });
+
+    if (order.paymentStatus === 'PAID') {
+      return res.status(400).json({ error: 'Cette commande est déjà payée' });
+    }
+
+    // Corriger/compléter les infos de livraison si fournies
+    const { shippingAddress } = req.body || {};
+    let addr = safeJsonParse(order.shippingAddress as string, {});
+    if (shippingAddress && typeof shippingAddress === 'object') {
+      addr = {
+        fullName: shippingAddress.fullName || order.customerName || '',
+        phone: shippingAddress.phone || order.phone || '',
+        address: shippingAddress.address || order.address || '',
+        city: shippingAddress.city || 'Abidjan',
+        notes: shippingAddress.notes || '',
+      };
+      await prisma.order.update({
+        where: { id: order.id },
+        data: {
+          customerName: addr.fullName,
+          phone: addr.phone,
+          address: addr.address,
+          shippingAddress: JSON.stringify(addr),
+        },
+      });
+    }
+
+    // Re-initier le paiement Wave — montant verrouillé serveur (totalAmount inchangé)
+    const baseUrl = process.env.APP_URL || 'http://localhost:5173';
+    const paymentResult = await initiatePayment('WAVE', {
+      amount: order.totalAmount,
+      currency: 'XOF',
+      orderId: order.id,
+      orderNumber: order.orderNumber,
+      customerPhone: addr.phone || '',
+      customerName: addr.fullName || '',
+      callbackUrl: `${process.env.API_URL || 'http://localhost:3000'}/api/orders/webhook/wave`,
+      returnUrl: `${baseUrl}/?payment=success&orderId=${order.id}`,
+      description: `Commande ${order.orderNumber} - SaTouba Bijouterie`,
+    });
+
+    if (!paymentResult.success) {
+      await prisma.order.update({
+        where: { id: order.id },
+        data: { paymentStatus: 'FAILED' },
+      });
+      return res.status(400).json({ error: paymentResult.error || 'Erreur initiation paiement' });
+    }
+
+    const updatedOrder = await prisma.order.update({
+      where: { id: order.id },
+      data: {
+        paymentStatus: 'PENDING',
+        paymentRef: paymentResult.paymentRef,
+        paymentUrl: paymentResult.paymentUrl,
+      },
+      include: { items: true },
+    });
+
+    await notifyPaymentInitiated(req.userId!, order.orderNumber, paymentResult.paymentUrl!);
+
+    res.json({
+      ...updatedOrder,
+      paymentUrl: paymentResult.paymentUrl,
+      shippingAddress: safeJsonParse(updatedOrder.shippingAddress as string, {}),
+      statusHistory: safeJsonParse(updatedOrder.statusHistory as string, []),
+    });
+  } catch (error: any) {
+    logger.error({ err: error }, 'Retry payment error');
+    res.status(500).json({ error: 'Erreur lors de la reprise du paiement' });
+  }
+});
+
 // Admin: update order status (+ append to statusHistory)
 router.put('/api/orders/:id/status', authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
   try {

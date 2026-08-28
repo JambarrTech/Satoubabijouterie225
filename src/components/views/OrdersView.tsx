@@ -1,17 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Truck, CheckCircle, Clock, ArrowRight, XCircle } from 'lucide-react';
-import { motion } from 'motion/react';
+import { Package, Clock, ArrowRight, CreditCard, MapPin } from 'lucide-react';
 import { Order } from '../../types';
-import { fetchOrders } from '../../lib/api/orders';
+import { fetchOrders, completeOrderPayment } from '../../lib/api/orders';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { Skeleton } from '../ui/Skeleton';
+import { Input } from '../ui/Input';
+
+const isIncomplete = (o: Order) => o.paymentStatus === 'PENDING' || o.paymentStatus === 'FAILED';
 
 export function OrdersView() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [activeTab, setActiveTab] = useState<'all' | 'active' | 'completed'>('all');
+  const [addressForm, setAddressForm] = useState<{ fullName: string; phone: string; address: string; city: string; notes: string } | null>(null);
+  const [isPaying, setIsPaying] = useState(false);
+  const [payError, setPayError] = useState('');
+  const [editing, setEditing] = useState(false);
 
   useEffect(() => {
     fetchOrders()
@@ -22,6 +27,43 @@ export function OrdersView() {
       .catch(console.error)
       .finally(() => setIsLoading(false));
   }, []);
+
+  const openOrder = (order: Order) => {
+    setSelectedOrder(order);
+    setPayError('');
+    setEditing(false);
+    setAddressForm(null);
+  };
+
+  const handleCompletePayment = async () => {
+    if (!selectedOrder) return;
+    setPayError('');
+    setIsPaying(true);
+    try {
+      const shippingAddress = addressForm || {
+        fullName: selectedOrder.customerName || '',
+        phone: selectedOrder.phone || '',
+        address: selectedOrder.address || '',
+        city: 'Abidjan',
+        notes: '',
+      };
+      const result = await completeOrderPayment(selectedOrder.id, shippingAddress);
+      if (result.paymentUrl) {
+        window.location.href = result.paymentUrl;
+      } else {
+        // Récupère à jour (paiement déjà validé entre-temps)
+        const updated = await fetchOrders();
+        setOrders(updated);
+        setSelectedOrder(updated.find((o) => o.id === selectedOrder.id) || null);
+        setAddressForm(null);
+        setEditing(false);
+      }
+    } catch (err: any) {
+      setPayError(err.message || 'Erreur lors de la reprise du paiement');
+    } finally {
+      setIsPaying(false);
+    }
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -55,16 +97,22 @@ export function OrdersView() {
             {orders.map((order) => (
               <div
                 key={order.id}
-                onClick={() => setSelectedOrder(order)}
+                onClick={() => openOrder(order)}
                 className={`p-5 rounded-2xl border transition-all cursor-pointer bg-white ${
                   selectedOrder?.id === order.id ? 'border-[#0B5D1E] ring-1 ring-[#0B5D1E] shadow-md' : 'border-gray-100 hover:border-gray-300'
                 }`}
               >
                 <div className="flex items-center justify-between mb-2">
                   <span className="font-serif font-bold text-sm text-gray-900">{order.orderNumber}</span>
-                  <Badge variant={order.status === 'SHIPPED' ? 'gold' : 'primary'}>
-                    {order.status === 'SHIPPED' ? 'Expédié' : order.status === 'CONFIRMED' ? 'Confirmé' : order.status}
-                  </Badge>
+                  {isIncomplete(order) ? (
+                    <Badge variant={order.paymentStatus === 'FAILED' ? 'gold' : 'gold'} className={order.paymentStatus === 'FAILED' ? '!text-red-600 !border-red-200' : ''}>
+                      {order.paymentStatus === 'FAILED' ? 'Paiement échoué' : 'Paiement en attente'}
+                    </Badge>
+                  ) : (
+                    <Badge variant={order.status === 'SHIPPED' ? 'gold' : 'primary'}>
+                      {order.status === 'SHIPPED' ? 'Expédié' : order.status === 'CONFIRMED' ? 'Confirmé' : order.status}
+                    </Badge>
+                  )}
                 </div>
                 <p className="text-xs text-gray-500 mb-3">
                   {new Date(order.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
@@ -135,6 +183,58 @@ export function OrdersView() {
                 <p className="text-gray-700">{selectedOrder.shippingAddress.fullName} ({selectedOrder.shippingAddress.phone})</p>
                 <p className="text-gray-600">{selectedOrder.shippingAddress.address}, {selectedOrder.shippingAddress.city}</p>
               </div>
+
+              {/* Completion / paiement pour commande incomplète */}
+              {isIncomplete(selectedOrder) && (
+                <div className="border-t border-gray-100 pt-4 space-y-4">
+                  <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+                    <p className="text-xs text-amber-900 font-semibold flex items-center gap-2">
+                      <Clock size={14} /> Paiement {selectedOrder.paymentStatus === 'FAILED' ? 'échoué ou expiré' : 'non finalisé'}
+                    </p>
+                    <p className="text-xs text-amber-800 mt-1">
+                      Complétez vos informations de livraison puis relancez le paiement Wave pour finaliser cette commande.
+                    </p>
+                  </div>
+
+                  {payError && <p className="text-xs text-red-600 bg-red-50 p-3 rounded-xl border border-red-200">{payError}</p>}
+
+                  {(!editing || !addressForm) && (
+                    <Button size="sm" variant="outline" onClick={() => {
+                      setAddressForm({
+                        fullName: selectedOrder.customerName || selectedOrder.shippingAddress?.fullName || '',
+                        phone: selectedOrder.phone || selectedOrder.shippingAddress?.phone || '',
+                        address: selectedOrder.address || selectedOrder.shippingAddress?.address || '',
+                        city: selectedOrder.shippingAddress?.city || 'Abidjan',
+                        notes: selectedOrder.shippingAddress?.notes || '',
+                      });
+                      setEditing(true);
+                    }}>
+                      <MapPin size={14} /> Modifier mes informations
+                    </Button>
+                  )}
+
+                  {editing && addressForm && (
+                    <div className="space-y-3 p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <Input label="Nom complet" value={addressForm.fullName} onChange={(e) => setAddressForm({ ...addressForm, fullName: e.target.value })} />
+                        <Input label="Téléphone Wave" value={addressForm.phone} onChange={(e) => setAddressForm({ ...addressForm, phone: e.target.value })} />
+                      </div>
+                      <Input label="Adresse précise" value={addressForm.address} onChange={(e) => setAddressForm({ ...addressForm, address: e.target.value })} />
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <Input label="Ville" value={addressForm.city} onChange={(e) => setAddressForm({ ...addressForm, city: e.target.value })} />
+                        <Input label="Notes livreur (optionnel)" value={addressForm.notes} onChange={(e) => setAddressForm({ ...addressForm, notes: e.target.value })} />
+                      </div>
+                    </div>
+                  )}
+
+                  <Button size="lg" isLoading={isPaying} onClick={handleCompletePayment} rightIcon={<ArrowRight size={16} />}>
+                    <CreditCard size={16} /> Compléter le paiement — {selectedOrder.totalAmount.toLocaleString()} FCFA
+                  </Button>
+                  <p className="text-[11px] text-gray-500">
+                    Paiement sécurisé Wave — montant {selectedOrder.totalAmount.toLocaleString()} FCFA verrouillé côté serveur, non modifiable.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 

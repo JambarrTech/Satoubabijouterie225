@@ -20,3 +20,12 @@ export async function createOrder(data: {
 export async function fetchOrderCallback(orderId: string): Promise<Order> {
   return apiGet<Order>(`/api/orders/callback/${orderId}`);
 }
+
+// Relance le paiement d'une commande incomplète (PENDING/FAILED),
+// et corrige au passage les infos de livraison si fournies
+export async function completeOrderPayment(
+  orderId: string,
+  shippingAddress: { fullName: string; phone: string; address: string; city: string; notes?: string }
+): Promise<CreateOrderResponse> {
+  return apiPost<CreateOrderResponse>(`/api/orders/${orderId}/pay`, { shippingAddress });
+}
