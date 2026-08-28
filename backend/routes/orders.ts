@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma';
-import { authenticateToken, requireAdmin, AuthRequest, optionalAuth } from '../middleware/auth';
+import { authenticateToken, requireAdmin, AuthRequest } from '../middleware/auth';
 import { safeJsonParse, calculateCartTotal } from '../lib/helpers';
 import logger from '../lib/logger';
 import { initiatePayment, verifyPayment } from '../lib/payments';
@@ -76,10 +76,13 @@ router.get('/api/orders/:id', authenticateToken, async (req: AuthRequest, res) =
   }
 });
 
-// Create order + initiate payment
+// Create order + initiate Wave Business payment (montant verrouillé serveur)
+// Body peut contenir `cartItemIds?: string[]` pour payer 1 ou N articles sélectionnés
 router.post('/api/orders', authenticateToken, async (req: AuthRequest, res) => {
   try {
-    const { shippingAddress, paymentMethod } = req.body;
+    const { shippingAddress, cartItemIds } = req.body;
+    // Paiement exclusif Wave Business
+    const paymentMethod: 'WAVE' = 'WAVE';
 
     const cart = await prisma.cart.findUnique({
       where: { userId: req.userId! },
@@ -90,14 +93,31 @@ router.post('/api/orders', authenticateToken, async (req: AuthRequest, res) => {
       return res.status(400).json({ error: 'Panier vide' });
     }
 
-    const { subtotal, discount, shippingFee, total } = await calculateCartTotal(cart, cart.items);
+    // Filtrage 1 ou N articles si le client a sélectionné un sous-ensemble
+    let itemsToOrder = cart.items;
+    if (Array.isArray(cartItemIds) && cartItemIds.length > 0) {
+      const idSet = new Set(cartItemIds as string[]);
+      itemsToOrder = cart.items.filter((i) => idSet.has(i.id));
+      if (itemsToOrder.length === 0) {
+        return res.status(400).json({ error: 'Aucun article sélectionné trouvé dans le panier' });
+      }
+      if (itemsToOrder.length !== cartItemIds.length) {
+        return res.status(400).json({ error: 'Certains articles sélectionnés sont introuvables' });
+      }
+    }
+
+    // Total recalculé serveur sur le sous-ensemble (montant non modifiable côté Wave)
+    const { subtotal, discount, shippingFee, total } = await calculateCartTotal(
+      cart,
+      itemsToOrder
+    );
 
     const orderNumber = `ORD-${Date.now().toString(36).toUpperCase()}`;
     const user = await prisma.user.findUnique({ where: { id: req.userId! } });
 
     const order = await prisma.$transaction(async (tx) => {
-      // Lock stock rows with FOR UPDATE to prevent race conditions
-      for (const item of cart.items) {
+      // Lock stock rows with FOR UPDATE pour les articles sélectionnés uniquement
+      for (const item of itemsToOrder) {
         const rows = await tx.$queryRaw<{ stockQuantity: number; name: string }[]>`
           SELECT stockQuantity, name FROM Product WHERE id = ${item.productId} FOR UPDATE
         `;
@@ -116,14 +136,14 @@ router.post('/api/orders', authenticateToken, async (req: AuthRequest, res) => {
           phone: shippingAddress?.phone || user?.phone || '',
           address: shippingAddress?.address || '',
           totalAmount: total,
-          paymentMethod: paymentMethod || 'WAVE',
+          paymentMethod,
           paymentStatus: 'PENDING',
           shippingAddress: JSON.stringify(shippingAddress || {}),
           statusHistory: JSON.stringify([
             { status: 'CONFIRMED', label: 'Commande confirmée', date: new Date().toISOString(), completed: true },
           ]),
           items: {
-            create: cart.items.map((item) => ({
+            create: itemsToOrder.map((item) => ({
               productId: item.productId,
               productName: item.product.name,
               productImage: safeJsonParse(item.product.images, [])[0] || '',
@@ -136,7 +156,7 @@ router.post('/api/orders', authenticateToken, async (req: AuthRequest, res) => {
         include: { items: true },
       });
 
-      for (const item of cart.items) {
+      for (const item of itemsToOrder) {
         await tx.$queryRaw`
           UPDATE Product SET stockQuantity = stockQuantity - ${item.quantity} WHERE id = ${item.productId}
         `;
@@ -151,22 +171,28 @@ router.post('/api/orders', authenticateToken, async (req: AuthRequest, res) => {
         });
       }
 
-      await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
-      await tx.cart.update({ where: { id: cart.id }, data: { couponCode: null } });
+      // Ne supprime que les articles commandés — le reste reste dans le panier
+      const orderedIds = itemsToOrder.map((i) => i.id);
+      await tx.cartItem.deleteMany({ where: { cartId: cart.id, id: { in: orderedIds } } });
+      // Si panier vidé entièrement, on retire le coupon
+      const remaining = await tx.cartItem.count({ where: { cartId: cart.id } });
+      if (remaining === 0) {
+        await tx.cart.update({ where: { id: cart.id }, data: { couponCode: null } });
+      }
 
       return order;
     });
 
-    // Initiate payment
+    // Initiate Wave Business payment — montant verrouillé serveur
     const baseUrl = process.env.APP_URL || 'http://localhost:5173';
-    const paymentResult = await initiatePayment(paymentMethod as 'WAVE' | 'ORANGE_MONEY', {
+    const paymentResult = await initiatePayment('WAVE', {
       amount: total,
       currency: 'XOF',
       orderId: order.id,
       orderNumber: order.orderNumber,
       customerPhone: shippingAddress?.phone || user?.phone || '',
       customerName: shippingAddress?.fullName || user?.name || '',
-      callbackUrl: `${process.env.API_URL || 'http://localhost:3000'}/api/orders/webhook/${paymentMethod}`,
+      callbackUrl: `${process.env.API_URL || 'http://localhost:3000'}/api/orders/webhook/wave`,
       returnUrl: `${baseUrl}/?payment=success&orderId=${order.id}`,
       description: `Commande ${orderNumber} - SaTouba Bijouterie`,
     });
@@ -206,11 +232,15 @@ router.post('/api/orders', authenticateToken, async (req: AuthRequest, res) => {
   }
 });
 
-// Payment webhook (called by payment providers)
+// Webhook Wave Business (appelé par Wave après paiement)
+// Compat : /api/orders/webhook/wave et /api/orders/webhook/:provider (legacy ORANGE_MONEY -> 400)
 router.post('/api/orders/webhook/:provider', async (req, res) => {
   try {
-    const provider = req.params.provider as 'WAVE' | 'ORANGE_MONEY';
-    const paymentRef = req.body.paymentRef || req.body.session_id || req.body.pay_token || req.query.paymentRef;
+    const provider = (req.params.provider as string).toUpperCase();
+    if (provider !== 'WAVE') {
+      return res.status(400).json({ error: 'Seul Wave Business est supporté' });
+    }
+    const paymentRef = req.body.paymentRef || req.body.session_id || req.body.checkout_session_id || req.body.pay_token || req.query.paymentRef;
 
     if (!paymentRef) {
       return res.status(400).json({ error: 'Référence paiement manquante' });
@@ -224,8 +254,8 @@ router.post('/api/orders/webhook/:provider', async (req, res) => {
       return res.status(404).json({ error: 'Commande non trouvée' });
     }
 
-    // Verify payment with provider
-    const verification = await verifyPayment(provider, paymentRef);
+    // Verify payment Wave Business (montant déjà verrouillé à la création)
+    const verification = await verifyPayment('WAVE', paymentRef);
 
     if (verification.success && verification.paid) {
       // Payment successful
@@ -268,9 +298,9 @@ router.get('/api/orders/callback/:orderId', authenticateToken, async (req: AuthR
 
     if (!order) return res.status(404).json({ error: 'Commande non trouvée' });
 
-    // If payment still pending, verify with provider
+    // If payment still pending, verify Wave Business
     if (order.paymentStatus === 'PENDING' && order.paymentRef) {
-      const verification = await verifyPayment(order.paymentMethod as 'WAVE' | 'ORANGE_MONEY', order.paymentRef);
+      const verification = await verifyPayment('WAVE', order.paymentRef);
 
       if (verification.success && verification.paid) {
         await prisma.order.update({

@@ -58,11 +58,9 @@ export function LegalView({ type }: LegalViewProps) {
           </section>
 
           <section className="mb-8">
-            <h2 className="font-serif text-xl font-bold text-gray-900 mb-3">5. Paiement</h2>
+            <h2 className="font-serif text-xl font-bold text-gray-900 mb-3">5. Paiement — Wave Business exclusif</h2>
             <p className="text-sm text-gray-700 leading-relaxed">
-              Le paiement s'effectue par Wave ou Orange Money. Le paiement est exigible à la commande. 
-              SaTouba Bijouterie utilise des moyens de paiement sécurisés. Les données de paiement sont cryptées 
-              et ne sont en aucun cas stockées sur nos serveurs.
+              Le paiement s'effectue exclusivement via <strong>Wave Business</strong> par lien de paiement. Le montant est calculé et <strong>verrouillé côté serveur</strong> à partir des prix en base ; il n’est <strong>pas modifiable</strong> par le client sur l’application Wave. Le client peut librement ajouter 1 ou plusieurs articles à son panier ; le total est recalculé serveur et seul le montant exact est présenté sur Wave. Le paiement est exigible à la commande et crypté ; aucune donnée de paiement n’est stockée sur nos serveurs.
             </p>
           </section>
 

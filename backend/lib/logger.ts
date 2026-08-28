@@ -8,7 +8,7 @@ const logger = pino({
     : undefined,
   // Redact sensitive fields
   redact: {
-    paths: ['req.headers.authorization', 'req.headers.cookie', 'password', 'token', 'FIREBASE_PRIVATE_KEY', 'JWT_SECRET', 'WAVE_API_KEY', 'ORANGE_MONEY_API_KEY', 'SMTP_PASS', 'AFRICASTALKING_API_KEY'],
+    paths: ['req.headers.authorization', 'req.headers.cookie', 'password', 'token', 'FIREBASE_PRIVATE_KEY', 'JWT_SECRET', 'WAVE_API_KEY', 'WAVE_BUSINESS_API_KEY', 'WAVE_BUSINESS_LINK', 'SMTP_PASS', 'AFRICASTALKING_API_KEY'],
     censor: '[REDACTED]',
   },
   base: {

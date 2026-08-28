@@ -11,8 +11,9 @@ export async function fetchOrders(): Promise<Order[]> {
 
 export async function createOrder(data: {
   shippingAddress: { fullName: string; phone: string; address: string; city: string; notes?: string };
-  paymentMethod: string;
+  cartItemIds?: string[]; // 1 ou N articles sélectionnés dans le panier (si omis: tout le panier)
 }): Promise<CreateOrderResponse> {
+  // paymentMethod est désormais fixe côté serveur (WAVE Business)
   return apiPost<CreateOrderResponse>('/api/orders', data);
 }
 

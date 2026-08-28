@@ -53,6 +53,7 @@ export default function App() {
   const [cart, setCart] = useState<Cart>({ items: [], subtotal: 0, shippingFee: 0, discount: 0, total: 0 });
   const [favorites, setFavorites] = useState<string[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [checkoutItemIds, setCheckoutItemIds] = useState<string[] | undefined>(undefined);
 
   // Modals
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -314,7 +315,10 @@ export default function App() {
             <CartView
               cart={cart}
               onUpdateCart={setCart}
-              onProceedToCheckout={() => handleNavigate('checkout')}
+              onProceedToCheckout={(ids) => {
+                setCheckoutItemIds(ids);
+                handleNavigate('checkout');
+              }}
               onNavigate={handleNavigate}
             />
           )}
@@ -322,7 +326,11 @@ export default function App() {
           {currentTab === 'checkout' && (
             <CheckoutView
               cart={cart}
+              selectedCartItemIds={checkoutItemIds}
               onOrderSuccess={() => {
+                // Refresh cart (paid items removed server-side)
+                fetchCart().then(setCart).catch(console.error);
+                setCheckoutItemIds(undefined);
                 handleNavigate('commandes');
               }}
               onBack={() => handleNavigate('panier')}

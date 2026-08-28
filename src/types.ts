@@ -91,10 +91,10 @@ export interface Order {
     city: string;
     notes?: string;
   };
-  paymentMethod: 'WAVE' | 'ORANGE_MONEY';
+  paymentMethod: 'WAVE'; // Exclusif Wave Business (montant verrouillé serveur)
   paymentStatus?: 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
   paymentRef?: string;
-  paymentUrl?: string;
+  paymentUrl?: string; // Lien Wave Business — montant non modifiable côté client
   status: OrderStatus;
   statusHistory: {
     status: OrderStatus;
