@@ -229,7 +229,7 @@ export function CheckoutView({ cart, selectedCartItemIds, onBack, onOrderSuccess
             {error && <p className="text-xs text-red-600 bg-red-50 p-3 rounded-xl border border-red-200">{error}</p>}
 
             <div className="rounded-2xl border border-gray-200 bg-white p-5 flex items-center gap-4">
-              <img src="/wave-logo.svg" alt="Wave" className="w-12 h-12 rounded-xl shrink-0" />
+              <img src="/wave-logo.png" alt="Wave" className="w-12 h-12 rounded-xl shrink-0 object-contain" />
               <div className="flex-1">
                 <h4 className="font-bold text-gray-900 text-sm flex items-center gap-2">Wave <span className="inline-flex items-center gap-1 text-[10px] bg-[#0B5D1E] text-white px-2 py-0.5 rounded-full"><Lock size={10}/> Montant verrouillé</span></h4>
                 <p className="text-xs text-gray-500 mt-1">Vous serez redirigé vers Wave pour payer. Le montant ne peut pas être modifié.</p>
