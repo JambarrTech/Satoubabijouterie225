@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Header } from './components/layout/Header';
 import { BottomNavigation } from './components/layout/BottomNavigation';
@@ -134,14 +134,14 @@ export default function App() {
     };
   }, [user]);
 
-  const handleLogin = (loggedInUser: User, token: string) => {
+  const handleLogin = (loggedInUser: User, _token: string) => {
     setUser(loggedInUser);
     fetchCart().then(setCart).catch(console.error);
     fetchFavorites().then((favs) => setFavorites(favs.map(f => f.id))).catch(console.error);
     fetchNotifications().then(setNotifications).catch(console.error);
   };
 
-  const handleGerantLogin = (loggedInUser: User, token: string) => {
+  const handleGerantLogin = (loggedInUser: User, _token: string) => {
     setUser(loggedInUser);
     setIsGerant(true);
   };
@@ -338,7 +338,7 @@ export default function App() {
           )}
 
           {currentTab === 'commandes' && (
-            <OrdersView onNavigate={handleNavigate} />
+            <OrdersView />
           )}
 
           {currentTab === 'sur-mesure' && (

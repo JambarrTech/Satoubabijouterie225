@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { ShoppingBag, Clock, CheckCircle, Truck, Phone, User, MapPin } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ShoppingBag, Phone, User, MapPin } from 'lucide-react';
 import { apiGet, apiPut } from '../../lib/apiClient';
 
 export function GerantOrders() {
@@ -9,7 +9,7 @@ export function GerantOrders() {
   const fetchOrders = () => {
     apiGet('/api/orders/all')
       .then(data => {
-        setOrders(data);
+        setOrders(data as any[]);
         setLoading(false);
       })
       .catch(err => {

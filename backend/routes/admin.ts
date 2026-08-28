@@ -6,7 +6,7 @@ import { authenticateToken, requireAdmin, AuthRequest } from '../middleware/auth
 const router = Router();
 
 // Admin: get customers with stats
-router.get('/api/customers', authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+router.get('/api/customers', authenticateToken, requireAdmin, async (_req: AuthRequest, res) => {
   try {
     const customers = await prisma.user.findMany({
       where: { role: 'CUSTOMER' },
@@ -37,7 +37,7 @@ router.get('/api/customers', authenticateToken, requireAdmin, async (req: AuthRe
 });
 
 // Admin: get all users
-router.get('/api/users', authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+router.get('/api/users', authenticateToken, requireAdmin, async (_req: AuthRequest, res) => {
   try {
     const users = await prisma.user.findMany({
       select: {
@@ -175,7 +175,7 @@ router.delete('/api/users/:id', authenticateToken, requireAdmin, async (req: Aut
 });
 
 // Admin: get stats
-router.get('/api/admin/stats', authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+router.get('/api/admin/stats', authenticateToken, requireAdmin, async (_req: AuthRequest, res) => {
   try {
     const [totalRevenue, totalOrders, totalProducts, totalCustomers, pendingCustom, pendingRepairs] = await Promise.all([
       prisma.order.aggregate({ _sum: { totalAmount: true } }),

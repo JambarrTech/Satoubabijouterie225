@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Product, Category } from '../../types';
 import { fetchProducts } from '../../lib/api/products';

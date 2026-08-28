@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Sparkles, ArrowRight, ShieldCheck, Award, HeartHandshake } from 'lucide-react';
+import { Sparkles, ArrowRight } from 'lucide-react';
 import { Product, Category } from '../../types';
 import { ProductCard } from '../product/ProductCard';
 import { Button } from '../ui/Button';

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Eye, EyeOff, Mail, Lock, User as UserIcon, Phone, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import { X, Eye, EyeOff, Mail, Lock, User as UserIcon, Phone, AlertCircle, Loader2 } from 'lucide-react';
 import { login, register } from '../../lib/api/auth';
 import { useToast } from '../ui/Toast';
 import { User } from '../../types';
@@ -259,7 +259,7 @@ export function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) {
                         label="Téléphone"
                         value={regPhone}
                         onChange={setRegPhone}
-                        placeholder="+221 77 000 00 00"
+                        placeholder="+225 07 00 00 00 00"
                       />
                       <InputField
                         icon={<Lock size={16} />}

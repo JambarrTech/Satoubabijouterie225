@@ -407,7 +407,7 @@ async function main() {
       id: 'CUST-101', userId: 'user-1',
       jewelryType: 'Bague de Fiançailles', material: 'Or Jaune 18K',
       description: "Gravure 'A&M' à l'intérieur, sertissage clos.",
-      budget: '550 000 FCFA', phone: '+221 77 111 22 33', status: 'PENDING',
+      budget: '550 000 FCFA', phone: '+225 07 11 22 33 44', status: 'PENDING',
     },
   });
 
@@ -417,7 +417,7 @@ async function main() {
       id: 'REP-501', userId: 'user-1',
       jewelryType: 'Chaîne Or', problemType: 'Soudure',
       description: "Chaîne en or 18K cassée au niveau du fermoir",
-      phone: '+221 70 333 44 55', status: 'RECEIVED',
+      phone: '+225 07 03 33 44 55', status: 'RECEIVED',
     },
   });
 

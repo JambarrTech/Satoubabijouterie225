@@ -3,11 +3,18 @@ import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import backendApp from "./backend/server.ts";
+import { assertWaveConfigured } from "./backend/lib/payments.ts";
 
 async function startServer() {
   const app = express();
   const PORT = Number(process.env.PORT) || 3000;
   const NODE_ENV = process.env.NODE_ENV || 'development';
+
+  // Vérifie la config paiement Wave AVANT d'accepter des commandes.
+  // En production, refuse de démarrer si PAYMENTS_MOCK=true ou si aucune clé Wave réelle.
+  if (!assertWaveConfigured()) {
+    process.exit(1);
+  }
 
   // Mount backend API routes from /backend/server.ts
   app.use(backendApp);

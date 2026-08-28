@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Users, Phone, Mail, ShoppingBag, ExternalLink } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Users, Phone, Mail, ExternalLink } from 'lucide-react';
 import { apiGet } from '../../lib/apiClient';
 
 export function GerantCustomers() {
@@ -9,7 +9,7 @@ export function GerantCustomers() {
   useEffect(() => {
     apiGet('/api/customers')
       .then(data => {
-        setCustomers(data);
+        setCustomers(data as any[]);
         setLoading(false);
       })
       .catch(err => {

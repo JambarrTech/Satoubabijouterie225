@@ -1,11 +1,13 @@
 import React from 'react';
 import { motion, HTMLMotionProps } from 'motion/react';
 
-interface ButtonProps extends HTMLMotionProps<"button"> {
+interface ButtonProps extends Omit<HTMLMotionProps<"button">, "children"> {
   variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'gold';
   size?: 'sm' | 'md' | 'lg';
   isLoading?: boolean;
   icon?: React.ReactNode;
+  rightIcon?: React.ReactNode;
+  children?: React.ReactNode;
 }
 
 export function Button({
@@ -14,6 +16,7 @@ export function Button({
   size = 'md',
   isLoading = false,
   icon,
+  rightIcon,
   className = '',
   disabled,
   ...props
@@ -48,6 +51,7 @@ export function Button({
         <span className="mr-2">{icon}</span>
       ) : null}
       {children}
+      {rightIcon && !isLoading ? <span className="ml-2">{rightIcon}</span> : null}
     </motion.button>
   );
 }

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Plus, Package, Edit, Trash2, Search, Upload, X, Image as ImageIcon } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Upload, X } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Modal } from '../ui/Modal';
@@ -8,7 +8,6 @@ import { apiGet, apiPost, apiPut, apiDelete, apiUpload } from '../../lib/apiClie
 export function GerantProducts() {
   const [products, setProducts] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
@@ -36,17 +35,15 @@ export function GerantProducts() {
     apiGet<any>('/api/products?includeAll=true')
       .then(res => {
         setProducts(Array.isArray(res) ? res : res.data || []);
-        setLoading(false);
       })
       .catch(err => {
         console.error(err);
-        setLoading(false);
       });
   };
 
   useEffect(() => {
     fetchProducts();
-    apiGet('/api/categories').then(setCategories).catch(() => {});
+    apiGet('/api/categories').then(data => setCategories(data as any[])).catch(() => {});
   }, []);
 
   const handleOpenAdd = () => {

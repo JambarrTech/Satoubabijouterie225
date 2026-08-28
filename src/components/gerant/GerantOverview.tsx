@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { DollarSign, ShoppingBag, Package, Users, Sparkles, TrendingUp, Clock, CheckCircle } from 'lucide-react';
 import { apiGet } from '../../lib/apiClient';
 import { fetchStoreSettings, StoreSettings } from '../../lib/api/settings';
@@ -15,8 +15,8 @@ export function GerantOverview() {
       apiGet('/api/orders/all'),
       fetchStoreSettings().catch(() => null)
     ]).then(([statsData, ordersData, settingsData]) => {
-      setStats(statsData);
-      setOrders(ordersData);
+      setStats(statsData as any);
+      setOrders(ordersData as any[]);
       setSettings(settingsData);
       setLoading(false);
     }).catch(err => {

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { LayoutDashboard, Package, ShoppingBag, Sparkles, Users, UserCog, Settings, LogOut, ShieldCheck } from 'lucide-react';
+import { useState } from 'react';
+import { LayoutDashboard, Package, ShoppingBag, Sparkles, Users, UserCog, Settings, ShieldCheck } from 'lucide-react';
 import { GerantOverview } from './GerantOverview';
 import { GerantProducts } from './GerantProducts';
 import { GerantOrders } from './GerantOrders';

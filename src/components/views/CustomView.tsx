@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Sparkles, Send, CheckCircle2, ShieldCheck, Calculator, Gem } from 'lucide-react';
-import { motion } from 'motion/react';
 import { createCustomRequest } from '../../lib/api/custom';
 import { fetchMaterialPricing, MaterialPricing } from '../../lib/api/pricing';
 import { Input } from '../ui/Input';

@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Sparkles, Wrench, Phone, CheckCircle2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Sparkles, Wrench, Phone } from 'lucide-react';
 import { apiGet, apiPut } from '../../lib/apiClient';
 
 const CUSTOM_STATUSES = [
@@ -31,8 +31,8 @@ export function GerantCustom() {
       apiGet('/api/custom-requests/all'),
       apiGet('/api/repairs/all')
     ]).then(([customData, repairsData]) => {
-      setCustomRequests(customData);
-      setRepairs(repairsData);
+      setCustomRequests(customData as any[]);
+      setRepairs(repairsData as any[]);
       setLoading(false);
     }).catch(err => {
       console.error(err);

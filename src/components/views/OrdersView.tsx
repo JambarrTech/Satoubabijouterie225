@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Package, Clock, ArrowRight, CreditCard, MapPin } from 'lucide-react';
 import { Order } from '../../types';
 import { fetchOrders, completeOrderPayment } from '../../lib/api/orders';

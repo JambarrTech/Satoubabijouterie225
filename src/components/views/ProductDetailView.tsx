@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, Heart, Share2, ShieldCheck, Truck, MessageSquare } from 'lucide-react';
-import { motion } from 'motion/react';
 import { Product } from '../../types';
 import { fetchStoreSettings, StoreSettings } from '../../lib/api/settings';
 import { Price } from '../ui/Price';

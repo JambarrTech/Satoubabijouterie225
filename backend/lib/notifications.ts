@@ -1,6 +1,6 @@
 import { prisma } from './prisma';
 import { sendSMS, sendOrderConfirmationSMS, sendPaymentConfirmedSMS, sendShippingSMS, sendDeliverySMS, sendOTPSMS, sendCustomRequestSMS, sendRepairRequestSMS } from './sms';
-import { sendPushNotification, sendMulticastPushNotification, getOrderPushContent, OrderPushData } from './push';
+import { sendMulticastPushNotification, getOrderPushContent, OrderPushData } from './push';
 import logger from './logger';
 
 export type NotificationChannel = 'SMS' | 'PUSH' | 'BOTH';
@@ -193,7 +193,7 @@ export async function notifyPromo(userIds: string[], title: string, message: str
       message,
       type: 'PROMO',
       channel: 'BOTH',
-      data: { couponCode, type: 'promo' },
+      data: couponCode ? { couponCode, type: 'promo' } : { type: 'promo' },
     });
   }
 }

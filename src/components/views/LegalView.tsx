@@ -1,4 +1,3 @@
-import React from 'react';
 import { ArrowLeft } from 'lucide-react';
 
 interface LegalViewProps {
@@ -93,8 +92,8 @@ export function LegalView({ type }: LegalViewProps) {
             <h2 className="font-serif text-xl font-bold text-gray-900 mb-3">9. Contact</h2>
             <p className="text-sm text-gray-700 leading-relaxed">
               Pour toute question, contactez-nous :<br />
-              📞 +221 05 54 13 07 46 / +221 07 47 13 52 01<br />
-              📧 contact@satouba-bijouterie.sn<br />
+              📞 +225 07 47 13 52 01 / +225 05 54 13 07 46<br />
+              📧 contact@satouba-bijouterie.ci<br />
               📍 Koumassi, feux de prodomo, Abidjan<br />
               📸 @Satouba225_bijouterie
             </p>
@@ -147,7 +146,7 @@ export function LegalView({ type }: LegalViewProps) {
             <p className="text-sm text-gray-700 leading-relaxed">
               Conformément à la législation en vigueur, vous disposez d'un droit d'accès, de rectification et de 
               suppression de vos données personnelles. Pour exercer ces droits, contactez-nous à 
-              contact@satouba-bijouterie.sn.
+              contact@satouba-bijouterie.ci.
             </p>
           </section>
 
@@ -163,8 +162,8 @@ export function LegalView({ type }: LegalViewProps) {
             <h2 className="font-serif text-xl font-bold text-gray-900 mb-3">7. Contact</h2>
             <p className="text-sm text-gray-700 leading-relaxed">
               Pour toute question relative à la protection de vos données :<br />
-              📧 contact@satouba-bijouterie.sn<br />
-              📞 +221 05 54 13 07 46
+              📧 contact@satouba-bijouterie.ci<br />
+              📞 +225 07 47 13 52 01
             </p>
           </section>
         </div>

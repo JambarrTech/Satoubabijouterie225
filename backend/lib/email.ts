@@ -37,7 +37,7 @@ export function orderConfirmationEmail(orderNumber: string, customerName: string
         </div>
         <div style="text-align:center;padding:20px;color:#999;font-size:12px">
           SaTouba Bijouterie - Koumassi, Abidjan<br>
-          📞 +221 05 54 13 07 46 | 📸 @Satouba225_bijouterie
+          📞 ${process.env.CONTACT_PHONE || '+225 07 47 13 52 01'} | 📸 @Satouba225_bijouterie
         </div>
       </body></html>
     `,
@@ -71,7 +71,7 @@ export function passwordResetEmail(resetLink: string): EmailOptions {
   };
 }
 
-export function orderStatusEmail(orderNumber: string, status: string, label: string): EmailOptions {
+export function orderStatusEmail(orderNumber: string, _status: string, label: string): EmailOptions {
   return {
     to: '',
     subject: `SaTouba - Commande ${orderNumber} : ${label}`,
@@ -104,7 +104,7 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
   const smtpHost = process.env.SMTP_HOST;
   const smtpUser = process.env.SMTP_USER;
   const smtpPass = process.env.SMTP_PASS;
-  const emailFrom = process.env.EMAIL_FROM || 'noreply@satouba-bijouterie.sn';
+  const emailFrom = process.env.EMAIL_FROM || 'contact@satouba-bijouterie.ci';
 
   if (!options.to) {
     logger.warn({ subject: options.subject }, 'EMAIL_SKIP — no recipient');

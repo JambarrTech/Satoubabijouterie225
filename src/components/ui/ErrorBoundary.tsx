@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, ReactNode } from 'react';
+import { useState, useCallback, useEffect, ReactNode } from 'react';
 
 interface ErrorFallbackProps {
   error: Error;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, X, Sparkles, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Product } from '../../types';
@@ -37,7 +37,7 @@ export function SearchModal({ isOpen, onClose, onSelectProduct }: SearchModalPro
       setIsLoading(true);
       try {
         const data = await fetchProducts({ search: query });
-        setResults(data);
+        setResults(data.data);
       } catch (e) {
         console.error(e);
       } finally {

@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { ArrowLeft, CheckCircle2, MapPin, Truck, Loader2, ExternalLink, Lock, ShoppingBag } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Cart } from '../../types';
 import { createOrder, fetchOrderCallback, CreateOrderResponse } from '../../lib/api/orders';
 import { fetchCurrentUser } from '../../lib/api/auth';
-import { fetchStoreSettings, StoreSettings } from '../../lib/api/settings';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 
@@ -25,7 +24,6 @@ export function CheckoutView({ cart, selectedCartItemIds, onBack, onOrderSuccess
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [completedOrder, setCompletedOrder] = useState<any | null>(null);
-  const [storeSettings, setStoreSettings] = useState<StoreSettings | null>(null);
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
 
   const itemsToPay = useMemo(() => {
@@ -48,7 +46,6 @@ export function CheckoutView({ cart, selectedCartItemIds, onBack, onOrderSuccess
       setAddress(user.address || '');
       setCity(user.city || 'Abidjan');
     }).catch(() => {});
-    fetchStoreSettings().then(setStoreSettings).catch(() => {});
 
     const urlParams = new URLSearchParams(window.location.search);
     const paymentParam = urlParams.get('payment');

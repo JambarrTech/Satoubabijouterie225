@@ -87,7 +87,6 @@ app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 function resolveUploadsDir(): string {
   if (process.env.UPLOADS_DIR) return process.env.UPLOADS_DIR;
   const cwdBackend = path.join(process.cwd(), 'backend', 'uploads');
-  const cwdRoot = path.join(process.cwd(), 'uploads');
   const sibling = path.join(__dirname, 'uploads');
   // Prefer backend/uploads if running via tsx, otherwise dist/uploads or cwd
   // Check which exists or fallback to cwdBackend

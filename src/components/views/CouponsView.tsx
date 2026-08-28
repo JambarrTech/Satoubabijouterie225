@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Tag, Copy, Check, Sparkles } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Copy, Check } from 'lucide-react';
 import { Coupon } from '../../types';
 import { fetchCoupons } from '../../lib/api/coupons';
 import { Button } from '../ui/Button';

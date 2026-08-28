@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Heart } from 'lucide-react';
-import { fetchLikes, toggleLike, Like } from '../../lib/api/reviews';
+import { fetchLikes, toggleLike } from '../../lib/api/reviews';
 
 interface LikeButtonProps {
   productId: string;

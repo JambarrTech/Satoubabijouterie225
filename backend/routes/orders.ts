@@ -107,7 +107,7 @@ router.post('/api/orders', authenticateToken, async (req: AuthRequest, res) => {
     }
 
     // Total recalculé serveur sur le sous-ensemble (montant non modifiable côté Wave)
-    const { subtotal, discount, shippingFee, total } = await calculateCartTotal(
+    const { total } = await calculateCartTotal(
       cart,
       itemsToOrder
     );
@@ -258,6 +258,16 @@ router.post('/api/orders/webhook/:provider', async (req, res) => {
     const verification = await verifyPayment('WAVE', paymentRef);
 
     if (verification.success && verification.paid) {
+      // --- Contrôle SÉCURITÉ montant : le client ne doit jamais payer un montant différent du total verrouillé ---
+      const expected = Number(order.totalAmount);
+      if (typeof verification.amount === 'number' && Math.abs(verification.amount - expected) > 0) {
+        logger.error(
+          { orderId: order.id, orderNumber: order.orderNumber, expected, paid: verification.amount },
+          '[Wave Business] Montant payé DIFFÉRENT du total verrouillé — refus.'
+        );
+        return res.status(409).json({ received: true, error: 'Montant payé incohérent avec le total de la commande' });
+      }
+
       // Payment successful
       await prisma.order.update({
         where: { id: order.id },
@@ -303,6 +313,16 @@ router.get('/api/orders/callback/:orderId', authenticateToken, async (req: AuthR
       const verification = await verifyPayment('WAVE', order.paymentRef);
 
       if (verification.success && verification.paid) {
+        // Contrôle SÉCURITÉ montant : montant payé doit correspondre au total verrouillé
+        const expected = Number(order.totalAmount);
+        if (typeof verification.amount === 'number' && Math.abs(verification.amount - expected) > 0) {
+          logger.error(
+            { orderId: order.id, orderNumber: order.orderNumber, expected, paid: verification.amount },
+            '[Wave Business] Callback: montant payé DIFFÉRENT du total verrouillé — refus.'
+          );
+          return res.status(409).json({ error: 'Montant payé incohérent avec le total de la commande' });
+        }
+
         await prisma.order.update({
           where: { id: order.id },
           data: {

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Wrench, Send, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { Wrench, Send, CheckCircle2 } from 'lucide-react';
 import { createRepairRequest } from '../../lib/api/repairs';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';

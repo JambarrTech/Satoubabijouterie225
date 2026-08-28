@@ -1,4 +1,3 @@
-import React from 'react';
 import { Home, Heart, ShoppingBag, MessageSquare, User as UserIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 

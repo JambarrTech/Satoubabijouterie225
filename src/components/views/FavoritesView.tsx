@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Heart, ShoppingBag, ArrowRight } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Heart, ArrowRight } from 'lucide-react';
 import { Product } from '../../types';
 import { fetchFavorites } from '../../lib/api/favorites';
 import { ProductCard } from '../product/ProductCard';

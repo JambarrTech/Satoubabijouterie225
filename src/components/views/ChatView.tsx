@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { MessageSquare, Phone, Mail, MapPin, Sparkles, Send } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { MessageSquare, Phone, Mail, MapPin, Sparkles } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { fetchStoreSettings, StoreSettings } from '../../lib/api/settings';
 

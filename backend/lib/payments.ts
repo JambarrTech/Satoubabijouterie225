@@ -38,10 +38,26 @@ function getWaveBusinessLink(): string {
 }
 
 function isMockEnabled(): boolean {
+  // SÉCURITÉ : jamais de paiement simulé en production — cela encaisserait 0 FCFA.
+  if (process.env.NODE_ENV === 'production') return false;
   if (process.env.PAYMENTS_MOCK === 'true') return true;
   if (process.env.PAYMENTS_MOCK === 'false') return false;
   // Auto-mock en dev/test si aucune clé Wave configurée
   return process.env.NODE_ENV !== 'production' && !getWaveKey() && !getWaveBusinessLink();
+}
+
+// En production, refuse de démarrer les paiements sans config Wave réelle.
+export function assertWaveConfigured(): boolean {
+  if (process.env.NODE_ENV === 'production') {
+    if (!getWaveKey() && !getWaveBusinessLink()) {
+      logger.error('[Wave Business] FATAL: aucune clé API (WAVE_API_KEY) ni lien statique (WAVE_BUSINESS_LINK) en production — le paiement réel est impossible.');
+    }
+    if (process.env.PAYMENTS_MOCK === 'true') {
+      logger.error('[Wave Business] CRITIQUE: PAYMENTS_MOCK=true est interdit en production. Les commandes ne seraient pas encaissées.');
+      return false;
+    }
+  }
+  return true;
 }
 function mockPaymentRef(orderNumber: string): string {
   return `mock_wave_${orderNumber}_${Date.now()}`;
@@ -62,6 +78,12 @@ export async function initiatePayment(
   // Sécurité : montant doit être >0 et entier (FCFA)
   if (!request.amount || request.amount <= 0) {
     return { success: false, error: 'Montant invalide' };
+  }
+
+  // Double garde : jamais de mock en production
+  if (process.env.NODE_ENV === 'production' && isMockEnabled()) {
+    logger.error('[Wave Business] TENTATIVE de paiement MOCK en production bloquée.');
+    return { success: false, error: 'Paiement non configuré pour la production' };
   }
 
   if (isMockEnabled()) {
@@ -163,14 +185,14 @@ async function initiateWaveBusinessStaticLink(request: PaymentRequest): Promise<
 export async function verifyPayment(
   provider: PaymentProvider,
   paymentRef: string
-): Promise<{ success: boolean; paid: boolean; error?: string }> {
+): Promise<{ success: boolean; paid: boolean; error?: string; amount?: number; currency?: string }> {
   if (provider !== 'WAVE') {
     return { success: false, paid: false, error: 'Fournisseur non supporté — seul Wave est disponible' };
   }
   return verifyWavePayment(paymentRef);
 }
 
-async function verifyWavePayment(paymentRef: string): Promise<{ success: boolean; paid: boolean; error?: string }> {
+async function verifyWavePayment(paymentRef: string): Promise<{ success: boolean; paid: boolean; error?: string; amount?: number; currency?: string }> {
   if (paymentRef.startsWith('mock_wave_') || paymentRef.startsWith('mock_')) {
     // Mock toujours considéré comme payé (simule succès Wave)
     return { success: true, paid: true };
@@ -189,7 +211,10 @@ async function verifyWavePayment(paymentRef: string): Promise<{ success: boolean
     });
     const data: any = await response.json().catch(() => ({}));
     const paid = data.status === 'completed' || data.status === 'paid' || data.payment_status === 'paid' || data.state === 'completed';
-    return { success: response.ok, paid };
+    // Montant réellement payé (FCFA) et devise — pour vérifier qu'il correspond au total verrouillé côté serveur.
+    const amount = typeof data.amount === 'number' ? data.amount : (typeof data.amount_expected === 'number' ? data.amount_expected : undefined);
+    const currency = data.currency || data.currency_code;
+    return { success: response.ok, paid, amount, currency };
   } catch {
     return { success: false, paid: false, error: 'Erreur vérification Wave Business' };
   }

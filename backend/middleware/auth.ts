@@ -41,7 +41,7 @@ export function authenticateToken(req: AuthRequest, res: Response, next: NextFun
   }
 }
 
-export function optionalAuth(req: AuthRequest, res: Response, next: NextFunction) {
+export function optionalAuth(req: AuthRequest, _res: Response, next: NextFunction) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
@@ -81,7 +81,6 @@ export function rateLimit(maxRequests: number, windowMs: number) {
     if (!entry || now > entry.resetAt) {
       if (rateLimitStore.size >= MAX_STORE_SIZE) {
         // Evict oldest 20% of entries when store is full
-        const cutoff = now;
         let evicted = 0;
         const target = Math.floor(MAX_STORE_SIZE * 0.2);
         for (const [k, v] of rateLimitStore) {

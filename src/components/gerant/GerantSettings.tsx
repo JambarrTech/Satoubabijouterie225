@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Settings, Tag, Store, Plus, Trash2, Edit, Check, Gem } from 'lucide-react';
+import { Tag, Store, Plus, Trash2, Edit, Check, Gem } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { apiGet, apiPost, apiPut, apiDelete } from '../../lib/apiClient';
@@ -32,11 +32,11 @@ export function GerantSettings() {
   const [error, setError] = useState('');
 
   const fetchCoupons = () => {
-    apiGet('/api/coupons/all').then(data => setCoupons(data)).catch(console.error);
+    apiGet('/api/coupons/all').then(data => setCoupons(data as any[])).catch(console.error);
   };
 
   const fetchMaterials = () => {
-    apiGet('/api/material-pricing').then(data => setMaterials(data)).catch(console.error);
+    apiGet('/api/material-pricing').then(data => setMaterials(data as any[])).catch(console.error);
   };
 
   useEffect(() => {
@@ -53,8 +53,8 @@ export function GerantSettings() {
         email: s?.email || '',
         instagram: s?.instagram || '',
         whatsapp: s?.whatsapp || '',
-        shipping_fee: s?.shipping_fee || '',
-        free_shipping_threshold: s?.free_shipping_threshold || '',
+        shipping_fee: s?.shipping_fee != null ? String(s.shipping_fee) : '',
+        free_shipping_threshold: s?.free_shipping_threshold != null ? String(s.free_shipping_threshold) : '',
         tagline: s?.tagline || '',
         description: s?.description || '',
       });
@@ -163,7 +163,7 @@ export function GerantSettings() {
     setMatDesc(m.description || '');
   };
 
-  const fmt = (v: string | undefined) => v ? Number(v).toLocaleString('fr-FR') : '—';
+  const fmt = (v: string | number | undefined) => v != null && v !== '' ? Number(v).toLocaleString('fr-FR') : '—';
 
   return (
     <div className="space-y-8">
@@ -189,8 +189,8 @@ export function GerantSettings() {
               <Button variant="outline" size="sm" onClick={() => { setEditingSettings(false); setSettingsForm({
                 brand_name: settings?.brand_name || '', address: settings?.address || '', phone_main: settings?.phone_main || '',
                 phone_secondary: settings?.phone_secondary || '', phone_tertiary: settings?.phone_tertiary || '', email: settings?.email || '',
-                instagram: settings?.instagram || '', whatsapp: settings?.whatsapp || '', shipping_fee: settings?.shipping_fee || '',
-                free_shipping_threshold: settings?.free_shipping_threshold || '', tagline: settings?.tagline || '', description: settings?.description || '',
+                instagram: settings?.instagram || '', whatsapp: settings?.whatsapp || '', shipping_fee: settings?.shipping_fee != null ? String(settings.shipping_fee) : '',
+                free_shipping_threshold: settings?.free_shipping_threshold != null ? String(settings.free_shipping_threshold) : '', tagline: settings?.tagline || '', description: settings?.description || '',
               }); }}>Annuler</Button>
             </div>
           )}

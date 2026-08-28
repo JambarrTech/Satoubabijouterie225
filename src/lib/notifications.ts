@@ -3,7 +3,7 @@ import { getFCMToken, onForegroundMessage, initFirebase } from './firebase';
 
 let messageListener: (() => void) | null = null;
 
-export async function registerPushNotifications(userId: string): Promise<boolean> {
+export async function registerPushNotifications(_userId: string): Promise<boolean> {
   try {
     const token = await getFCMToken();
     if (!token) {
@@ -38,8 +38,8 @@ export function setupForegroundHandler(onMessage: (payload: any) => void) {
   if (messageListener) {
     messageListener();
   }
-  initFirebase().then(({ messaging }) => {
-    if (messaging) {
+  initFirebase().then((fb) => {
+    if (fb?.messaging) {
       messageListener = onForegroundMessage(onMessage);
     }
   });

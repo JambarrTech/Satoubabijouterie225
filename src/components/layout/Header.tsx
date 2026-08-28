@@ -1,4 +1,3 @@
-import React from 'react';
 import { Search, Bell, ShoppingBag, User } from 'lucide-react';
 import { motion } from 'motion/react';
 

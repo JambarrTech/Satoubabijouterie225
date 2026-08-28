@@ -109,14 +109,16 @@ export async function sendBulkSMS(phones: string[], message: string, senderId?: 
 }
 
 function formatPhoneNumber(phone: string): string {
+  // Côte d'Ivoire : +225 (Abidjan). Préfixe modifiable via COUNTRY_CODE pour tout déploiement.
+  const countryCode = process.env.COUNTRY_CODE || '225';
   let cleaned = phone.replace(/\D/g, '');
-  
+
   if (cleaned.startsWith('0')) {
-    cleaned = '221' + cleaned.substring(1);
-  } else if (!cleaned.startsWith('221')) {
-    cleaned = '221' + cleaned;
+    cleaned = countryCode + cleaned.substring(1);
+  } else if (!cleaned.startsWith(countryCode)) {
+    cleaned = countryCode + cleaned;
   }
-  
+
   return '+' + cleaned;
 }
 
@@ -126,7 +128,7 @@ export async function sendOrderConfirmationSMS(phone: string, orderNumber: strin
 }
 
 export async function sendPaymentConfirmedSMS(phone: string, orderNumber: string): Promise<SMSResponse> {
-  const message = `SaTouba: Paiement reçu pour commande ${orderNumber}. Fabrication lancée. Suivi: https://satouba.sn/commandes/${orderNumber}`;
+  const message = `SaTouba: Paiement reçu pour commande ${orderNumber}. Fabrication lancée. Suivi: ${process.env.APP_URL || 'https://satouba-bijouterie.ci'}/commandes/${orderNumber}`;
   return sendSMS({ to: phone, message });
 }
 
