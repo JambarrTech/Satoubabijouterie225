@@ -43,8 +43,8 @@ export function Footer({ onNavigate }: FooterProps) {
               <Truck size={24} />
             </div>
             <div>
-              <h4 className="font-serif font-semibold text-sm">Livraison Sécurisée</h4>
-              <p className="text-xs text-emerald-200/80">Transport VIP assuré à Abidjan et en Côte d'Ivoire</p>
+              <h4 className="font-serif font-semibold text-sm">Coursier SaTouba (Abidjan & environs)</h4>
+              <p className="text-xs text-emerald-200/80">Gratuit — Remise en main propre sous 24-48h avec certificat d’authenticité.</p>
             </div>
           </div>
           <div className="flex items-center gap-4">
@@ -107,7 +107,7 @@ export function Footer({ onNavigate }: FooterProps) {
             <ul className="space-y-3 text-xs text-emerald-200/80">
               <li className="flex items-start gap-2.5">
                 <MapPin size={16} className="text-[#D9A441] shrink-0 mt-0.5" />
-                <span>{settings?.address || 'Koumassi, feux de prodomo, juste à la rentrée de Sopim, Abidjan'}</span>
+                <span>{settings?.address || 'Koumassi, feux de prodomo, juste à la rentrée de Sopim, Abidjan — Coursier SaTouba (Abidjan & environs)'}</span>
               </li>
               <li className="flex items-center gap-2.5">
                 <Phone size={16} className="text-[#D9A441] shrink-0" />

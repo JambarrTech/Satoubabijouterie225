@@ -30,11 +30,11 @@ async function main() {
       name: 'Matar Mbow',
       email: 'admin@satouba.com',
       password: adminPassword,
-      phone: '+221 77 890 12 34',
+      phone: '+225 07 47 13 52 01',
       role: 'ADMIN',
-      address: 'Avenue Bourguiba, Dakar',
-      city: 'Dakar',
-      country: 'Sénégal',
+      address: 'Koumassi, feux de prodomo, juste à la rentrée de Sopim, Abidjan',
+      city: 'Abidjan',
+      country: 'Côte d\'Ivoire',
     },
   });
 

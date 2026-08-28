@@ -66,7 +66,7 @@ export function SplashView({ onComplete }: SplashViewProps) {
                   Bijouterie de Luxe
                 </p>
                 <p className="text-emerald-200/60 text-xs mt-2 tracking-wider">
-                  Dakar, Sénégal
+                  Abidjan, Côte d'Ivoire
                 </p>
               </motion.div>
             )}

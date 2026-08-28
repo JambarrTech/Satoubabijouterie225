@@ -56,8 +56,9 @@ export function GerantOverview() {
           </p>
         </div>
         <div className="bg-white/10 px-5 py-3 rounded-2xl border border-white/20 text-right">
-          <p className="text-xs text-emerald-200 uppercase tracking-wider">Boutique Principale</p>
-          <p className="font-serif text-lg font-bold text-white">{settings?.address || 'Dakar'}</p>
+          <p className="text-xs text-emerald-200 uppercase tracking-wider">Boutique Principale — Coursier SaTouba (Abidjan & environs)</p>
+          <p className="font-serif text-lg font-bold text-white">{settings?.address || 'Koumassi, Abidjan'}</p>
+          <p className="text-xs text-emerald-100">Gratuit — Remise en main propre sous 24-48h avec certificat d’authenticité.</p>
         </div>
       </div>
 

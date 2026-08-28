@@ -65,11 +65,9 @@ export function LegalView({ type }: LegalViewProps) {
           </section>
 
           <section className="mb-8">
-            <h2 className="font-serif text-xl font-bold text-gray-900 mb-3">6. Livraison</h2>
+            <h2 className="font-serif text-xl font-bold text-gray-900 mb-3">6. Livraison — Coursier SaTouba (Abidjan & environs)</h2>
             <p className="text-sm text-gray-700 leading-relaxed">
-              La livraison est assurée par notre coursier sécurisé à Abidjan et ses environs. Le délai de livraison 
-              est de 24 à 48 heures ouvrées après confirmation du paiement. Les frais de livraison sont de 5 000 FCFA, 
-              offerts pour toute commande supérieure à 200 000 FCFA.
+              <strong>Coursier SaTouba (Abidjan & environs) Gratuit — Remise en main propre sous 24-48h avec certificat d’authenticité.</strong> La livraison est assurée par notre coursier sécurisé à Abidjan et ses environs. Le délai est de 24 à 48 heures ouvrées après confirmation du paiement Wave Business. Livraison gratuite pour Abidjan & environs ; au-delà, frais calculés au checkout.
             </p>
           </section>
 

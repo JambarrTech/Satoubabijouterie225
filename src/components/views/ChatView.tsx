@@ -38,7 +38,7 @@ export function ChatView() {
             </div>
             <h3 className="font-serif text-2xl font-bold text-gray-900">Discussion Instantanée WhatsApp</h3>
             <p className="text-sm text-gray-600 leading-relaxed">
-              Le moyen le plus rapide d'obtenir des photos, des conseils personnalisés ou de valider une commande avec nos conseillers à Dakar.
+              Le moyen le plus rapide d'obtenir des photos, des conseils personnalisés ou de valider une commande avec nos conseillers à Abidjan — Coursier SaTouba (Abidjan & environs).
             </p>
           </div>
 

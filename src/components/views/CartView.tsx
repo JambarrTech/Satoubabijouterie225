@@ -251,7 +251,7 @@ export function CartView({ cart, onUpdateCart, onNavigate, onProceedToCheckout }
             <div className="bg-[#EAF7ED] p-4 rounded-2xl border border-[#0B5D1E]/20 flex items-center gap-3">
               <ShieldCheck size={24} className="text-[#0B5D1E] shrink-0" />
               <p className="text-xs text-[#064A15] leading-relaxed">
-                Paiement <strong>Wave Business exclusif</strong> — montant verrouillé, 100% sécurisé. Coursier VIP sous 24-48h.
+                Paiement <strong>Wave Business exclusif</strong> — montant verrouillé. <strong>Coursier SaTouba (Abidjan & environs) Gratuit</strong> — Remise en main propre sous 24-48h avec certificat d’authenticité.
               </p>
             </div>
           </div>

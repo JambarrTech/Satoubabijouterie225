@@ -47,7 +47,7 @@ export function CheckoutView({ cart, selectedCartItemIds, onBack, onOrderSuccess
       setFullName(user.name || '');
       setPhone(user.phone || '');
       setAddress(user.address || '');
-      setCity(user.city || 'Dakar');
+      setCity(user.city || 'Abidjan');
     }).catch(() => {});
     fetchStoreSettings().then(setStoreSettings).catch(() => {});
 
@@ -210,8 +210,8 @@ export function CheckoutView({ cart, selectedCartItemIds, onBack, onOrderSuccess
               <input type="radio" name="shipping" defaultChecked className="mt-1" />
               <div className="flex-1">
                 <div className="flex justify-between">
-                  <span className="font-bold text-sm text-gray-900">Coursier SaTouba (Dakar & environs)</span>
-                  <span className="font-bold text-[#0B5D1E]">{estimatedTotal >= (storeSettings?.free_shipping_threshold || 200000) ? 'Gratuit' : `${(storeSettings?.shipping_fee || 5000).toLocaleString()} FCFA`}</span>
+                  <span className="font-bold text-sm text-gray-900">Coursier SaTouba (Abidjan & environs)</span>
+                  <span className="font-bold text-[#0B5D1E]">Gratuit</span>
                 </div>
                 <p className="text-xs text-gray-600 mt-1">Remise en main propre sous 24-48h avec certificat d’authenticité.</p>
               </div>

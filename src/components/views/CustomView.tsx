@@ -69,7 +69,7 @@ export function CustomView() {
         </div>
         <h1 className="font-serif text-3xl sm:text-4xl font-bold text-gray-900">Simulateur & Création Sur-Mesure</h1>
         <p className="text-sm text-gray-600 max-w-xl mx-auto leading-relaxed">
-          Estimez instantanément le tarif de votre bijou sur-mesure grâce à notre simulateur interactif et confiez sa réalisation à nos maîtres artisans à Dakar.
+          Estimez instantanément le tarif de votre bijou sur-mesure grâce à notre simulateur interactif et confiez sa réalisation à nos maîtres artisans à Abidjan — Coursier SaTouba (Abidjan & environs).
         </p>
       </div>
 
@@ -220,7 +220,7 @@ export function CustomView() {
                 {estimatedPrice.toLocaleString()} <span className="text-lg font-sans text-white">FCFA</span>
               </div>
               <p className="text-[11px] text-emerald-200 leading-relaxed pt-2">
-                *Tarif indicatif incluant l'or certifié, les pierres et la main-d'œuvre de nos maîtres artisans à Dakar. Ajustement final validé avec vous.
+                *Tarif indicatif incluant l'or certifié, les pierres et la main-d'œuvre de nos maîtres artisans à Abidjan. Coursier SaTouba (Abidjan & environs) Gratuit — Remise en main propre sous 24-48h avec certificat d’authenticité.
               </p>
             </div>
 

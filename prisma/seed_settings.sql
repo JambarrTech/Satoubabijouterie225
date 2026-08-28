@@ -2,8 +2,8 @@ DELETE FROM StoreSettings;
 INSERT INTO StoreSettings (id, `key`, value, description) VALUES
 ('ss-1', 'brand_name', 'SaTouba Bijouterie', 'Nom de la marque'),
 ('ss-2', 'tagline', 'Moderne & de la Joie', 'Slogan de la marque'),
-('ss-3', 'description', 'Vente de bijoux en or 18K, diamants, argent & accessoires de luxe', 'Description de la boutique'),
-('ss-4', 'address', 'Koumassi, feux de prodomo, juste à la rentrée de Sopim, Abidjan', 'Adresse de la boutique'),
+('ss-3', 'description', 'Vente de bijoux en or 18K, diamants, argent & accessoires de luxe — Coursier SaTouba (Abidjan & environs)', 'Description de la boutique'),
+('ss-4', 'address', 'Koumassi, feux de prodomo, juste à la rentrée de Sopim, Abidjan — Coursier SaTouba (Abidjan & environs)', 'Adresse de la boutique'),
 ('ss-5', 'phone_main', '+225 05 54 13 07 46', 'Téléphone principal'),
 ('ss-6', 'phone_secondary', '+225 07 47 13 52 01', 'Téléphone secondaire'),
 ('ss-7', 'phone_tertiary', '+225 01 02 65 68 40', 'Téléphone tertiary'),
