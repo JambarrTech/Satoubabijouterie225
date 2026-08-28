@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /gerant
+Disallow: /api/
+
+Sitemap: https://satouba-bijouterie.com/sitemap.xml

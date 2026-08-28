@@ -1,0 +1,29 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+
+# Firebase & secrets — NEVER commit
+*-firebase-adminsdk-*.json
+**/*firebase-adminsdk*.json
+.service-account*.json
+.env.local
+.env.production
+
+# Uploads (local storage, should be S3/GCS in production)
+backend/uploads/*
+!backend/uploads/.gitkeep
+uploads/*
+!uploads/.gitkeep
+public/uploads/
+
+# OS & editor
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo

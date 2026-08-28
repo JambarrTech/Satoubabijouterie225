@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SaTouba Bijouterie - Or 18K, Diamants & Bijoux de Luxe | Abidjan</title>
+    <meta name="description" content="SaTouba Bijouterie - Vente de bijoux en or 18K, diamants, argent & accessoires de luxe à Abidjan. Création sur-mesure, réparation & SAV. Livraison sécurisée." />
+    <meta name="keywords" content="bijoux or 18K, diamants, bijouterie Abidjan, bague diamant, collier or, alliance mariage, sur-mesure, réparation bijoux, SaTouba" />
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="SaTouba Bijouterie - Bijoux de Luxe en Or 18K & Diamants" />
+    <meta property="og:description" content="Découvrez nos collections d'exception : bagues, colliers, bracelets, alliances en or 18K et diamants. Livraison sécurisée à Abidjan." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://satouba-bijouterie.com" />
+    <meta property="og:image" content="/logo.jpg" />
+    <meta property="og:locale" content="fr_CI" />
+    <meta property="og:site_name" content="SaTouba Bijouterie" />
+    
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="SaTouba Bijouterie - Bijoux de Luxe" />
+    <meta name="twitter:description" content="Or 18K, diamants, argent. Bijoux d'exception à Abidjan." />
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/jpeg" href="/logo.jpg" />
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#0B5D1E" />
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "JewelryStore",
+      "name": "SaTouba Bijouterie",
+      "description": "Vente de bijoux en or 18K, diamants, argent & accessoires de luxe",
+      "url": "https://satouba-bijouterie.com",
+      "telephone": ["+2210554130746", "+2210747135201", "+2210102656840"],
+      "email": "contact@satouba-bijouterie.sn",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "Koumassi, feux de prodomo, juste à la rentrée de Sopim",
+        "addressLocality": "Abidjan",
+        "addressCountry": "CI"
+      },
+      "geo": {
+        "@type": "GeoCoordinates",
+        "latitude": "5.3225",
+        "longitude": "-3.9472"
+      },
+      "openingHoursSpecification": {
+        "@type": "OpeningHoursSpecification",
+        "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+        "opens": "09:00",
+        "closes": "19:00"
+      },
+      "priceRange": "$$$$",
+      "sameAs": ["https://www.instagram.com/Satouba225_bijouterie"]
+    }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- Service Worker Registration for Push Notifications -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/firebase-messaging-sw.js')
+          .then((registration) => {
+            console.log('SW registered:', registration.scope);
+          })
+          .catch((error) => {
+            console.error('SW registration failed:', error);
+          });
+      }
+    </script>
+  </body>
+</html>
