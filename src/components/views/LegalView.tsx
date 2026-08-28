@@ -58,16 +58,16 @@ export function LegalView({ type }: LegalViewProps) {
           </section>
 
           <section className="mb-8">
-            <h2 className="font-serif text-xl font-bold text-gray-900 mb-3">5. Paiement — Wave Business exclusif</h2>
+            <h2 className="font-serif text-xl font-bold text-gray-900 mb-3">5. Paiement — Wave</h2>
             <p className="text-sm text-gray-700 leading-relaxed">
-              Le paiement s'effectue exclusivement via <strong>Wave Business</strong> par lien de paiement. Le montant est calculé et <strong>verrouillé côté serveur</strong> à partir des prix en base ; il n’est <strong>pas modifiable</strong> par le client sur l’application Wave. Le client peut librement ajouter 1 ou plusieurs articles à son panier ; le total est recalculé serveur et seul le montant exact est présenté sur Wave. Le paiement est exigible à la commande et crypté ; aucune donnée de paiement n’est stockée sur nos serveurs.
+              Le paiement s'effectue exclusivement via <strong>Wave</strong> par lien de paiement. Le montant est calculé et <strong>verrouillé côté serveur</strong> à partir des prix en base ; il n’est <strong>pas modifiable</strong> par le client sur l’application Wave. Le client peut librement ajouter 1 ou plusieurs articles à son panier ; le total est recalculé serveur et seul le montant exact est présenté sur Wave. Le paiement est exigible à la commande et crypté ; aucune donnée de paiement n’est stockée sur nos serveurs.
             </p>
           </section>
 
           <section className="mb-8">
             <h2 className="font-serif text-xl font-bold text-gray-900 mb-3">6. Livraison — Coursier SaTouba (Abidjan & environs)</h2>
             <p className="text-sm text-gray-700 leading-relaxed">
-              <strong>Coursier SaTouba (Abidjan & environs) Gratuit — Remise en main propre sous 24-48h avec certificat d’authenticité.</strong> La livraison est assurée par notre coursier sécurisé à Abidjan et ses environs. Le délai est de 24 à 48 heures ouvrées après confirmation du paiement Wave Business. Livraison gratuite pour Abidjan & environs ; au-delà, frais calculés au checkout.
+              <strong>Coursier SaTouba (Abidjan & environs) Gratuit — Remise en main propre sous 24-48h avec certificat d’authenticité.</strong> La livraison est assurée par notre coursier sécurisé à Abidjan et ses environs. Le délai est de 24 à 48 heures ouvrées après confirmation du paiement Wave. Livraison gratuite pour Abidjan & environs ; au-delà, frais calculés au checkout.
             </p>
           </section>
 

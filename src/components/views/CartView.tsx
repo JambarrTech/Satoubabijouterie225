@@ -136,7 +136,7 @@ export function CartView({ cart, onUpdateCart, onNavigate, onProceedToCheckout }
             <ShoppingBag size={32} />
           </div>
           <h3 className="font-serif text-xl font-bold text-gray-900">Votre panier est vide</h3>
-          <p className="text-sm text-gray-500">Ajoutez 1 ou plusieurs bijoux avant de payer avec Wave Business.</p>
+          <p className="text-sm text-gray-500">Ajoutez 1 ou plusieurs bijoux avant de payer avec Wave.</p>
           <div className="pt-4">
             <Button onClick={() => onNavigate('catalogue')} icon={<ArrowRight size={16} />}>Explorer le catalogue</Button>
           </div>
@@ -237,7 +237,7 @@ export function CartView({ cart, onUpdateCart, onNavigate, onProceedToCheckout }
                   <span>Total estimé</span>
                   <span className="text-[#0B5D1E] text-xl">{displayTotal.toLocaleString()} FCFA</span>
                 </div>
-                <p className="text-[11px] text-gray-500 bg-amber-50 border border-amber-200 rounded-xl p-2.5">Montant verrouillé sur Wave Business — non modifiable. Total exact recalculé serveur à la validation.</p>
+                <p className="text-[11px] text-gray-500 bg-amber-50 border border-amber-200 rounded-xl p-2.5">Montant verrouillé sur Wave — non modifiable. Total exact recalculé serveur à la validation.</p>
               </div>
 
               <Button size="lg" onClick={handleCheckout} icon={<ArrowRight size={18} />} className="w-full shadow-lg" disabled={selectedIds.size === 0}>

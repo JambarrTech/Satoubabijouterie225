@@ -5,8 +5,8 @@ INSERT IGNORE INTO `StoreSettings` (`id`, `key`, `value`, `description`) VALUES
 ('ss-4', 'phone_main', '+225 05 54 13 07 46', 'Telephone principal'),
 ('ss-5', 'email', 'contact@satouba-bijouterie.ci', 'Email contact'),
 ('ss-6', 'address', 'Koumassi, feux de prodomo, juste à la rentrée de Sopim, Abidjan — Coursier SaTouba (Abidjan & environs)', 'Adresse atelier'),
-('ss-7', 'shipping_fee', '5000', 'Frais de livraison (FCFA)'),
-('ss-8', 'free_shipping_threshold', '200000', 'Seuil livraison gratuite (FCFA)'),
+('ss-7', 'shipping_fee', '0', 'Frais de livraison (FCFA) — Coursier SaTouba (Abidjan & environs) Gratuit'),
+('ss-8', 'free_shipping_threshold', '0', 'Seuil livraison gratuite (FCFA) — Gratuit Abidjan'),
 ('ss-9', 'welcome_message', 'Bienvenue chez SaTouba Bijouterie', 'Message d accueil'),
 ('ss-10', 'currency', 'FCFA', 'Devise');
 

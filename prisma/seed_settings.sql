@@ -12,8 +12,8 @@ INSERT INTO StoreSettings (id, `key`, value, description) VALUES
 ('ss-10', 'instagram', 'Satouba225_bijouterie', 'Compte Instagram'),
 ('ss-11', 'opening_hours', 'Lundi au Samedi : 09h00 - 19h00', 'Horaires'),
 ('ss-12', 'currency', 'FCFA', 'Devise'),
-('ss-13', 'shipping_fee', '5000', 'Frais de livraison'),
-('ss-14', 'free_shipping_threshold', '200000', 'Seuil livraison gratuite');
+('ss-13', 'shipping_fee', '0', 'Frais de livraison — Coursier SaTouba (Abidjan & environs) Gratuit'),
+('ss-14', 'free_shipping_threshold', '0', 'Seuil livraison gratuite — Abidjan & environs gratuit');
 
 DELETE FROM MaterialPricing;
 INSERT INTO MaterialPricing (id, name, pricePerGram, type, description) VALUES

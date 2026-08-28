@@ -29,8 +29,9 @@ export async function calculateCartTotal(cart: any, cartItems: any[]) {
   }
   const shippingFeeSetting = await prisma.storeSettings.findUnique({ where: { key: 'shipping_fee' } });
   const freeThresholdSetting = await prisma.storeSettings.findUnique({ where: { key: 'free_shipping_threshold' } });
-  const shippingFeeValue = shippingFeeSetting ? parseInt(shippingFeeSetting.value) : 5000;
-  const freeThreshold = freeThresholdSetting ? parseInt(freeThresholdSetting.value) : 200000;
+  // Coursier SaTouba (Abidjan & environs) Gratuit — par défaut livraison gratuite
+  const shippingFeeValue = shippingFeeSetting ? parseInt(shippingFeeSetting.value) : 0;
+  const freeThreshold = freeThresholdSetting ? parseInt(freeThresholdSetting.value) : 0;
   const shippingFee = (subtotal - discount) > freeThreshold ? 0 : (subtotal > 0 ? shippingFeeValue : 0);
   const total = Math.max(0, subtotal - discount + shippingFee);
   return { subtotal, discount, shippingFee, total };
