@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ArrowLeft, CheckCircle2, ShieldCheck, MapPin, Truck, CreditCard, Loader2, ExternalLink, Lock, ShoppingBag } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, MapPin, Truck, Loader2, ExternalLink, Lock, ShoppingBag } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Cart } from '../../types';
 import { createOrder, fetchOrderCallback, CreateOrderResponse } from '../../lib/api/orders';
@@ -7,7 +7,6 @@ import { fetchCurrentUser } from '../../lib/api/auth';
 import { fetchStoreSettings, StoreSettings } from '../../lib/api/settings';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
-import { Price } from '../ui/Price';
 
 interface CheckoutViewProps {
   cart: Cart;
@@ -218,43 +217,31 @@ export function CheckoutView({ cart, selectedCartItemIds, onBack, onOrderSuccess
             </label>
             <div className="flex justify-between pt-4">
               <Button variant="outline" onClick={() => setStep(1)}>Retour</Button>
-              <Button size="lg" onClick={() => setStep(3)}>Continuer vers Wave Business</Button>
+              <Button size="lg" onClick={() => setStep(3)}>Continuer vers le paiement</Button>
             </div>
           </div>
         )}
 
         {step === 3 && (
           <div className="space-y-6">
-            <h3 className="font-serif text-xl font-bold text-gray-900 flex items-center gap-2">
-              <CreditCard size={20} className="text-[#0B5D1E]" /> 03. Paiement Wave Business — montant verrouillé
-            </h3>
+            <h3 className="font-serif text-xl font-bold text-gray-900">03. Paiement</h3>
 
             {error && <p className="text-xs text-red-600 bg-red-50 p-3 rounded-xl border border-red-200">{error}</p>}
 
-            <div className="rounded-2xl border-2 border-[#0B5D1E] bg-[#EAF7ED]/30 p-5 flex gap-4">
-              <div className="w-12 h-12 rounded-xl bg-[#0B5D1E] text-white flex items-center justify-center shrink-0">
-                <span className="font-black text-lg">W</span>
-              </div>
+            <div className="rounded-2xl border border-gray-200 bg-white p-5 flex items-center gap-4">
+              <img src="/wave-logo.svg" alt="Wave" className="w-12 h-12 rounded-xl shrink-0" />
               <div className="flex-1">
-                <h4 className="font-bold text-gray-900 text-sm flex items-center gap-2">Wave Business <span className="inline-flex items-center gap-1 text-[10px] bg-[#0B5D1E] text-white px-2 py-0.5 rounded-full"><Lock size={10}/> Montant verrouillé</span></h4>
-                <p className="text-xs text-gray-600 mt-1">Vous payez exactement le total serveur. Le montant <strong>n’est pas modifiable</strong> sur l’app Wave — sécurité anti-fraude.</p>
-                <p className="text-[11px] text-gray-500 mt-2">Lien de paiement Wave Business généré à la validation. Vous serez redirigé vers Wave pour confirmer.</p>
+                <h4 className="font-bold text-gray-900 text-sm flex items-center gap-2">Wave <span className="inline-flex items-center gap-1 text-[10px] bg-[#0B5D1E] text-white px-2 py-0.5 rounded-full"><Lock size={10}/> Montant verrouillé</span></h4>
+                <p className="text-xs text-gray-500 mt-1">Vous serez redirigé vers Wave pour payer. Le montant ne peut pas être modifié.</p>
               </div>
-              <ShieldCheck size={20} className="text-[#0B5D1E] shrink-0 mt-1" />
             </div>
 
-            <div className="bg-gray-50 p-4 rounded-2xl space-y-2">
-              <div className="flex justify-between text-xs text-gray-600"><span>Sous-total ({itemsToPay.length} art.)</span><span>{estimatedSubtotal.toLocaleString()} FCFA</span></div>
-              <div className="flex justify-between text-xs text-gray-600"><span>Livraison</span><span>{cart.shippingFee === 0 ? 'Gratuite' : `${cart.shippingFee.toLocaleString()} FCFA`}</span></div>
-              {cart.discount > 0 && itemsToPay.length === cart.items.length && <div className="flex justify-between text-xs text-emerald-600"><span>Réduction</span><span>-{cart.discount.toLocaleString()} FCFA</span></div>}
-              <div className="flex justify-between items-center pt-2 border-t border-gray-200">
-                <span className="text-sm font-bold text-gray-900">Total à payer sur Wave</span>
-                <span className="text-xl font-black text-[#0B5D1E]">{estimatedTotal.toLocaleString()} FCFA</span>
-              </div>
-              <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2">Ce montant est calculé serveur à partir des prix en base. Toute modification côté client est ignorée.</p>
+            <div className="bg-gray-900 text-white p-4 rounded-2xl flex items-center justify-between">
+              <span className="text-sm font-medium">Total à payer</span>
+              <span className="text-xl font-black">{estimatedTotal.toLocaleString()} FCFA</span>
             </div>
 
-            <div className="flex justify-between pt-4">
+            <div className="flex justify-between pt-2">
               <Button variant="outline" onClick={() => setStep(2)}>Retour</Button>
               <Button size="lg" isLoading={isSubmitting} onClick={handleSubmitOrder} disabled={itemsToPay.length===0}>
                 Payer {estimatedTotal.toLocaleString()} FCFA avec Wave
@@ -269,15 +256,15 @@ export function CheckoutView({ cart, selectedCartItemIds, onBack, onOrderSuccess
               <Loader2 size={40} className="animate-spin" />
             </motion.div>
             <div>
-              <span className="text-xs uppercase tracking-widest text-[#0B5D1E] font-bold">Redirection Wave Business</span>
-              <h3 className="font-serif text-2xl font-bold text-gray-900 mt-1">Montant verrouillé : {estimatedTotal.toLocaleString()} FCFA</h3>
-              <p className="text-sm text-gray-600 mt-2">Vous allez être redirigé vers <strong>Wave</strong>. Le montant ne peut pas être modifié.</p>
+              <span className="text-xs uppercase tracking-widest text-[#0B5D1E] font-bold">Redirection Wave</span>
+              <h3 className="font-serif text-2xl font-bold text-gray-900 mt-1">{estimatedTotal.toLocaleString()} FCFA</h3>
+              <p className="text-sm text-gray-600 mt-2">Vous allez être redirigé vers <strong>Wave</strong>.</p>
             </div>
             <div className="pt-4 flex justify-center gap-4">
               <Button variant="outline" onClick={() => { setStep(3); setPaymentUrl(null); }}>Annuler</Button>
-              <Button size="lg" isLoading={isSubmitting} onClick={openPaymentUrl} rightIcon={<ExternalLink size={18} />}>Payer avec Wave Business</Button>
+              <Button size="lg" isLoading={isSubmitting} onClick={openPaymentUrl} rightIcon={<ExternalLink size={18} />}>Payer avec Wave</Button>
             </div>
-            <p className="text-xs text-gray-500">Redirection automatique dans 1s — sinon cliquez ci-dessus.</p>
+            <p className="text-xs text-gray-500">Redirection automatique dans 1s.</p>
           </div>
         )}
 
@@ -289,7 +276,7 @@ export function CheckoutView({ cart, selectedCartItemIds, onBack, onOrderSuccess
             <div>
               <span className="text-xs uppercase tracking-widest text-[#0B5D1E] font-bold">Commande validée</span>
               <h3 className="font-serif text-3xl font-bold text-gray-900 mt-1">Merci !</h3>
-              <p className="text-sm text-gray-600 mt-2">Commande <strong className="text-gray-900">{completedOrder.orderNumber}</strong> — montant {completedOrder.totalAmount?.toLocaleString()} FCFA payé via Wave Business. Nos artisans préparent votre bijou.</p>
+              <p className="text-sm text-gray-600 mt-2">Commande <strong className="text-gray-900">{completedOrder.orderNumber}</strong> — {completedOrder.totalAmount?.toLocaleString()} FCFA payé via Wave. Nos artisans préparent votre bijou.</p>
             </div>
             <div className="pt-4 flex justify-center gap-4">
               <Button onClick={onBack}>Retour à l’accueil</Button>
