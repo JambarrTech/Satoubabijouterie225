@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma';
-import { authenticateToken, AuthRequest } from '../middleware/auth';
+import { authenticateToken, rateLimit, AuthRequest } from '../middleware/auth';
 import { calculateCartTotal, formatCartItems } from '../lib/helpers';
 import logger from '../lib/logger';
 
@@ -75,13 +75,16 @@ router.put('/api/cart/items/:id', authenticateToken, async (req: AuthRequest, re
   }
 });
 
-// Add to cart (with stock check + material-aware dedup)
-router.post('/api/cart/items', authenticateToken, async (req: AuthRequest, res) => {
+// Add to cart (with stock check + material-aware dedup, rate limited)
+router.post('/api/cart/items', authenticateToken, rateLimit(30, 60_000), async (req: AuthRequest, res) => {
   try {
     const { productId, quantity = 1, selectedSize, selectedMaterial } = req.body;
 
     if (!productId || typeof quantity !== 'number' || quantity < 1) {
-      return res.status(400).json({ error: 'Produit et quantité valide requis' });
+      return res.status(400).json({ error: 'Produit et quantite valide requis' });
+    }
+    if (quantity > 99) {
+      return res.status(400).json({ error: 'Quantite maximale depassee' });
     }
 
     const product = await prisma.product.findUnique({ where: { id: productId } });
@@ -175,68 +178,8 @@ router.delete('/api/cart', authenticateToken, async (req: AuthRequest, res) => {
     const cart = await prisma.cart.findUnique({ where: { userId: req.userId! } });
     if (cart) {
       await prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
-      await prisma.cart.update({ where: { id: cart.id }, data: { couponCode: null } });
     }
     res.json({ success: true });
-  } catch {
-    res.status(500).json({ error: 'Erreur' });
-  }
-});
-
-// Apply coupon
-router.post('/api/cart/coupon', authenticateToken, async (req: AuthRequest, res) => {
-  try {
-    const { code } = req.body;
-    if (!code) return res.status(400).json({ error: 'Code requis' });
-
-    const coupon = await prisma.coupon.findFirst({
-      where: { code, isActive: true, expiryDate: { gte: new Date() } },
-    });
-
-    if (!coupon) {
-      return res.status(400).json({ error: 'Code promo invalide ou expiré' });
-    }
-
-    await prisma.cart.update({
-      where: { userId: req.userId! },
-      data: { couponCode: coupon.code },
-    });
-
-    const cart = await prisma.cart.findUnique({
-      where: { userId: req.userId! },
-      include: { items: { include: { product: true } } },
-    });
-
-    if (!cart) return res.status(500).json({ error: 'Erreur' });
-
-    const totals = await calculateCartTotal(cart, cart.items);
-    res.json({
-      success: true,
-      cart: { ...cart, ...totals, items: formatCartItems(cart.items) },
-      coupon: { code: coupon.code, discountPercent: coupon.discountPercent, description: coupon.description },
-    });
-  } catch {
-    res.status(500).json({ error: 'Erreur' });
-  }
-});
-
-// Remove coupon from cart
-router.delete('/api/cart/coupon', authenticateToken, async (req: AuthRequest, res) => {
-  try {
-    await prisma.cart.update({
-      where: { userId: req.userId! },
-      data: { couponCode: null },
-    });
-
-    const cart = await prisma.cart.findUnique({
-      where: { userId: req.userId! },
-      include: { items: { include: { product: true } } },
-    });
-
-    if (!cart) return res.status(500).json({ error: 'Erreur' });
-
-    const totals = await calculateCartTotal(cart, cart.items);
-    res.json({ success: true, cart: { ...cart, ...totals, items: formatCartItems(cart.items) } });
   } catch {
     res.status(500).json({ error: 'Erreur' });
   }

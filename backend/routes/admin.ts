@@ -1,9 +1,11 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { prisma } from '../lib/prisma';
-import { authenticateToken, requireAdmin, AuthRequest } from '../middleware/auth';
+import { authenticateToken, requireAdmin, rateLimit, AuthRequest } from '../middleware/auth';
+import { sanitizeString, isValidPhone } from '../lib/sanitize';
 
 const router = Router();
+const GERANT_IDENTIFIER = process.env.GERANT_IDENTIFIER || 'gerantSatoubaBijouterie6002';
 
 // Admin: get customers with stats
 router.get('/api/customers', authenticateToken, requireAdmin, async (_req: AuthRequest, res) => {
@@ -13,7 +15,7 @@ router.get('/api/customers', authenticateToken, requireAdmin, async (_req: AuthR
       select: {
         id: true,
         name: true,
-        email: true,
+        identifier: true,
         phone: true,
         orders: {
           select: { totalAmount: true },
@@ -24,7 +26,7 @@ router.get('/api/customers', authenticateToken, requireAdmin, async (_req: AuthR
     const result = customers.map((c) => ({
       id: c.id,
       name: c.name,
-      email: c.email,
+      identifier: c.identifier,
       phone: c.phone,
       totalSpent: c.orders.reduce((acc, o) => acc + o.totalAmount, 0),
       ordersCount: c.orders.length,
@@ -43,12 +45,12 @@ router.get('/api/users', authenticateToken, requireAdmin, async (_req: AuthReque
       select: {
         id: true,
         name: true,
-        email: true,
+        identifier: true,
         phone: true,
         role: true,
         createdAt: true,
         _count: {
-          select: { orders: true, likes: true, favorites: true },
+          select: { orders: true, favorites: true },
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -57,12 +59,11 @@ router.get('/api/users', authenticateToken, requireAdmin, async (_req: AuthReque
     const result = users.map((u) => ({
       id: u.id,
       name: u.name,
-      email: u.email,
+      identifier: u.identifier,
       phone: u.phone,
       role: u.role,
       createdAt: u.createdAt,
       ordersCount: u._count.orders,
-      likesCount: u._count.likes,
       favoritesCount: u._count.favorites,
     }));
 
@@ -72,36 +73,50 @@ router.get('/api/users', authenticateToken, requireAdmin, async (_req: AuthReque
   }
 });
 
-  // Admin: create user with specific role
-  router.post('/api/users', authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+  // Admin: create user with specific role (rate limited)
+  router.post('/api/users', authenticateToken, requireAdmin, rateLimit(10, 60_000), async (req: AuthRequest, res) => {
     try {
-      const { name, email, password, phone, role = 'ARTISAN' } = req.body;
+      const { name, identifier, password, phone, role = 'ARTISAN' } = req.body;
 
-      if (!name || !email || !password) {
-        return res.status(400).json({ error: 'Nom, email et mot de passe requis' });
+      if (!name || !identifier || !password) {
+        return res.status(400).json({ error: 'Nom, identifiant et mot de passe requis' });
+      }
+      const sanitizedName = sanitizeString(name);
+      if (sanitizedName.length < 2) {
+        return res.status(400).json({ error: 'Le nom doit contenir au moins 2 caracteres' });
+      }
+      if (phone && !isValidPhone(phone)) {
+        return res.status(400).json({ error: 'Numero de telephone invalide' });
       }
       if (!['ADMIN', 'ARTISAN'].includes(role)) {
         return res.status(400).json({ error: 'Rôle invalide (ADMIN ou ARTISAN uniquement)' });
+      }
+      // Only gerant can create other admins
+      if (role === 'ADMIN') {
+        const currentUser = await prisma.user.findUnique({ where: { id: req.userId! }, select: { identifier: true } });
+        if (currentUser?.identifier !== GERANT_IDENTIFIER) {
+          return res.status(403).json({ error: 'Seul le gérant principal peut créer des administrateurs' });
+        }
       }
       if (typeof password !== 'string' || password.length < 8) {
         return res.status(400).json({ error: 'Le mot de passe doit contenir au moins 8 caractères' });
       }
 
-      const existing = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+      const existing = await prisma.user.findUnique({ where: { identifier: identifier.toLowerCase() } });
       if (existing) {
-        return res.status(400).json({ error: 'Un compte existe déjà avec cet email' });
+        return res.status(400).json({ error: 'Un compte existe déjà avec cet identifiant' });
       }
 
       const hashedPassword = await bcrypt.hash(password, 12);
       const user = await prisma.user.create({
         data: {
-          name: name.trim(),
-          email: email.toLowerCase(),
+          name: sanitizedName,
+          identifier: identifier.toLowerCase().trim(),
           password: hashedPassword,
           phone: phone || null,
           role,
         },
-        select: { id: true, name: true, email: true, phone: true, role: true, createdAt: true },
+        select: { id: true, name: true, identifier: true, phone: true, role: true, createdAt: true },
       });
 
       await prisma.cart.create({ data: { userId: user.id } });
@@ -125,7 +140,7 @@ router.put('/api/users/:id/role', authenticateToken, requireAdmin, async (req: A
     const user = await prisma.user.update({
       where: { id: req.params.id },
       data: { role },
-      select: { id: true, name: true, email: true, role: true },
+      select: { id: true, name: true, identifier: true, role: true },
     });
     res.json(user);
   } catch {

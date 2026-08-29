@@ -2,7 +2,8 @@ import { Router } from 'express';
 import { prisma } from '../lib/prisma';
 import { authenticateToken, requireAdmin, AuthRequest } from '../middleware/auth';
 import { safeJsonParse } from '../lib/helpers';
-import { notifyRepairRequest } from '../lib/notifications';
+import logger from '../lib/logger';
+import { notifyRepairRequest, notifyRepairStatusChange } from '../lib/notifications';
 
 const router = Router();
 
@@ -31,7 +32,7 @@ router.get('/api/repairs', authenticateToken, async (req: AuthRequest, res) => {
 router.get('/api/repairs/all', authenticateToken, requireAdmin, async (_req: AuthRequest, res) => {
   try {
     const repairs = await prisma.repairRequest.findMany({
-      include: { user: { select: { name: true, email: true, phone: true } } },
+      include: { user: { select: { name: true, identifier: true, phone: true } } },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -91,7 +92,7 @@ router.post('/api/repairs', authenticateToken, async (req: AuthRequest, res) => 
   }
 });
 
-// Admin: update repair status
+// Admin: update repair status (+ notify client)
 router.put('/api/repairs/:id/status', authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
   try {
     const { status } = req.body;
@@ -102,6 +103,12 @@ router.put('/api/repairs/:id/status', authenticateToken, requireAdmin, async (re
       where: { id: req.params.id },
       data: { status },
     });
+
+    // Notify client of status change (async, non-blocking)
+    notifyRepairStatusChange(req.params.id, status as any).catch((err) =>
+      logger.error({ err, requestId: req.params.id }, 'Failed to send repair status notifications')
+    );
+
     res.json(repair);
   } catch {
     res.status(500).json({ error: 'Erreur' });

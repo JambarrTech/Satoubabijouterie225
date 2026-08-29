@@ -54,7 +54,7 @@ router.get('/api/likes/all', authenticateToken, requireAdmin, async (_req: AuthR
   try {
     const likes = await prisma.like.findMany({
       include: {
-        user: { select: { name: true, email: true } },
+        user: { select: { name: true } },
         product: { select: { name: true } },
       },
       orderBy: { createdAt: 'desc' },

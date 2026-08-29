@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma';
-import { authenticateToken, requireAdmin, AuthRequest } from '../middleware/auth';
+import { authenticateToken, requireAdmin, rateLimit, AuthRequest } from '../middleware/auth';
 import { safeJsonParse } from '../lib/helpers';
+import { sanitizeString } from '../lib/sanitize';
 import logger from '../lib/logger';
 
 const router = Router();
@@ -44,8 +45,8 @@ router.get('/api/products', async (req, res) => {
       switch (sort) {
         case 'price_asc': return { price: 'asc' as const };
         case 'price_desc': return { price: 'desc' as const };
-        case 'popular': return { likesCount: 'desc' as const };
-        case 'best_seller': return [{ isBestSeller: 'desc' as const }, { likesCount: 'desc' as const }];
+        case 'popular': return { createdAt: 'desc' as const };
+        case 'best_seller': return [{ isBestSeller: 'desc' as const }, { createdAt: 'desc' as const }];
         default: return { createdAt: 'desc' as const };
       }
     })();
@@ -100,8 +101,8 @@ router.get('/api/products/:id', async (req, res) => {
 
 const ALLOWED_PRODUCT_FIELDS = ['name', 'slug', 'categoryId', 'description', 'price', 'compareAtPrice', 'images', 'material', 'collection', 'carats', 'weightGrams', 'stockQuantity', 'isBestSeller', 'isNew', 'isPromo'];
 
-// Admin: create product
-router.post('/api/products', authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+// Admin: create product (rate limited)
+router.post('/api/products', authenticateToken, requireAdmin, rateLimit(20, 60_000), async (req: AuthRequest, res) => {
   try {
     const data = req.body;
     if (!data.name || !data.price) {
@@ -121,6 +122,12 @@ router.post('/api/products', authenticateToken, requireAdmin, async (req: AuthRe
     for (const key of ALLOWED_PRODUCT_FIELDS) {
       if (data[key] !== undefined) filtered[key] = data[key];
     }
+
+    // Sanitize string fields
+    if (filtered.name) filtered.name = sanitizeString(filtered.name);
+    if (filtered.description) filtered.description = sanitizeString(filtered.description);
+    if (filtered.material) filtered.material = sanitizeString(filtered.material);
+    if (filtered.collection) filtered.collection = sanitizeString(filtered.collection);
 
     const product = await prisma.product.create({
       data: {
@@ -149,8 +156,8 @@ router.post('/api/products', authenticateToken, requireAdmin, async (req: AuthRe
   }
 });
 
-// Admin: update product
-router.put('/api/products/:id', authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
+// Admin: update product (rate limited)
+router.put('/api/products/:id', authenticateToken, requireAdmin, rateLimit(30, 60_000), async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     const data = req.body;
@@ -161,6 +168,11 @@ router.put('/api/products/:id', authenticateToken, requireAdmin, async (req: Aut
         updateData[key] = data[key];
       }
     }
+    // Sanitize string fields
+    if (updateData.name) updateData.name = sanitizeString(updateData.name);
+    if (updateData.description) updateData.description = sanitizeString(updateData.description);
+    if (updateData.material) updateData.material = sanitizeString(updateData.material);
+    if (updateData.collection) updateData.collection = sanitizeString(updateData.collection);
     if (data.images && Array.isArray(data.images)) {
       updateData.images = JSON.stringify(data.images);
     }
@@ -171,6 +183,7 @@ router.put('/api/products/:id', authenticateToken, requireAdmin, async (req: Aut
     if (updateData.stockQuantity !== undefined) {
       const s = Number(updateData.stockQuantity);
       if (isNaN(s) || s < 0) return res.status(400).json({ error: 'Quantité en stock invalide' });
+      updateData.inStock = s > 0;
     }
 
     const product = await prisma.product.update({ where: { id }, data: updateData });

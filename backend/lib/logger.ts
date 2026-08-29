@@ -1,4 +1,4 @@
-import pino from 'pino';
+﻿import pino from 'pino';
 
 const logger = pino({
   level: process.env.LOG_LEVEL || (process.env.NODE_ENV === 'production' ? 'info' : 'debug'),
@@ -8,7 +8,7 @@ const logger = pino({
     : undefined,
   // Redact sensitive fields
   redact: {
-    paths: ['req.headers.authorization', 'req.headers.cookie', 'password', 'token', 'FIREBASE_PRIVATE_KEY', 'JWT_SECRET', 'WAVE_API_KEY', 'WAVE_BUSINESS_API_KEY', 'WAVE_BUSINESS_LINK', 'SMTP_PASS', 'AFRICASTALKING_API_KEY'],
+    paths: ['req.headers.authorization', 'req.headers.cookie', 'password', 'token', 'FIREBASE_PRIVATE_KEY', 'JWT_SECRET', 'SMTP_PASS', 'AFRICASTALKING_API_KEY'],
     censor: '[REDACTED]',
   },
   base: {

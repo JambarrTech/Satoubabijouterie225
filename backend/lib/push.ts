@@ -1,4 +1,5 @@
 import admin from 'firebase-admin';
+import { prisma } from './prisma';
 
 let firebaseApp: admin.app.App | null = null;
 
@@ -44,7 +45,7 @@ export interface PushResponse {
   error?: string;
 }
 
-export async function sendPushNotification(message: PushMessage): Promise<PushResponse> {
+export async function sendPushNotification(message: PushMessage, userId?: string): Promise<PushResponse> {
   const app = initFirebase();
   if (!app) {
     return { success: false, error: 'Firebase not initialized' };
@@ -95,6 +96,7 @@ export async function sendPushNotification(message: PushMessage): Promise<PushRe
   } catch (error: any) {
     console.error('Push notification error:', error);
     if (error.code === 'messaging/registration-token-not-registered') {
+      if (userId) await cleanInvalidTokens(userId, message.token);
       return { success: false, error: 'Token invalide ou expiré' };
     }
     return { success: false, error: error.message };
@@ -133,11 +135,37 @@ export async function sendMulticastPushNotification(
     });
 
     const errors: string[] = [];
+    const invalidTokens: Array<{ userId: string; token: string }> = [];
     response.responses.forEach((resp, idx) => {
       if (!resp.success) {
         errors.push(`Token ${idx}: ${resp.error?.message}`);
+        if (resp.error?.code === 'messaging/registration-token-not-registered') {
+          invalidTokens.push({ userId: '', token: tokens[idx] });
+        }
       }
     });
+
+    // Clean invalid tokens
+    if (invalidTokens.length > 0) {
+      try {
+        const invalidTokenStrings = invalidTokens.map(t => t.token);
+        const users = await prisma.user.findMany({
+          select: { id: true, pushTokens: true },
+        });
+        for (const user of users) {
+          const tokens: string[] = typeof user.pushTokens === 'string'
+            ? JSON.parse(user.pushTokens || '[]')
+            : Array.isArray(user.pushTokens) ? user.pushTokens : [];
+          const cleaned = tokens.filter((t: string) => !invalidTokenStrings.includes(t));
+          if (cleaned.length !== tokens.length) {
+            await prisma.user.update({
+              where: { id: user.id },
+              data: { pushTokens: JSON.stringify(cleaned) },
+            });
+          }
+        }
+      } catch {}
+    }
 
     return {
       success: response.successCount,
@@ -150,92 +178,41 @@ export async function sendMulticastPushNotification(
   }
 }
 
-export async function sendTopicPushNotification(
-  topic: string,
-  title: string,
-  body: string,
-  data?: Record<string, string>
-): Promise<PushResponse> {
-  const app = initFirebase();
-  if (!app) {
-    return { success: false, error: 'Firebase not initialized' };
-  }
-
-  try {
-    const messaging = admin.messaging(app);
-    const response = await messaging.send({
-      topic,
-      notification: { title, body },
-      data: data || {},
-    });
-    return { success: true, messageId: response };
-  } catch (error: any) {
-    console.error('Topic push error:', error);
-    return { success: false, error: error.message };
-  }
-}
-
-export async function subscribeToTopic(tokens: string[], topic: string): Promise<{ success: number; failed: number }> {
-  const app = initFirebase();
-  if (!app) return { success: 0, failed: tokens.length };
-
-  try {
-    const messaging = admin.messaging(app);
-    const response = await messaging.subscribeToTopic(tokens, topic);
-    return { success: response.successCount, failed: response.failureCount };
-  } catch {
-    return { success: 0, failed: tokens.length };
-  }
-}
-
-export async function unsubscribeFromTopic(tokens: string[], topic: string): Promise<{ success: number; failed: number }> {
-  const app = initFirebase();
-  if (!app) return { success: 0, failed: tokens.length };
-
-  try {
-    const messaging = admin.messaging(app);
-    const response = await messaging.unsubscribeFromTopic(tokens, topic);
-    return { success: response.successCount, failed: response.failureCount };
-  } catch {
-    return { success: 0, failed: tokens.length };
-  }
-}
-
 export interface OrderPushData {
   orderId: string;
   orderNumber: string;
-  type: 'CONFIRMED' | 'PAID' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
+  type: 'CONFIRMED' | 'PREPARING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED';
 }
 
 export function getOrderPushContent(data: OrderPushData): { title: string; body: string; clickAction: string } {
   switch (data.type) {
     case 'CONFIRMED':
       return {
-        title: 'Commande confirmée ✅',
+        title: 'Commande confirmée',
         body: `Votre commande ${data.orderNumber} a été confirmée. Nos artisans commencent la fabrication.`,
         clickAction: `/commandes/${data.orderId}`,
       };
-    case 'PAID':
+    case 'PREPARING':
       return {
-        title: 'Paiement reçu 💚',
-        body: `Paiement validé pour ${data.orderNumber}. Fabrication en cours.`,
+        title: 'En cours de fabrication',
+        body: `Votre commande ${data.orderNumber} est en cours de préparation par nos artisans.`,
         clickAction: `/commandes/${data.orderId}`,
       };
     case 'SHIPPED':
       return {
-        title: 'Commande expédiée 🚚',
+        title: 'Commande expédiée',
         body: `Votre commande ${data.orderNumber} est en route. Livraison prévue sous 24-48h.`,
         clickAction: `/commandes/${data.orderId}`,
       };
     case 'DELIVERED':
       return {
-        title: 'Livré avec succès 🎉',
+        title: 'Livré avec succès',
         body: `Commande ${data.orderNumber} livrée. Merci pour votre confiance SaTouba !`,
         clickAction: `/commandes/${data.orderId}`,
       };
     case 'CANCELLED':
       return {
-        title: 'Commande annulée ❌',
+        title: 'Commande annulée',
         body: `Votre commande ${data.orderNumber} a été annulée. Contactez-nous pour plus d'infos.`,
         clickAction: `/commandes/${data.orderId}`,
       };
@@ -246,4 +223,24 @@ export function getOrderPushContent(data: OrderPushData): { title: string; body:
         clickAction: `/commandes/${data.orderId}`,
       };
   }
+}
+
+export async function cleanInvalidTokens(userId: string, invalidToken: string): Promise<void> {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { pushTokens: true },
+    });
+    if (!user?.pushTokens) return;
+    const tokens: string[] = typeof user.pushTokens === 'string'
+      ? JSON.parse(user.pushTokens || '[]')
+      : Array.isArray(user.pushTokens) ? user.pushTokens : [];
+    const cleaned = tokens.filter((t: string) => t !== invalidToken);
+    if (cleaned.length !== tokens.length) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { pushTokens: JSON.stringify(cleaned) },
+      });
+    }
+  } catch {}
 }

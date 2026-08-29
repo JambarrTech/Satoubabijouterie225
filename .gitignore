@@ -1,20 +1,19 @@
-node_modules/
+﻿node_modules/
 build/
 dist/
 coverage/
 .DS_Store
 *.log
-.env*
-!.env.example
+.env
+.env.local
+.env*.local
 
 # Firebase & secrets — NEVER commit
 *-firebase-adminsdk-*.json
 **/*firebase-adminsdk*.json
 .service-account*.json
-.env.local
-.env.production
 
-# Uploads (local storage, should be S3/GCS in production)
+# Uploads (local storage)
 backend/uploads/*
 !backend/uploads/.gitkeep
 uploads/*
@@ -27,3 +26,9 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+
+# AI agent tool directories (auto-generated)
+.agents/
+.claude/
+.cursor/
+.devin/

@@ -1,0 +1,261 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CUSTOMER
+  ADMIN
+  ARTISAN
+}
+
+enum OrderStatus {
+  CONFIRMED
+  PREPARING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+model User {
+  id                  String               @id @default(cuid())
+  name                String
+  identifier          String               @unique
+  password            String
+  phone               String?
+  avatar              String?
+  role                Role                 @default(CUSTOMER)
+  address             String?
+  city                String?
+  country             String?
+  failedLoginAttempts Int                  @default(0)
+  lockedUntil         DateTime?
+  lastLoginAt         DateTime?
+  createdAt           DateTime             @default(now())
+  pushTokens          String               @default("[]") @db.Text
+
+  orders              Order[]
+  favorites           Favorite[]
+  likes               Like[]
+  notifications       Notification[]
+  customRequests      CustomRequest[]
+  repairRequests      RepairRequest[]
+  cart                Cart?
+  passwordResets      PasswordResetToken[]
+
+  @@index([role])
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  image       String?
+  description String?
+  products    Product[]
+}
+
+model Product {
+  id             String   @id @default(cuid())
+  name           String
+  slug           String   @unique
+  categoryId     String
+  category       Category @relation(fields: [categoryId], references: [id])
+  description    String
+  price          Int
+  compareAtPrice Int?
+  images         String   @default("[]")
+  likesCount     Int      @default(0)
+  inStock        Boolean  @default(true)
+  stockQuantity  Int      @default(0)
+  isBestSeller   Boolean  @default(false)
+  isNew          Boolean  @default(false)
+  isPromo        Boolean  @default(false)
+  material       String?
+  collection     String?
+  carats         String?
+  weightGrams    Float?
+  createdAt      DateTime @default(now())
+
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+  favorites  Favorite[]
+  likes      Like[]
+
+  @@index([categoryId])
+  @@index([isBestSeller])
+}
+
+model Cart {
+  id         String     @id @default(cuid())
+  userId     String     @unique
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items      CartItem[]
+  couponCode String?
+  updatedAt  DateTime   @updatedAt
+}
+
+model CartItem {
+  id               String  @id @default(cuid())
+  cartId           String
+  cart             Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId        String
+  product          Product @relation(fields: [productId], references: [id])
+  quantity         Int     @default(1)
+  selectedSize     String?
+  selectedMaterial String?
+
+  @@index([cartId])
+  @@index([productId])
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  orderNumber     String      @unique
+  userId          String
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  customerName    String
+  phone           String
+  address         String
+  items           OrderItem[]
+  totalAmount     Int
+  status          OrderStatus @default(CONFIRMED)
+  paymentMethod   String      @default("WAVE")
+  paymentRef      String?
+  paymentStatus   String      @default("PENDING")
+  paymentUrl      String?
+  shippingAddress String?     @db.Text
+  statusHistory   String?     @db.Text
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @default(now()) @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id               String  @id @default(cuid())
+  orderId          String
+  order            Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId        String
+  product          Product @relation(fields: [productId], references: [id])
+  productName      String
+  productImage     String
+  price            Int
+  quantity         Int
+  selectedSize     String?
+  selectedMaterial String?
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model Favorite {
+  id        String  @id @default(cuid())
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([userId])
+  @@index([productId])
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, productId])
+  @@index([productId])
+  @@index([userId])
+}
+
+model Coupon {
+  id              String   @id @default(cuid())
+  code            String   @unique
+  discountPercent Int
+  description     String?
+  expiryDate      DateTime @default(now())
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+
+  @@index([isActive])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      String   @default("SYSTEM")
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([read])
+}
+
+model CustomRequest {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jewelryType       String
+  material          String
+  description       String
+  budget            String?
+  referenceImageUrl String?
+  phone             String
+  status            String   @default("PENDING")
+  createdAt         DateTime @default(now())
+
+  @@index([userId])
+  @@index([status])
+}
+
+model RepairRequest {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jewelryType String
+  problemType String
+  description String
+  photos      String?
+  phone       String
+  status      String   @default("RECEIVED")
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([status])
+}
+
+model StoreSettings {
+  id          String  @id @default(cuid())
+  key         String  @unique
+  value       String
+  description String?
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+}

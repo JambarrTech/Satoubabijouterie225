@@ -5,13 +5,50 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { v4 as uuid } from 'uuid';
 import { authenticateToken, requireAdmin } from '../middleware/auth';
+import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 
 const router = Router();
 
-// Resolve uploads dir: env override > cwd/backend/uploads > cwd/uploads (prod bundle)
+// ============================================================
+// Vercel Blob (production / serverless) — upload direct depuis
+// le navigateur via token. Parcourt la limite de body serverless.
+// Actif si BLOB_READ_WRITE_TOKEN est configuré (Vercel).
+// ============================================================
+const hasBlobToken = !!process.env.BLOB_READ_WRITE_TOKEN;
+
+// POST /api/upload/handle — génère un token d'upload pour Vercel Blob.
+// Réservé admin. Valide le type MIME (images uniquement).
+router.post('/api/upload/handle', authenticateToken, requireAdmin, async (req, res) => {
+  if (!hasBlobToken) {
+    return res.status(400).json({ error: 'Vercel Blob n\u2019est pas configuré (BLOB_READ_WRITE_TOKEN manquant)' });
+  }
+  try {
+    const body = (await req.body) as HandleUploadBody;
+    const jsonResponse = await handleUpload({
+      body,
+      request: req,
+      onBeforeGenerateToken: async (pathname) => ({
+        allowedContentTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+        maximumSizeInBytes: 5 * 1024 * 1024,
+        addRandomSuffix: true,
+        // L'admin est déjà validé par le middleware requireAdmin ci-dessus.
+        ...(pathname ? {} : {}),
+      }),
+      onUploadCompleted: async () => {},
+    });
+    return res.json(jsonResponse);
+  } catch (error: any) {
+    console.error('Blob handleUpload error:', error);
+    return res.status(500).json({ error: error.message || 'Erreur génération token upload' });
+  }
+});
+
+// ============================================================
+// Fallback local (développement) — stockage disque via multer.
+// Utilisé uniquement quand Vercel Blob n'est pas configuré.
+// ============================================================
 function getUploadsDir(): string {
   if (process.env.UPLOADS_DIR) return process.env.UPLOADS_DIR;
-  // Try ESM __dirname, fallback to cwd
   let baseDir: string;
   try {
     baseDir = path.dirname(fileURLToPath((import.meta as any).url));
@@ -24,7 +61,6 @@ function getUploadsDir(): string {
     path.join(baseDir, '..', 'uploads'),
     path.join(baseDir, 'uploads'),
   ];
-  // Prefer first that exists, otherwise backend/uploads
   for (const dir of candidates) {
     if (fs.existsSync(dir)) return dir;
   }
@@ -49,7 +85,9 @@ const upload = multer({
   fileFilter: (_req, file, cb) => {
     const allowed = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
     const ext = path.extname(file.originalname).toLowerCase();
-    if (allowed.includes(ext)) {
+    // Vérifie aussi le MIME déclaré (double garde ext + MIME)
+    const mimeOk = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.mimetype);
+    if (allowed.includes(ext) && mimeOk) {
       cb(null, true);
     } else {
       cb(new Error('Format de fichier non supporté. Utilisez JPG, PNG ou WebP.'));
@@ -57,7 +95,7 @@ const upload = multer({
   },
 });
 
-// POST /api/upload — upload a single image
+// Fallback: POST /api/upload — upload a single image (dev local)
 router.post('/api/upload', authenticateToken, requireAdmin, (req, res) => {
   upload.single('image')(req, res, (err) => {
     if (err instanceof multer.MulterError) {
@@ -78,7 +116,7 @@ router.post('/api/upload', authenticateToken, requireAdmin, (req, res) => {
   });
 });
 
-// POST /api/upload/multiple — upload up to 5 images
+// Fallback: POST /api/upload/multiple — upload up to 5 images (dev local)
 router.post('/api/upload/multiple', authenticateToken, requireAdmin, (req, res) => {
   upload.array('images', 5)(req, res, (err) => {
     if (err instanceof multer.MulterError) {

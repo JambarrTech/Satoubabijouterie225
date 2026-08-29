@@ -1,6 +1,0 @@
-{
-  "name": "SaTouba Bijouterie",
-  "description": "Application e-commerce haut de gamme pour SaTouba Bijouterie (Or, Argent, Diamants, Sur-mesure, Réparation).",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}

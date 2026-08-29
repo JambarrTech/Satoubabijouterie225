@@ -1,15 +1,27 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma';
-import { authenticateToken, requireAdmin, AuthRequest } from '../middleware/auth';
+import { authenticateToken, requireAdmin, rateLimit, AuthRequest } from '../middleware/auth';
 import { safeJsonParse, calculateCartTotal } from '../lib/helpers';
+import { sanitizeString } from '../lib/sanitize';
 import logger from '../lib/logger';
-import { initiatePayment, verifyPayment } from '../lib/payments';
-import { notifyOrderStatusChange, notifyPaymentInitiated } from '../lib/notifications';
+import { notifyNewOrder, notifyOrderStatusChange } from '../lib/notifications';
 
 const router = Router();
 
 const VALID_STATUSES = ['CONFIRMED', 'PREPARING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
-const VALID_PAYMENT_STATUSES = ['PENDING', 'PAID', 'FAILED', 'REFUNDED'];
+
+// Allowed status transitions (state machine)
+const ALLOWED_TRANSITIONS: Record<string, string[]> = {
+  CONFIRMED: ['PREPARING', 'CANCELLED'],
+  PREPARING: ['SHIPPED', 'CANCELLED'],
+  SHIPPED: ['DELIVERED', 'CANCELLED'],
+  DELIVERED: [],         // terminal state
+  CANCELLED: [],         // terminal state
+};
+
+function canTransition(from: string, to: string): boolean {
+  return ALLOWED_TRANSITIONS[from]?.includes(to) ?? false;
+}
 
 // Get user's own orders
 router.get('/api/orders', authenticateToken, async (req: AuthRequest, res) => {
@@ -36,7 +48,7 @@ router.get('/api/orders', authenticateToken, async (req: AuthRequest, res) => {
 router.get('/api/orders/all', authenticateToken, requireAdmin, async (_req: AuthRequest, res) => {
   try {
     const orders = await prisma.order.findMany({
-      include: { items: true, user: { select: { name: true, email: true, phone: true } } },
+      include: { items: true, user: { select: { name: true, identifier: true, phone: true } } },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -64,7 +76,7 @@ router.get('/api/orders/:id', authenticateToken, async (req: AuthRequest, res) =
       include: { items: true },
     });
 
-    if (!order) return res.status(404).json({ error: 'Commande non trouvée' });
+    if (!order) return res.status(404).json({ error: 'Commande non trouvee' });
 
     res.json({
       ...order,
@@ -76,13 +88,20 @@ router.get('/api/orders/:id', authenticateToken, async (req: AuthRequest, res) =
   }
 });
 
-// Create order + initiate Wave Business payment (montant verrouillé serveur)
-// Body peut contenir `cartItemIds?: string[]` pour payer 1 ou N articles sélectionnés
-router.post('/api/orders', authenticateToken, async (req: AuthRequest, res) => {
+// Create order (rate limited: 10 per minute)
+// Body peut contenir `cartItemIds?: string[]` pour commander 1 ou N articles selectionnes
+router.post('/api/orders', authenticateToken, rateLimit(10, 60_000), async (req: AuthRequest, res) => {
   try {
     const { shippingAddress, cartItemIds } = req.body;
-    // Paiement exclusif Wave Business
-    const paymentMethod: 'WAVE' = 'WAVE';
+
+    // Sanitize shipping address fields
+    const sanitizedAddress = shippingAddress ? {
+      fullName: sanitizeString(shippingAddress.fullName),
+      phone: sanitizeString(shippingAddress.phone),
+      address: sanitizeString(shippingAddress.address),
+      city: sanitizeString(shippingAddress.city),
+      notes: sanitizeString(shippingAddress.notes),
+    } : {};
 
     const cart = await prisma.cart.findUnique({
       where: { userId: req.userId! },
@@ -93,36 +112,40 @@ router.post('/api/orders', authenticateToken, async (req: AuthRequest, res) => {
       return res.status(400).json({ error: 'Panier vide' });
     }
 
-    // Filtrage 1 ou N articles si le client a sélectionné un sous-ensemble
+    // Filtrage 1 ou N articles si le client a selectionne un sous-ensemble
     let itemsToOrder = cart.items;
     if (Array.isArray(cartItemIds) && cartItemIds.length > 0) {
       const idSet = new Set(cartItemIds as string[]);
       itemsToOrder = cart.items.filter((i) => idSet.has(i.id));
       if (itemsToOrder.length === 0) {
-        return res.status(400).json({ error: 'Aucun article sélectionné trouvé dans le panier' });
+        return res.status(400).json({ error: 'Aucun article selectionne trouve dans le panier' });
       }
       if (itemsToOrder.length !== cartItemIds.length) {
-        return res.status(400).json({ error: 'Certains articles sélectionnés sont introuvables' });
+        return res.status(400).json({ error: 'Certains articles selectionnes sont introuvables' });
       }
     }
 
-    // Total recalculé serveur sur le sous-ensemble (montant non modifiable côté Wave)
+    // Total recalcule serveur sur le sous-ensemble
     const { total } = await calculateCartTotal(
       cart,
       itemsToOrder
     );
 
-    const orderNumber = `ORD-${Date.now().toString(36).toUpperCase()}`;
+    const orderNumber = `ORD-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
     const user = await prisma.user.findUnique({ where: { id: req.userId! } });
 
     const order = await prisma.$transaction(async (tx) => {
-      // Lock stock rows with FOR UPDATE pour les articles sélectionnés uniquement
+      // Atomic stock check + decrement (prevents overselling)
       for (const item of itemsToOrder) {
-        const rows = await tx.$queryRaw<{ stockQuantity: number; name: string }[]>`
-          SELECT stockQuantity, name FROM Product WHERE id = ${item.productId} FOR UPDATE
+        const result = await tx.$executeRaw`
+          UPDATE product SET stockQuantity = stockQuantity - ${item.quantity}
+          WHERE id = ${item.productId} AND stockQuantity >= ${item.quantity}
         `;
-        const product = rows[0];
-        if (!product || product.stockQuantity < item.quantity) {
+        if (result === 0) {
+          const product = await tx.product.findUnique({
+            where: { id: item.productId },
+            select: { name: true, stockQuantity: true },
+          });
           throw new Error(`"${product?.name || 'Produit'}" n'a que ${product?.stockQuantity || 0} en stock`);
         }
       }
@@ -131,16 +154,13 @@ router.post('/api/orders', authenticateToken, async (req: AuthRequest, res) => {
         data: {
           orderNumber,
           userId: req.userId!,
-          customerName: shippingAddress?.fullName || user?.name || '',
-          customerEmail: user?.email || '',
-          phone: shippingAddress?.phone || user?.phone || '',
-          address: shippingAddress?.address || '',
+          customerName: sanitizedAddress.fullName || user?.name || '',
+          phone: sanitizedAddress.phone || user?.phone || '',
+          address: sanitizedAddress.address || '',
           totalAmount: total,
-          paymentMethod,
-          paymentStatus: 'PENDING',
-          shippingAddress: JSON.stringify(shippingAddress || {}),
+          shippingAddress: JSON.stringify(sanitizedAddress || {}),
           statusHistory: JSON.stringify([
-            { status: 'CONFIRMED', label: 'Commande confirmée', date: new Date().toISOString(), completed: true },
+            { status: 'CONFIRMED', label: 'Commande confirmee', date: new Date().toISOString(), completed: true },
           ]),
           items: {
             create: itemsToOrder.map((item) => ({
@@ -150,291 +170,46 @@ router.post('/api/orders', authenticateToken, async (req: AuthRequest, res) => {
               price: item.product.price,
               quantity: item.quantity,
               selectedSize: item.selectedSize,
+              selectedMaterial: item.selectedMaterial,
             })),
           },
         },
         include: { items: true },
       });
 
+      // Update inStock flags after atomic decrement
       for (const item of itemsToOrder) {
-        await tx.$queryRaw`
-          UPDATE Product SET stockQuantity = stockQuantity - ${item.quantity} WHERE id = ${item.productId}
-        `;
-        const product = await tx.product.findUnique({
+        const updated = await tx.product.findUnique({
           where: { id: item.productId },
           select: { stockQuantity: true },
         });
-        const stock = product?.stockQuantity ?? 0;
-        await tx.product.update({
-          where: { id: item.productId },
-          data: { inStock: stock > 0 },
-        });
+        if (updated) {
+          await tx.product.update({
+            where: { id: item.productId },
+            data: { inStock: updated.stockQuantity > 0 },
+          });
+        }
       }
 
       // Ne supprime que les articles commandés — le reste reste dans le panier
       const orderedIds = itemsToOrder.map((i) => i.id);
       await tx.cartItem.deleteMany({ where: { cartId: cart.id, id: { in: orderedIds } } });
-      // Si panier vidé entièrement, on retire le coupon
-      const remaining = await tx.cartItem.count({ where: { cartId: cart.id } });
-      if (remaining === 0) {
-        await tx.cart.update({ where: { id: cart.id }, data: { couponCode: null } });
-      }
 
       return order;
     });
 
-    // Initiate Wave Business payment — montant verrouillé serveur
-    const baseUrl = process.env.APP_URL || 'http://localhost:5173';
-    const paymentResult = await initiatePayment('WAVE', {
-      amount: total,
-      currency: 'XOF',
-      orderId: order.id,
-      orderNumber: order.orderNumber,
-      customerPhone: shippingAddress?.phone || user?.phone || '',
-      customerName: shippingAddress?.fullName || user?.name || '',
-      callbackUrl: `${process.env.API_URL || 'http://localhost:3000'}/api/orders/webhook/wave`,
-      returnUrl: `${baseUrl}/?payment=success&orderId=${order.id}`,
-      description: `Commande ${orderNumber} - SaTouba Bijouterie`,
-    });
+    // Notify customer + gerants (async, non-blocking)
+    notifyNewOrder(order.id).catch((err) =>
+      logger.error({ err, orderId: order.id }, 'Failed to send new order notifications')
+    );
 
-    if (!paymentResult.success) {
-      // Payment initiation failed - update order status
-      await prisma.order.update({
-        where: { id: order.id },
-        data: { paymentStatus: 'FAILED' },
-      });
-      return res.status(400).json({ error: paymentResult.error || 'Erreur initiation paiement' });
-    }
-
-    // Update order with payment reference and URL
-    const updatedOrder = await prisma.order.update({
-      where: { id: order.id },
-      data: {
-        paymentRef: paymentResult.paymentRef,
-        paymentUrl: paymentResult.paymentUrl,
-      },
-      include: { items: true },
-    });
-
-    // Notify user that payment is initiated
-    await notifyPaymentInitiated(req.userId!, order.orderNumber, paymentResult.paymentUrl!);
-
-    res.status(201).json({
-      ...updatedOrder,
-      paymentUrl: paymentResult.paymentUrl,
-    });
+    res.status(201).json(order);
   } catch (error: any) {
     if (error.message && error.message.includes('en stock')) {
       return res.status(400).json({ error: error.message });
     }
     logger.error({ err: error }, 'Create order error');
     res.status(500).json({ error: 'Erreur lors de la commande' });
-  }
-});
-
-// Webhook Wave Business (appelé par Wave après paiement)
-// Compat : /api/orders/webhook/wave et /api/orders/webhook/:provider (legacy ORANGE_MONEY -> 400)
-router.post('/api/orders/webhook/:provider', async (req, res) => {
-  try {
-    const provider = (req.params.provider as string).toUpperCase();
-    if (provider !== 'WAVE') {
-      return res.status(400).json({ error: 'Seul Wave Business est supporté' });
-    }
-    const paymentRef = req.body.paymentRef || req.body.session_id || req.body.checkout_session_id || req.body.pay_token || req.query.paymentRef;
-
-    if (!paymentRef) {
-      return res.status(400).json({ error: 'Référence paiement manquante' });
-    }
-
-    const order = await prisma.order.findFirst({
-      where: { paymentRef },
-    });
-
-    if (!order) {
-      return res.status(404).json({ error: 'Commande non trouvée' });
-    }
-
-    // Verify payment Wave Business (montant déjà verrouillé à la création)
-    const verification = await verifyPayment('WAVE', paymentRef);
-
-    if (verification.success && verification.paid) {
-      // --- Contrôle SÉCURITÉ montant : le client ne doit jamais payer un montant différent du total verrouillé ---
-      const expected = Number(order.totalAmount);
-      if (typeof verification.amount === 'number' && Math.abs(verification.amount - expected) > 0) {
-        logger.error(
-          { orderId: order.id, orderNumber: order.orderNumber, expected, paid: verification.amount },
-          '[Wave Business] Montant payé DIFFÉRENT du total verrouillé — refus.'
-        );
-        return res.status(409).json({ received: true, error: 'Montant payé incohérent avec le total de la commande' });
-      }
-
-      // Payment successful
-      await prisma.order.update({
-        where: { id: order.id },
-        data: {
-          paymentStatus: 'PAID',
-          statusHistory: JSON.stringify([
-            ...safeJsonParse(order.statusHistory as string, []),
-            { status: 'CONFIRMED', label: 'Paiement confirmé', date: new Date().toISOString(), completed: true },
-            { status: 'PREPARING', label: 'En cours de fabrication', date: new Date().toISOString(), completed: true },
-          ]),
-        },
-      });
-
-      // Send notification to user
-      await notifyOrderStatusChange(order.id, 'PAID');
-      logger.info({ orderId: order.id, orderNumber: order.orderNumber }, 'Payment confirmed via webhook');
-    } else if (verification.success && !verification.paid) {
-      // Payment failed or pending
-      await prisma.order.update({
-        where: { id: order.id },
-        data: { paymentStatus: 'FAILED' },
-      });
-    }
-
-    res.json({ received: true });
-  } catch (error) {
-    logger.error({ err: error }, 'Webhook error');
-    res.status(500).json({ error: 'Erreur webhook' });
-  }
-});
-
-// Frontend callback (user returns from payment page)
-router.get('/api/orders/callback/:orderId', authenticateToken, async (req: AuthRequest, res) => {
-  try {
-    const order = await prisma.order.findFirst({
-      where: { id: req.params.orderId, userId: req.userId! },
-    });
-
-    if (!order) return res.status(404).json({ error: 'Commande non trouvée' });
-
-    // If payment still pending, verify Wave Business
-    if (order.paymentStatus === 'PENDING' && order.paymentRef) {
-      const verification = await verifyPayment('WAVE', order.paymentRef);
-
-      if (verification.success && verification.paid) {
-        // Contrôle SÉCURITÉ montant : montant payé doit correspondre au total verrouillé
-        const expected = Number(order.totalAmount);
-        if (typeof verification.amount === 'number' && Math.abs(verification.amount - expected) > 0) {
-          logger.error(
-            { orderId: order.id, orderNumber: order.orderNumber, expected, paid: verification.amount },
-            '[Wave Business] Callback: montant payé DIFFÉRENT du total verrouillé — refus.'
-          );
-          return res.status(409).json({ error: 'Montant payé incohérent avec le total de la commande' });
-        }
-
-        await prisma.order.update({
-          where: { id: order.id },
-          data: {
-            paymentStatus: 'PAID',
-            statusHistory: JSON.stringify([
-              ...safeJsonParse(order.statusHistory as string, []),
-              { status: 'CONFIRMED', label: 'Paiement confirmé', date: new Date().toISOString(), completed: true },
-              { status: 'PREPARING', label: 'En cours de fabrication', date: new Date().toISOString(), completed: true },
-            ]),
-          },
-        });
-      } else if (verification.success && !verification.paid) {
-        await prisma.order.update({
-          where: { id: order.id },
-          data: { paymentStatus: 'FAILED' },
-        });
-      }
-    }
-
-    const updatedOrder = await prisma.order.findUnique({
-      where: { id: order.id },
-      include: { items: true },
-    });
-
-    res.json({
-      ...updatedOrder!,
-      shippingAddress: safeJsonParse(updatedOrder!.shippingAddress as string, null),
-      statusHistory: safeJsonParse(updatedOrder!.statusHistory as string, []),
-    });
-  } catch {
-    res.status(500).json({ error: 'Erreur' });
-  }
-});
-
-// Client: compléter une commande incomplète (PENDING/FAILED) — relance du paiement Wave
-// Peut corriger/compléter les infos de livraison avant de payer
-router.post('/api/orders/:id/pay', authenticateToken, async (req: AuthRequest, res) => {
-  try {
-    const order = await prisma.order.findFirst({
-      where: { id: req.params.id, userId: req.userId! },
-    });
-    if (!order) return res.status(404).json({ error: 'Commande non trouvée' });
-
-    if (order.paymentStatus === 'PAID') {
-      return res.status(400).json({ error: 'Cette commande est déjà payée' });
-    }
-
-    // Corriger/compléter les infos de livraison si fournies
-    const { shippingAddress } = req.body || {};
-    let addr = safeJsonParse(order.shippingAddress as string, {});
-    if (shippingAddress && typeof shippingAddress === 'object') {
-      addr = {
-        fullName: shippingAddress.fullName || order.customerName || '',
-        phone: shippingAddress.phone || order.phone || '',
-        address: shippingAddress.address || order.address || '',
-        city: shippingAddress.city || 'Abidjan',
-        notes: shippingAddress.notes || '',
-      };
-      await prisma.order.update({
-        where: { id: order.id },
-        data: {
-          customerName: addr.fullName,
-          phone: addr.phone,
-          address: addr.address,
-          shippingAddress: JSON.stringify(addr),
-        },
-      });
-    }
-
-    // Re-initier le paiement Wave — montant verrouillé serveur (totalAmount inchangé)
-    const baseUrl = process.env.APP_URL || 'http://localhost:5173';
-    const paymentResult = await initiatePayment('WAVE', {
-      amount: order.totalAmount,
-      currency: 'XOF',
-      orderId: order.id,
-      orderNumber: order.orderNumber,
-      customerPhone: addr.phone || '',
-      customerName: addr.fullName || '',
-      callbackUrl: `${process.env.API_URL || 'http://localhost:3000'}/api/orders/webhook/wave`,
-      returnUrl: `${baseUrl}/?payment=success&orderId=${order.id}`,
-      description: `Commande ${order.orderNumber} - SaTouba Bijouterie`,
-    });
-
-    if (!paymentResult.success) {
-      await prisma.order.update({
-        where: { id: order.id },
-        data: { paymentStatus: 'FAILED' },
-      });
-      return res.status(400).json({ error: paymentResult.error || 'Erreur initiation paiement' });
-    }
-
-    const updatedOrder = await prisma.order.update({
-      where: { id: order.id },
-      data: {
-        paymentStatus: 'PENDING',
-        paymentRef: paymentResult.paymentRef,
-        paymentUrl: paymentResult.paymentUrl,
-      },
-      include: { items: true },
-    });
-
-    await notifyPaymentInitiated(req.userId!, order.orderNumber, paymentResult.paymentUrl!);
-
-    res.json({
-      ...updatedOrder,
-      paymentUrl: paymentResult.paymentUrl,
-      shippingAddress: safeJsonParse(updatedOrder.shippingAddress as string, {}),
-      statusHistory: safeJsonParse(updatedOrder.statusHistory as string, []),
-    });
-  } catch (error: any) {
-    logger.error({ err: error }, 'Retry payment error');
-    res.status(500).json({ error: 'Erreur lors de la reprise du paiement' });
   }
 });
 
@@ -447,16 +222,23 @@ router.put('/api/orders/:id/status', authenticateToken, requireAdmin, async (req
     }
 
     const existingOrder = await prisma.order.findUnique({ where: { id: req.params.id } });
-    if (!existingOrder) return res.status(404).json({ error: 'Commande non trouvée' });
+    if (!existingOrder) return res.status(404).json({ error: 'Commande non trouvee' });
+
+    // State machine: validate transition
+    if (!canTransition(existingOrder.status, status)) {
+      return res.status(400).json({
+        error: `Transition invalide: ${existingOrder.status} -> ${status}`,
+      });
+    }
 
     const currentHistory = safeJsonParse(existingOrder.statusHistory as string, []);
 
     const statusLabels: Record<string, string> = {
-      CONFIRMED: 'Commande confirmée',
+      CONFIRMED: 'Commande confirmee',
       PREPARING: 'En cours de fabrication',
-      SHIPPED: 'Expédiée',
-      DELIVERED: 'Livrée',
-      CANCELLED: 'Annulée',
+      SHIPPED: 'Expediee',
+      DELIVERED: 'Livree',
+      CANCELLED: 'Annulee',
     };
 
     const newEntry = {
@@ -475,37 +257,28 @@ router.put('/api/orders/:id/status', authenticateToken, requireAdmin, async (req
       include: { items: true },
     });
 
-    // Send notification to user for status changes
-    if (['SHIPPED', 'DELIVERED', 'CANCELLED'].includes(status)) {
-      await notifyOrderStatusChange(order.id, status as 'SHIPPED' | 'DELIVERED' | 'CANCELLED');
+    // Restore stock on cancellation (atomic)
+    if (status === 'CANCELLED') {
+      await prisma.$transaction(async (tx) => {
+        for (const item of order.items) {
+          await tx.product.update({
+            where: { id: item.productId },
+            data: { stockQuantity: { increment: item.quantity }, inStock: true },
+          });
+        }
+      });
+      logger.info({ orderId: order.id }, 'Stock restored after cancellation');
     }
+
+    // Notify customer for all status changes
+    await notifyOrderStatusChange(order.id, status as any);
 
     res.json({
       ...order,
       statusHistory: safeJsonParse(order.statusHistory as string, []),
     });
   } catch {
-    res.status(500).json({ error: 'Erreur lors de la mise à jour' });
-  }
-});
-
-// Admin: update payment status
-router.put('/api/orders/:id/payment-status', authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
-  try {
-    const { paymentStatus } = req.body;
-    if (!VALID_PAYMENT_STATUSES.includes(paymentStatus)) {
-      return res.status(400).json({ error: 'Statut paiement invalide' });
-    }
-
-    const order = await prisma.order.update({
-      where: { id: req.params.id },
-      data: { paymentStatus },
-      include: { items: true },
-    });
-
-    res.json(order);
-  } catch {
-    res.status(500).json({ error: 'Erreur' });
+    res.status(500).json({ error: 'Erreur lors de la mise a jour' });
   }
 });
 

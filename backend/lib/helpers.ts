@@ -9,37 +9,36 @@ export function safeJsonParse(value: string | null | undefined | object, fallbac
   try { return JSON.parse(value); } catch { return fallback; }
 }
 
-export async function calculateCartTotal(cart: any, cartItems: any[]) {
+export async function calculateCartTotal(_cart: any, cartItems: any[]) {
   let subtotal = 0;
   for (const item of cartItems) {
-    subtotal += item.product.price * item.quantity;
+    const price = Number(item.product.price) || 0;
+    const qty = Number(item.quantity) || 0;
+    subtotal += price * qty;
   }
-  let discount = 0;
-  if (cart.couponCode) {
-    const coupon = await prisma.coupon.findFirst({
-      where: {
-        code: cart.couponCode,
-        isActive: true,
-        expiryDate: { gte: new Date() },
-      },
-    });
-    if (coupon) {
-      discount = Math.round(subtotal * (coupon.discountPercent / 100));
-    }
-  }
-  const shippingFeeSetting = await prisma.storeSettings.findUnique({ where: { key: 'shipping_fee' } });
-  const freeThresholdSetting = await prisma.storeSettings.findUnique({ where: { key: 'free_shipping_threshold' } });
-  // Coursier SaTouba (Abidjan & environs) Gratuit — par défaut livraison gratuite
-  const shippingFeeValue = shippingFeeSetting ? parseInt(shippingFeeSetting.value) : 0;
-  const freeThreshold = freeThresholdSetting ? parseInt(freeThresholdSetting.value) : 0;
-  const shippingFee = (subtotal - discount) > freeThreshold ? 0 : (subtotal > 0 ? shippingFeeValue : 0);
-  const total = Math.max(0, subtotal - discount + shippingFee);
-  return { subtotal, discount, shippingFee, total };
+
+  const settings = await prisma.storeSettings.findMany({
+    where: { key: { in: ['shipping_fee', 'free_shipping_threshold'] } },
+  });
+  const settingsMap = new Map(settings.map(s => [s.key, s.value]));
+
+  const shippingFeeValue = parseInt(settingsMap.get('shipping_fee') || '0') || 0;
+  const freeThreshold = parseInt(settingsMap.get('free_shipping_threshold') || '0') || 0;
+  const shippingFee = subtotal > freeThreshold ? 0 : (subtotal > 0 ? shippingFeeValue : 0);
+  const total = subtotal + shippingFee;
+  return { subtotal, discount: 0, shippingFee, total };
 }
 
 export function formatCartItems(items: any[]) {
+  if (!Array.isArray(items)) return [];
   return items.map(i => ({
     ...i,
-    product: { ...i.product, images: safeJsonParse(i.product.images, []) },
+    product: {
+      ...i.product,
+      images: safeJsonParse(i.product?.images, []),
+      price: Number(i.product?.price) || 0,
+      stockQuantity: Number(i.product?.stockQuantity) || 0,
+      name: i.product?.name || 'Produit',
+    },
   }));
 }

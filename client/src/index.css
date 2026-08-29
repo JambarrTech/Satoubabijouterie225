@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --satouba-primary: #0B5D1E;
+    --satouba-primary-dark: #064A15;
+    --satouba-primary-light: #EAF7ED;
+    --satouba-bg: #F8F9F8;
+    --satouba-text: #111827;
+    --satouba-text-secondary: #6B7280;
+    --satouba-border: #E5E7EB;
+    --satouba-accent: #D9A441;
+  }
+  
+  body {
+    background-color: var(--satouba-bg);
+    color: var(--satouba-text);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  }
+}
+
+.bg-satouba-primary { background-color: #0B5D1E; }
+.bg-satouba-primary-dark { background-color: #064A15; }
+.bg-satouba-primary-light { background-color: #EAF7ED; }
+.bg-satouba-bg { background-color: #F8F9F8; }
+.bg-satouba-accent { background-color: #D9A441; }
+
+.text-satouba-primary { color: #0B5D1E; }
+.text-satouba-primary-dark { color: #064A15; }
+.text-satouba-text { color: #111827; }
+.text-satouba-secondary { color: #6B7280; }
+.text-satouba-accent { color: #D9A441; }
+
+.border-satouba-primary { border-color: #0B5D1E; }
+.border-satouba-border { border-color: #E5E7EB; }
+.border-satouba-accent { border-color: #D9A441; }
+
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+
