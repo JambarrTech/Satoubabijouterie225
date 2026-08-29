@@ -6,10 +6,5 @@
     { "source": "/api/(.*)", "destination": "/api" },
     { "source": "/gerant/((?!assets/|icons/|.*\\.(?:png|jpg|jpeg|gif|svg|webp|avif|js|css|json|ico|txt)$).*)", "destination": "/gerant/index.html" },
     { "source": "/((?!api/|gerant/|assets/|icons/|.*\\.(?:png|jpg|jpeg|gif|svg|webp|avif|js|css|json|ico|woff2?|ttf|eot|mp4|webm|txt)$).*)", "destination": "/index.html" }
-  ],
-  "functions": {
-    "api/index.js": {
-      "maxDuration": 30
-    }
-  }
+  ]
 }
