@@ -16,13 +16,13 @@ cpSync('client/dist', 'dist', { recursive: true });
 mkdirSync('dist/gerant', { recursive: true });
 cpSync('gerant/dist', 'dist/gerant', { recursive: true });
 
-// Compile backend/app.ts → backend/app.cjs pour que api/index.js puisse l'importer
-console.log('Bundling backend/app.ts → backend/app.cjs ...');
+// Bundle api/_index.ts → api/index.js (ESM autocontenu, tous les imports locaux bundled)
+console.log('Bundling api/_index.ts → api/index.js (ESM self-contained) ...');
 execSync(
-  'npx esbuild backend/app.ts --bundle --platform=node --format=cjs --packages=external --outfile=backend/app.cjs --log-level=warning',
+  'npx esbuild api/_index.ts --bundle --platform=node --format=esm --outfile=api/index.js --log-level=warning',
   { stdio: 'inherit' }
 );
-console.log('backend/app.cjs bundled');
+console.log('api/index.js bundled');
 
 const files = ['dist/index.html', 'dist/gerant/index.html'];
 console.log('Vercel dist assemblé :');
