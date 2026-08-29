@@ -1,4 +1,4 @@
-import { cpSync, rmSync, mkdirSync, existsSync, unlinkSync } from 'fs';
+import { cpSync, rmSync, mkdirSync, existsSync } from 'fs';
 import { execSync } from 'child_process';
 
 // Assemble les builds client + gérant dans ./dist (format Vercel)
@@ -16,15 +16,14 @@ cpSync('client/dist', 'dist', { recursive: true });
 mkdirSync('dist/gerant', { recursive: true });
 cpSync('gerant/dist', 'dist/gerant', { recursive: true });
 
-// Bundle api/index.ts → api/index.js (self-contained, tout le backend inclus)
-console.log('Bundling api/index.ts → api/index.js ...');
+// Bundle api/_index.ts → api/index.js (self-contained, tout le backend inclus)
+// _index.ts est préfixé par _ pour que Vercel ne le détecte pas comme Serverless Function
+console.log('Bundling api/_index.ts → api/index.js ...');
 execSync(
-  'npx esbuild api/index.ts --bundle --platform=node --format=cjs --packages=external --outfile=api/index.js --log-level=warning',
+  'npx esbuild api/_index.ts --bundle --platform=node --format=cjs --packages=external --outfile=api/index.js --log-level=warning',
   { stdio: 'inherit' }
 );
-// Supprimer api/index.ts pour que Vercel utilise api/index.js
-unlinkSync('api/index.ts');
-console.log('api/index.js bundled, api/index.ts removed');
+console.log('api/index.js bundled');
 
 const files = ['dist/index.html', 'dist/gerant/index.html'];
 console.log('Vercel dist assemblé :');
