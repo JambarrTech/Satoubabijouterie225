@@ -37,3 +37,4 @@ Thumbs.db
 
 # Build artifacts
 api/index.js
+backend/app.js
