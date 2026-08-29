@@ -32,3 +32,8 @@ Thumbs.db
 .claude/
 .cursor/
 .devin/
+
+.vercel
+
+# Build artifacts
+api/index.js

@@ -1,4 +1,4 @@
-import { cpSync, rmSync, mkdirSync, existsSync } from 'fs';
+import { cpSync, rmSync, mkdirSync, existsSync, unlinkSync } from 'fs';
 import { execSync } from 'child_process';
 
 // Assemble les builds client + gérant dans ./dist (format Vercel)
@@ -22,7 +22,9 @@ execSync(
   'npx esbuild api/index.ts --bundle --platform=node --format=cjs --packages=external --outfile=api/index.js --log-level=warning',
   { stdio: 'inherit' }
 );
-console.log('api/index.js bundled');
+// Remove .ts source so Vercel only picks up the bundled .js
+unlinkSync('api/index.ts');
+console.log('api/index.js bundled, api/index.ts removed');
 
 const files = ['dist/index.html', 'dist/gerant/index.html'];
 console.log('Vercel dist assemblé :');
