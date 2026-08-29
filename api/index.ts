@@ -1,2 +1,2 @@
-import backendApp from "../backend/app.js";
+import backendApp from "../backend/app";
 export default backendApp;
