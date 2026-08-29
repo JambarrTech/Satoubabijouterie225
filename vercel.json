@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "prisma generate --schema backend/prisma/schema.prisma && npm run build:client && npm run build:gerant && node assemble-vercel.mjs",
+  "buildCommand": "prisma generate --schema backend/prisma/schema.postgresql.prisma && npm run build:client && npm run build:gerant && node assemble-vercel.mjs",
   "outputDirectory": "dist",
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api" },
