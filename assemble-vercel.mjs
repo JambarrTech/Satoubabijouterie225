@@ -1,4 +1,13 @@
 import { cpSync, rmSync, mkdirSync, existsSync } from 'fs';
+import { execSync } from 'child_process';
+
+// Bundle api/_index.ts → api/index.cjs (CJS — require() works natively)
+console.log('Bundling api/_index.ts → api/index.cjs (CJS) ...');
+execSync(
+  'npx esbuild api/_index.ts --bundle --format=cjs --platform=node --outfile=api/index.cjs --log-level=warning',
+  { stdio: 'inherit' }
+);
+console.log('api/index.cjs bundled');
 
 // Assemble les builds client + gérant dans ./dist (format Vercel)
 rmSync('dist', { recursive: true, force: true });

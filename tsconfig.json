@@ -10,10 +10,9 @@
     "allowJs": true,
     "strict": true,
     "noEmit": true,
-    "allowImportingTsExtensions": true,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["api/**/*.ts", "backend/**/*.ts"]
+  "include": ["api/**/*.ts"]
 }
