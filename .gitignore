@@ -36,5 +36,4 @@ Thumbs.db
 .vercel
 
 # Build artifacts
-api/index.js
 backend/app.js
