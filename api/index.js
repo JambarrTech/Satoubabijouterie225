@@ -356,7 +356,7 @@ async function sendSMS(options) {
 }
 async function sendOrderConfirmationSMS(phone, orderNumber, total) {
   const message = [
-    `SaTouba Bijouterie`,
+    `SaTouba`,
     `Bonjour, votre commande ${orderNumber} a bien ete confirmee.`,
     `Montant: ${total.toLocaleString()} FCFA.`,
     `Nos artisans artisan commence la fabrication de votre bijou.`,
@@ -367,7 +367,7 @@ async function sendOrderConfirmationSMS(phone, orderNumber, total) {
 }
 async function sendPreparingSMS(phone, orderNumber) {
   const message = [
-    `SaTouba Bijouterie`,
+    `SaTouba`,
     `Votre commande ${orderNumber} est en cours de fabrication par nos artisans.`,
     `Delai estime: 3 a 7 jours ouvrables selon le type de bijou.`,
     `Nous vous notifierons des que votre commande sera expediee.`,
@@ -379,7 +379,7 @@ async function sendShippingSMS(phone, orderNumber, trackingUrl) {
   const tracking = trackingUrl ? `
 Suivi colis: ${trackingUrl}` : "";
   const message = [
-    `SaTouba Bijouterie`,
+    `SaTouba`,
     `Bonne nouvelle! Votre commande ${orderNumber} est en route vers vous.`,
     `Livraison prevue sous 24 a 48h a Abidjan, 48 a 72h en province.${tracking}`,
     `En cas d'absence, le coursier vous contactera.`,
@@ -389,7 +389,7 @@ Suivi colis: ${trackingUrl}` : "";
 }
 async function sendDeliverySMS(phone, orderNumber) {
   const message = [
-    `SaTouba Bijouterie`,
+    `SaTouba`,
     `Votre commande ${orderNumber} a ete livree avec succes!`,
     `Merci pour votre confiance. Votre satisfaction est notre priorite.`,
     `Nous vous remercions de prendre un moment pour nous laisser un avis sur l'application.`,
@@ -401,7 +401,7 @@ async function sendCancelledSMS(phone, orderNumber, reason) {
   const reasonPart = reason ? `
 Motif: ${reason}.` : "";
   const message = [
-    `SaTouba Bijouterie`,
+    `SaTouba`,
     `Votre commande ${orderNumber} a ete annulee.${reasonPart}`,
     `Si un paiement a ete effectue, le remboursement sera traite sous 3 a 5 jours ouvrables.`,
     `Pour plus d'informations, contactez-nous: ${CONTACT_PHONE}`
@@ -419,7 +419,7 @@ async function sendNewOrderSMS(phone, orderNumber, customerName, total) {
 }
 async function sendCustomRequestSMS(phone, requestId) {
   const message = [
-    `SaTouba Bijouterie - Sur-mesure`,
+    `SaTouba - Sur-mesure`,
     `Votre demande de creation sur-mesure ${requestId} a bien ete recue.`,
     `Notre equipe va etudier votre projet et vous contacter sous 24h pour:`,
     `- Discuter de vos preferences (materiaux, style, budget)`,
@@ -432,20 +432,20 @@ async function sendCustomRequestSMS(phone, requestId) {
 async function sendCustomStatusSMS(phone, requestId, status) {
   const statusMessages = {
     IN_PROGRESS: [
-      `SaTouba Bijouterie - Sur-mesure`,
+      `SaTouba - Sur-mesure`,
       `Votre demande ${requestId} est en cours d'etude par nos artisans.`,
       `Nous analysons vos preferences et preparons une proposition personnalisee.`,
       `Devis detaille sous 48h. Questions? ${CONTACT_PHONE}`
     ].join(" "),
     QUOTE_SENT: [
-      `SaTouba Bijouterie - Sur-mesure`,
+      `SaTouba - Sur-mesure`,
       `Votre devis pour la demande ${requestId} est disponible!`,
       `Connectez-vous a l'application pour consulter les details (materiaux, delai, prix).`,
       `Vous pouvez modifier ou valider le devis en ligne.`,
       `Contact: ${CONTACT_PHONE}`
     ].join(" "),
     APPROVED: [
-      `SaTouba Bijouterie - Sur-mesure`,
+      `SaTouba - Sur-mesure`,
       `Excellente nouvelle! Votre demande ${requestId} est approuvee.`,
       `Nos artisans commencent la fabrication de votre bijou sur-mesure.`,
       `Delai de fabrication: 2 a 4 semaines selon la complexite.`,
@@ -453,20 +453,20 @@ async function sendCustomStatusSMS(phone, requestId, status) {
       `Contact: ${CONTACT_PHONE}`
     ].join(" "),
     COMPLETED: [
-      `SaTouba Bijouterie - Sur-mesure`,
+      `SaTouba - Sur-mesure`,
       `Felicitations! Votre bijou sur-mesure ${requestId} est termine!`,
       `Il est disponible en boutique pour retrait ou peut vous etre livre.`,
       `Pour organiser la remise, contactez-nous: ${CONTACT_PHONE}`
     ].join(" "),
     CANCELLED: [
-      `SaTouba Bijouterie - Sur-mesure`,
+      `SaTouba - Sur-mesure`,
       `Votre demande ${requestId} a ete annulee.`,
       `Si un acompte a ete verse, contactez-nous pour les modalites de remboursement.`,
       `Nous restons a votre disposition: ${CONTACT_PHONE}`
     ].join(" ")
   };
   const statusText = statusMessages[status] || [
-    `SaTouba Bijouterie - Sur-mesure`,
+    `SaTouba - Sur-mesure`,
     `Mise a jour pour votre demande ${requestId}.`,
     `Statut: ${status}.`,
     `Consultez l'application pour plus de details.`
@@ -484,7 +484,7 @@ async function sendNewCustomToGerantSMS(phone, requestId, customerName, jewelryT
 }
 async function sendRepairRequestSMS(phone, requestId) {
   const message = [
-    `SaTouba Bijouterie - Reparation`,
+    `SaTouba - Reparation`,
     `Votre demande de reparation ${requestId} a bien ete enregistree.`,
     `Prochaines etapes:`,
     `- Deposez votre bijou en boutique: Koumassi, feux de prodromo, Abidjan`,
@@ -497,41 +497,41 @@ async function sendRepairRequestSMS(phone, requestId) {
 async function sendRepairStatusSMS(phone, requestId, status) {
   const statusMessages = {
     IN_PROGRESS: [
-      `SaTouba Bijouterie - Reparation`,
+      `SaTouba - Reparation`,
       `Votre reparation ${requestId} est en cours de traitement.`,
       `Notre artisan a commence les reparations sur votre bijou.`,
       `Delai estime: 5 a 10 jours ouvrables selon la nature des reparations.`,
       `Contact: ${CONTACT_PHONE}`
     ].join(" "),
     WAITING_PARTS: [
-      `SaTouba Bijouterie - Reparation`,
+      `SaTouba - Reparation`,
       `Votre reparation ${requestId}: nous attendons l'arrivee de pieces de rechange.`,
       `Delai supplementaire prevu: 3 a 7 jours.`,
       `Nous vous tenons informe des que les pieces seront recues.`,
       `Contact: ${CONTACT_PHONE}`
     ].join(" "),
     COMPLETED: [
-      `SaTouba Bijouterie - Reparation`,
+      `SaTouba - Reparation`,
       `Bonne nouvelle! Votre reparation ${requestId} est terminee!`,
       `Votre bijou est pret a etre recupere en boutique.`,
       `Horaires: Lundi a Samedi, 8h a 19h.`,
       `Pour organiser la remise: ${CONTACT_PHONE}`
     ].join(" "),
     DELIVERED: [
-      `SaTouba Bijouterie - Reparation`,
+      `SaTouba - Reparation`,
       `Votre reparation ${requestId} vous a ete remise.`,
       `Merci pour votre confiance! Votre bijou est maintenant en parfait etat.`,
       `Pour toute question ulterieure: ${CONTACT_PHONE}`
     ].join(" "),
     CANCELLED: [
-      `SaTouba Bijouterie - Reparation`,
+      `SaTouba - Reparation`,
       `Votre reparation ${requestId} a ete annulee.`,
       `Si un depot a ete effectue, contactez-nous pour recuperer votre bijou.`,
       `Contact: ${CONTACT_PHONE}`
     ].join(" ")
   };
   const statusText = statusMessages[status] || [
-    `SaTouba Bijouterie - Reparation`,
+    `SaTouba - Reparation`,
     `Mise a jour pour votre reparation ${requestId}.`,
     `Statut: ${status}.`,
     `Consultez l'application pour plus de details.`
@@ -548,7 +548,7 @@ async function sendNewRepairToGerantSMS(phone, requestId, customerName, jewelryT
   return sendSMS({ to: phone, message });
 }
 async function sendOTPSMS(phone, code) {
-  const message = `SaTouba Bijouterie: Votre code de verification est ${code}. Valable 10 minutes. Ne partagez ce code avec personne.`;
+  const message = `SaTouba: Votre code de verification est ${code}. Valable 10 minutes. Ne partagez ce code avec personne.`;
   return sendSMS({ to: phone, message });
 }
 
