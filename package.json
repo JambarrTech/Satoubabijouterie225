@@ -1,4 +1,4 @@
-{
+﻿{
   "name": "satouba-bijouterie",
   "private": true,
   "version": "0.0.0",
@@ -17,7 +17,8 @@
     "dev:backend": "tsx backend/server.ts",
     "dev:client": "npm run dev -w client",
     "dev:gerant": "npm run dev -w gerant",
-    "build": "npm run build -w client && npm run build -w gerant && npm run build -w backend",
+    "build": "npm run build:api && npm run build -w client && npm run build -w gerant && npm run build -w backend",
+    "build:api": "esbuild api/_index.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=api/index.js",
     "build:client": "npm run build -w client",
     "build:gerant": "npm run build -w gerant",
     "build:backend": "npm run build -w backend",
