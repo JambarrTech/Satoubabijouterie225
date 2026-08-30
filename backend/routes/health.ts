@@ -1,10 +1,11 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
+import { getFirebaseDiagnostics } from '../lib/push';
 
 const router = Router();
 
 router.get('/api/health', async (_req: Request, res: Response) => {
-  const checks: Record<string, string> = {};
+  const checks: Record<string, any> = {};
   let healthy = true;
 
   // Database check
@@ -14,6 +15,15 @@ router.get('/api/health', async (_req: Request, res: Response) => {
   } catch (e: any) {
     checks.database = `error: ${e.message?.slice(0, 100) || 'unknown'}`;
     healthy = false;
+  }
+
+  // Firebase check
+  const firebase = getFirebaseDiagnostics();
+  checks.firebase = firebase;
+  if (!firebase.initialized && (firebase.projectId || firebase.clientEmail || firebase.privateKey)) {
+    checks.firebase.note = 'Credentials present but SDK not initialized (may need restart)';
+  } else if (!firebase.projectId && !firebase.clientEmail && !firebase.privateKey) {
+    checks.firebase.note = 'No Firebase credentials configured';
   }
 
   // Memory check
