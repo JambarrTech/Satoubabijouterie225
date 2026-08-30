@@ -120,7 +120,7 @@ export function OrdersView() {
 
               <div className="space-y-3">
                 <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Articles commandes</h4>
-                {selectedOrder.items.map((item) => (
+                {(selectedOrder.items || []).map((item) => (
                   <div key={item.id} className="flex items-center gap-4 p-3 bg-gray-50 rounded-xl">
                     <img src={item.productImage} alt="" className="w-14 h-14 rounded-lg object-cover" referrerPolicy="no-referrer" />
                     <div className="flex-1">
@@ -135,25 +135,27 @@ export function OrdersView() {
               <div className="space-y-4 pt-4 border-t border-gray-100">
                 <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wider mb-4">Suivi de l'atelier SaTouba</h4>
                 <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-gray-200">
-                  {selectedOrder.statusHistory.map((step, idx) => (
+                  {(selectedOrder.statusHistory || []).map((step, idx) => (
                     <div key={idx} className="relative flex items-start gap-4">
                       <div className={`absolute -left-6 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${step.completed ? 'bg-[#0B5D1E] text-white' : 'bg-gray-200 text-gray-500'}`}>
                         {step.completed ? '✓' : idx + 1}
                       </div>
                       <div>
                         <h5 className="text-sm font-semibold text-gray-900">{step.label}</h5>
-                        <p className="text-xs text-gray-500">{step.date}</p>
+                        <p className="text-xs text-gray-500">{new Date(step.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
 
+              {selectedOrder.shippingAddress && (
               <div className="p-4 bg-[#EAF7ED]/40 rounded-2xl border border-[#0B5D1E]/20 text-xs space-y-1">
                 <p className="font-bold text-[#064A15]">Adresse de livraison :</p>
-                <p className="text-gray-700">{selectedOrder.shippingAddress.fullName} ({selectedOrder.shippingAddress.phone})</p>
-                <p className="text-gray-600">{selectedOrder.shippingAddress.address}, {selectedOrder.shippingAddress.city}</p>
+                <p className="text-gray-700">{selectedOrder.shippingAddress.fullName || selectedOrder.customerName} ({selectedOrder.shippingAddress.phone || selectedOrder.phone})</p>
+                <p className="text-gray-600">{selectedOrder.shippingAddress.address || selectedOrder.address}{selectedOrder.shippingAddress.city ? `, ${selectedOrder.shippingAddress.city}` : ''}</p>
               </div>
+              )}
             </motion.div>
             )}
           </AnimatePresence>
