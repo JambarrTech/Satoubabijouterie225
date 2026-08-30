@@ -27,7 +27,6 @@ import { fetchProducts } from './lib/api/products';
 import { fetchCart, addToCart } from './lib/api/cart';
 import { fetchFavorites, toggleFavorite } from './lib/api/favorites';
 import { fetchNotifications, markNotificationAsRead } from './lib/api/notifications';
-import { registerPushNotifications, unregisterPushNotifications, setupForegroundHandler, clearForegroundHandler } from './lib/notifications';
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
@@ -79,20 +78,6 @@ export default function App() {
     fetchNotifications().then(setNotifications).catch(() => {});
   }, [user]);
 
-  useEffect(() => {
-    if (user) {
-      registerPushNotifications(user.id);
-      setupForegroundHandler((payload) => {
-        console.log('Push notification received:', payload);
-        fetchNotifications().then(setNotifications).catch(console.error);
-      });
-    } else {
-      clearForegroundHandler();
-    }
-    return () => {
-      clearForegroundHandler();
-    };
-  }, [user]);
 
   const handleLogin = (loggedInUser: User, _token: string) => {
     setUser(loggedInUser);
@@ -106,10 +91,7 @@ export default function App() {
   };
 
   const handleLogout = async () => {
-    if (user) {
-      await unregisterPushNotifications(user.id);
-    }
-    localStorage.removeItem('satouba_token');
+localStorage.removeItem('satouba_token');
     localStorage.removeItem('satouba_user');
     setUser(null);
     setCurrentTab('home');

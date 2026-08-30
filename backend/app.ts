@@ -20,7 +20,6 @@ import adminRoutes from "./routes/admin";
 import publicRoutes from "./routes/public";
 import settingsRoutes from "./routes/settings";
 import uploadRoutes from "./routes/upload";
-import pushRoutes from "./routes/push";
 import healthRoutes from "./routes/health";
 
 const app = express();
@@ -120,7 +119,7 @@ app.use(adminRoutes);
 app.use(publicRoutes);
 app.use(settingsRoutes);
 app.use(uploadRoutes);
-app.use(pushRoutes);
+
 
 // 404 handler — only for API routes, pass through to Vite for everything else
 app.use((req, res, next) => {

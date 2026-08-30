@@ -9,7 +9,6 @@
   "orientation": "portrait-primary",
   "scope": "/gerant/",
   "lang": "fr",
-  "gcm_sender_id": "758245641576",
   "icons": [
     {
       "src": "/gerant/logo.jpg",

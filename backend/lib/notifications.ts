@@ -1,4 +1,4 @@
-﻿import { prisma } from './prisma';
+import { prisma } from './prisma';
 import {
   sendOrderConfirmationSMS,
   sendShippingSMS,
@@ -14,7 +14,6 @@ import {
   sendNewRepairToGerantSMS,
   sendNewCustomToGerantSMS,
 } from './sms';
-import { sendMulticastPushNotification, getOrderPushContent, OrderPushData } from './push';
 import logger from './logger';
 
 export type NotificationChannel = 'SMS' | 'PUSH' | 'BOTH';
@@ -29,17 +28,6 @@ interface NotificationOptions {
   orderId?: string;
 }
 
-function getPushTokens(user: { pushTokens: any }): string[] {
-  try {
-    const tokens = user.pushTokens;
-    if (Array.isArray(tokens)) return tokens;
-    if (typeof tokens === 'string') return JSON.parse(tokens);
-    return [];
-  } catch {
-    return [];
-  }
-}
-
 export async function createNotification(options: NotificationOptions) {
   try {
     const notification = await prisma.notification.create({
@@ -52,48 +40,10 @@ export async function createNotification(options: NotificationOptions) {
       },
     });
 
-    await sendNotificationToUser({
-      userId: options.userId,
-      title: options.title,
-      body: options.message,
-      data: options.data,
-      channel: options.channel || 'BOTH',
-    });
-
     return notification;
   } catch (error) {
     logger.error({ err: error }, 'Create notification error');
     throw error;
-  }
-}
-
-async function sendNotificationToUser(options: {
-  userId: string;
-  title: string;
-  body: string;
-  data?: Record<string, string>;
-  channel: NotificationChannel;
-}) {
-  const user = await prisma.user.findUnique({
-    where: { id: options.userId },
-    select: { pushTokens: true },
-  });
-
-  if (!user) return;
-
-  const tokens = getPushTokens({ pushTokens: user.pushTokens });
-
-  if (options.channel === 'PUSH' || options.channel === 'BOTH') {
-    if (tokens.length > 0) {
-      try {
-        const result = await sendMulticastPushNotification(tokens, options.title, options.body, options.data);
-        if (result.failed > 0) {
-          console.warn(`Push: ${result.failed}/${tokens.length} tokens failed`, result.errors);
-        }
-      } catch (err) {
-        console.error('Push notification send error:', err);
-      }
-    }
   }
 }
 
@@ -103,16 +53,16 @@ export async function notifyNewOrder(orderId: string) {
   const order = await prisma.order.findUnique({
     where: { id: orderId },
     include: {
-      user: { select: { id: true, name: true, phone: true, pushTokens: true } },
+      user: { select: { id: true, name: true, phone: true } },
       items: true,
     },
   });
 
   if (!order) return;
 
-  // 1. Notify customer: confirmation in-app + push (dedicated SMS sent below)
-  const pushData: OrderPushData = { orderId, orderNumber: order.orderNumber, type: 'CONFIRMED' };
-  const { title, body, clickAction } = getOrderPushContent(pushData);
+  // 1. Notify customer: confirmation in-app (dedicated SMS sent below)
+  const title = 'Commande confirmee';
+  const body = `Votre commande ${order.orderNumber} a ete confirmee. Nos artisans commencent la fabrication.`;
 
   await createNotification({
     userId: order.user.id,
@@ -120,7 +70,7 @@ export async function notifyNewOrder(orderId: string) {
     message: body,
     type: 'ORDER',
     channel: 'PUSH',
-    data: { orderId, orderNumber: order.orderNumber, status: 'CONFIRMED', clickAction },
+    data: { orderId: order.id, orderNumber: order.orderNumber, status: 'CONFIRMED' },
     orderId,
   });
 
@@ -143,7 +93,7 @@ async function notifyGerantsNewOrder(order: {
 }) {
   const admins = await prisma.user.findMany({
     where: { role: 'ADMIN' },
-    select: { id: true, phone: true, pushTokens: true },
+    select: { id: true, phone: true },
   });
 
   const itemCount = order.items.reduce((sum, i) => sum + i.quantity, 0);
@@ -176,22 +126,30 @@ export async function notifyOrderStatusChange(
 ) {
   const order = await prisma.order.findUnique({
     where: { id: orderId },
-    include: { user: { select: { id: true, phone: true, pushTokens: true } } },
+    include: { user: { select: { id: true, phone: true } } },
   });
 
   if (!order || !order.user) return;
 
-  const pushData: OrderPushData = { orderId, orderNumber: order.orderNumber, type: status };
-  const { title, body, clickAction } = getOrderPushContent(pushData);
+  const statusLabels: Record<string, string> = {
+    CONFIRMED: 'Commande confirmee',
+    PREPARING: 'En cours de fabrication',
+    SHIPPED: 'Commande expediee',
+    DELIVERED: 'Livree avec succes',
+    CANCELLED: 'Commande annulee',
+  };
 
-  // Create in-app notification + push only (no generic SMS — dedicated SMS sent below)
+  const title = statusLabels[status] || 'Statut mis a jour';
+  const body = `Votre commande ${order.orderNumber}: ${statusLabels[status] || status}.`;
+
+  // Create in-app notification (dedicated SMS sent below)
   await createNotification({
     userId: order.user.id,
     title,
     message: body,
     type: 'ORDER',
     channel: 'PUSH',
-    data: { orderId, orderNumber: order.orderNumber, status, clickAction },
+    data: { orderId: order.id, orderNumber: order.orderNumber, status },
     orderId,
   });
 
@@ -222,10 +180,10 @@ export async function notifyOrderStatusChange(
 export async function notifyCustomRequest(userId: string, requestId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { name: true, phone: true, pushTokens: true },
+    select: { name: true, phone: true },
   });
 
-  // 1. Notify customer: in-app + push + SMS
+  // 1. Notify customer: in-app + SMS
   await createNotification({
     userId,
     title: 'Demande sur-mesure recue',
@@ -246,10 +204,9 @@ export async function notifyCustomRequest(userId: string, requestId: string) {
 async function notifyGerantsNewCustom(userId: string, requestId: string) {
   const admins = await prisma.user.findMany({
     where: { role: 'ADMIN' },
-    select: { id: true, phone: true, pushTokens: true },
+    select: { id: true, phone: true },
   });
 
-  // Get the custom request to include details
   const request = await prisma.customRequest.findUnique({
     where: { id: requestId },
     select: { jewelryType: true },
@@ -285,10 +242,10 @@ async function notifyGerantsNewCustom(userId: string, requestId: string) {
 export async function notifyRepairRequest(userId: string, requestId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { name: true, phone: true, pushTokens: true },
+    select: { name: true, phone: true },
   });
 
-  // 1. Notify customer: in-app + push + SMS
+  // 1. Notify customer: in-app + SMS
   await createNotification({
     userId,
     title: 'Demande de reparation recue',
@@ -309,7 +266,7 @@ export async function notifyRepairRequest(userId: string, requestId: string) {
 async function notifyGerantsNewRepair(userId: string, requestId: string) {
   const admins = await prisma.user.findMany({
     where: { role: 'ADMIN' },
-    select: { id: true, phone: true, pushTokens: true },
+    select: { id: true, phone: true },
   });
 
   const request = await prisma.repairRequest.findUnique({
@@ -356,13 +313,13 @@ export async function notifyRepairStatusChange(
 ) {
   const request = await prisma.repairRequest.findUnique({
     where: { id: requestId },
-    include: { user: { select: { id: true, phone: true, pushTokens: true } } },
+    include: { user: { select: { id: true, phone: true } } },
   });
 
   if (!request || !request.user) return;
 
   const statusLabels: Record<string, string> = {
-    RECUE: 'Reparation recue',
+    RECEIVED: 'Reparation recue',
     IN_PROGRESS: 'En cours de traitement',
     WAITING_PARTS: 'En attente de pieces',
     COMPLETED: 'Reparation terminee',
@@ -395,7 +352,7 @@ export async function notifyCustomStatusChange(
 ) {
   const request = await prisma.customRequest.findUnique({
     where: { id: requestId },
-    include: { user: { select: { id: true, phone: true, pushTokens: true } } },
+    include: { user: { select: { id: true, phone: true } } },
   });
 
   if (!request || !request.user) return;
@@ -429,7 +386,7 @@ export async function notifyCustomStatusChange(
 export async function notifyPromo(userIds: string[], title: string, message: string) {
   const users = await prisma.user.findMany({
     where: { id: { in: userIds } },
-    select: { id: true, pushTokens: true },
+    select: { id: true },
   });
 
   for (const user of users) {
@@ -442,33 +399,4 @@ export async function notifyPromo(userIds: string[], title: string, message: str
       data: { type: 'promo' },
     });
   }
-}
-
-export async function registerPushToken(userId: string, token: string) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { pushTokens: true },
-  });
-
-  const tokens = getPushTokens({ pushTokens: user?.pushTokens });
-  if (!tokens.includes(token)) {
-    tokens.push(token);
-    await prisma.user.update({
-      where: { id: userId },
-      data: { pushTokens: JSON.stringify(tokens) },
-    });
-  }
-}
-
-export async function unregisterPushToken(userId: string, token: string) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { pushTokens: true },
-  });
-
-  const tokens = getPushTokens({ pushTokens: user?.pushTokens }).filter(t => t !== token);
-  await prisma.user.update({
-    where: { id: userId },
-    data: { pushTokens: JSON.stringify(tokens) },
-  });
 }

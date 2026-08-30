@@ -1,4 +1,4 @@
-﻿import helmet from 'helmet';
+import helmet from 'helmet';
 import compression from 'compression';
 import { Express, Request, Response, NextFunction } from 'express';
 import { rateLimit } from '../lib/rateLimit';
@@ -16,7 +16,7 @@ export function setupSecurity(app: Express) {
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         fontSrc: ["'self'", "https://fonts.gstatic.com"],
         imgSrc: ["'self'", "data:", "https:", "blob:", "https://firebasestorage.googleapis.com", "https://*.googleapis.com"],
-        connectSrc: ["'self'", "https://wa.me", "https://api.sandbox.africastalking.com", "https://api.africastalking.com", "https://*.googleapis.com", "https://*.firebaseio.com", "https://fcm.googleapis.com", "https://*.firebaseapp.com"],
+        connectSrc: ["'self'", "https://wa.me", "https://api.sandbox.africastalking.com", "https://api.africastalking.com", "https://*.googleapis.com", "https://*.firebaseio.com", "https://*.firebaseapp.com"],
         frameSrc: ["'none'"],
         objectSrc: ["'none'"],
         baseUri: ["'self'"],
@@ -63,9 +63,6 @@ export function setupSecurity(app: Express) {
   const uploadRateLimit = rateLimit(20, 60 * 1000);
   app.use('/api/upload', uploadRateLimit);
 
-  // Rate limit for push token registration
-  const pushRateLimit = rateLimit(10, 60 * 1000);
-  app.use('/api/push', pushRateLimit);
 
   // Cache headers for static assets
   app.use('/uploads', (_req: Request, res: Response, next: NextFunction) => {

@@ -1,11 +1,10 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
-import { getFirebaseDiagnostics } from '../lib/push';
 
 const router = Router();
 
 router.get('/api/health', async (_req: Request, res: Response) => {
-  const checks: Record<string, any> = {};
+  const checks: Record<string, string> = {};
   let healthy = true;
 
   // Database check
@@ -17,20 +16,10 @@ router.get('/api/health', async (_req: Request, res: Response) => {
     healthy = false;
   }
 
-  // Firebase check
-  const firebase = getFirebaseDiagnostics();
-  checks.firebase = firebase;
-  if (!firebase.initialized && (firebase.projectId || firebase.clientEmail || firebase.privateKey)) {
-    checks.firebase.note = 'Credentials present but SDK not initialized (may need restart)';
-  } else if (!firebase.projectId && !firebase.clientEmail && !firebase.privateKey) {
-    checks.firebase.note = 'No Firebase credentials configured';
-  }
-
   // Memory check
   const mem = process.memoryUsage();
   const heapUsedMB = Math.round(mem.heapUsed / 1024 / 1024);
   checks.memory = `${heapUsedMB}MB`;
-  // Warn if heap > 80% of 512MB (common Cloud Run limit)
   if (heapUsedMB > 400) checks.memory += ' (high)';
 
   // Uptime

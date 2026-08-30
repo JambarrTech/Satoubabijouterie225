@@ -3,7 +3,6 @@ import { GerantLogin } from "./components/auth/GerantLogin";
 import { GerantDashboard } from "./components/gerant/GerantDashboard";
 import { ToastProvider } from "./components/ui/Toast";
 import { User } from "./types";
-import { registerPushNotifications, setupForegroundHandler, clearForegroundHandler } from "./lib/notifications";
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -23,20 +22,6 @@ export default function App() {
       }
     }
   }, []);
-
-  useEffect(() => {
-    if (!user) return;
-
-    registerPushNotifications(user.id).catch(() => {});
-
-    setupForegroundHandler((payload) => {
-      console.log("Push notification received (gerant):", payload);
-    });
-
-    return () => {
-      clearForegroundHandler();
-    };
-  }, [user]);
 
   const handleLogin = (loggedInUser: User, _token: string) => {
     setUser(loggedInUser);
