@@ -2457,8 +2457,11 @@ function getUploadsDir() {
   return candidates[0];
 }
 var uploadsDir = getUploadsDir();
-if (!import_fs.default.existsSync(uploadsDir)) {
-  import_fs.default.mkdirSync(uploadsDir, { recursive: true });
+try {
+  if (!import_fs.default.existsSync(uploadsDir)) {
+    import_fs.default.mkdirSync(uploadsDir, { recursive: true });
+  }
+} catch {
 }
 var storage = import_multer.default.diskStorage({
   destination: uploadsDir,
@@ -2649,8 +2652,11 @@ function resolveUploadsDir() {
   return import_fs2.default.existsSync(cwdBackend) ? cwdBackend : import_fs2.default.existsSync(sibling) ? sibling : cwdBackend;
 }
 var uploadsDir2 = resolveUploadsDir();
-if (!import_fs2.default.existsSync(uploadsDir2)) {
-  import_fs2.default.mkdirSync(uploadsDir2, { recursive: true });
+try {
+  if (!import_fs2.default.existsSync(uploadsDir2)) {
+    import_fs2.default.mkdirSync(uploadsDir2, { recursive: true });
+  }
+} catch {
 }
 app.use("/uploads", import_express16.default.static(uploadsDir2, {
   maxAge: "1y",

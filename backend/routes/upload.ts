@@ -67,8 +67,12 @@ function getUploadsDir(): string {
   return candidates[0];
 }
 const uploadsDir = getUploadsDir();
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
+try {
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+} catch {
+  // Serverless (Vercel): filesystem is read-only, uploads go via Vercel Blob
 }
 
 const storage = multer.diskStorage({

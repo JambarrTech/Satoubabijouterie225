@@ -91,8 +91,12 @@ function resolveUploadsDir(): string {
   return fs.existsSync(cwdBackend) ? cwdBackend : (fs.existsSync(sibling) ? sibling : cwdBackend);
 }
 const uploadsDir = resolveUploadsDir();
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
+try {
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+} catch {
+  // Serverless (Vercel): filesystem is read-only, uploads go via Vercel Blob
 }
 app.use('/uploads', express.static(uploadsDir, {
   maxAge: '1y',
