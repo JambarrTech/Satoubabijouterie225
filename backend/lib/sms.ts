@@ -133,7 +133,7 @@ export async function sendSMS(options: SMSOptions): Promise<SMSResponse> {
   }
 }
 
-export async function sendBulkSMS(phones: string[], message: string, senderId?: string): Promise<SMSResponse> {
+export async function sendBulkSMS(phones: string[], message: string): Promise<SMSResponse> {
   if (!AT_API_KEY) {
     return { success: false, error: 'SMS service not configured' };
   }
