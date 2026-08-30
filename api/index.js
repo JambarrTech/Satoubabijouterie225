@@ -2456,37 +2456,43 @@ function getUploadsDir() {
   }
   return candidates[0];
 }
-var uploadsDir = getUploadsDir();
-try {
-  if (!import_fs.default.existsSync(uploadsDir)) {
-    import_fs.default.mkdirSync(uploadsDir, { recursive: true });
-  }
-} catch {
-}
-var storage = import_multer.default.diskStorage({
-  destination: uploadsDir,
-  filename: (_req, file, cb) => {
-    const ext = import_path.default.extname(file.originalname).toLowerCase();
-    cb(null, `${import_crypto2.default.randomUUID()}${ext}`);
-  }
-});
-var upload = (0, import_multer.default)({
-  storage,
-  limits: { fileSize: 5 * 1024 * 1024 },
-  // 5 MB
-  fileFilter: (_req, file, cb) => {
-    const allowed = [".jpg", ".jpeg", ".png", ".webp", ".gif"];
-    const ext = import_path.default.extname(file.originalname).toLowerCase();
-    const mimeOk = ["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.mimetype);
-    if (allowed.includes(ext) && mimeOk) {
-      cb(null, true);
-    } else {
-      cb(new Error("Format de fichier non support\xE9. Utilisez JPG, PNG ou WebP."));
+var upload = null;
+function getUpload() {
+  if (upload) return upload;
+  const dir = getUploadsDir();
+  try {
+    if (!import_fs.default.existsSync(dir)) {
+      import_fs.default.mkdirSync(dir, { recursive: true });
     }
+  } catch {
+    throw new Error("Upload local non disponible sur ce serveur.");
   }
-});
+  const storage = import_multer.default.diskStorage({
+    destination: dir,
+    filename: (_req, file, cb) => {
+      const ext = import_path.default.extname(file.originalname).toLowerCase();
+      cb(null, `${import_crypto2.default.randomUUID()}${ext}`);
+    }
+  });
+  upload = (0, import_multer.default)({
+    storage,
+    limits: { fileSize: 5 * 1024 * 1024 },
+    // 5 MB
+    fileFilter: (_req, file, cb) => {
+      const allowed = [".jpg", ".jpeg", ".png", ".webp", ".gif"];
+      const ext = import_path.default.extname(file.originalname).toLowerCase();
+      const mimeOk = ["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.mimetype);
+      if (allowed.includes(ext) && mimeOk) {
+        cb(null, true);
+      } else {
+        cb(new Error("Format de fichier non support\xE9. Utilisez JPG, PNG ou WebP."));
+      }
+    }
+  });
+  return upload;
+}
 router13.post("/api/upload", authenticateToken, requireAdmin, (req, res) => {
-  upload.single("image")(req, res, (err) => {
+  getUpload().single("image")(req, res, (err) => {
     if (err instanceof import_multer.default.MulterError) {
       if (err.code === "LIMIT_FILE_SIZE") {
         return res.status(400).json({ error: "Le fichier ne doit pas d\xE9passer 5 Mo." });
@@ -2504,7 +2510,7 @@ router13.post("/api/upload", authenticateToken, requireAdmin, (req, res) => {
   });
 });
 router13.post("/api/upload/multiple", authenticateToken, requireAdmin, (req, res) => {
-  upload.array("images", 5)(req, res, (err) => {
+  getUpload().array("images", 5)(req, res, (err) => {
     if (err instanceof import_multer.default.MulterError) {
       if (err.code === "LIMIT_FILE_SIZE") {
         return res.status(400).json({ error: "Chaque fichier ne doit pas d\xE9passer 5 Mo." });
@@ -2651,14 +2657,14 @@ function resolveUploadsDir() {
   const sibling = import_path2.default.join(__dirname, "uploads");
   return import_fs2.default.existsSync(cwdBackend) ? cwdBackend : import_fs2.default.existsSync(sibling) ? sibling : cwdBackend;
 }
-var uploadsDir2 = resolveUploadsDir();
+var uploadsDir = resolveUploadsDir();
 try {
-  if (!import_fs2.default.existsSync(uploadsDir2)) {
-    import_fs2.default.mkdirSync(uploadsDir2, { recursive: true });
+  if (!import_fs2.default.existsSync(uploadsDir)) {
+    import_fs2.default.mkdirSync(uploadsDir, { recursive: true });
   }
 } catch {
 }
-app.use("/uploads", import_express16.default.static(uploadsDir2, {
+app.use("/uploads", import_express16.default.static(uploadsDir, {
   maxAge: "1y",
   etag: true
 }));

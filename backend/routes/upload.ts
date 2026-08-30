@@ -66,42 +66,47 @@ function getUploadsDir(): string {
   }
   return candidates[0];
 }
-const uploadsDir = getUploadsDir();
-try {
-  if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
-  }
-} catch {
-  // Serverless (Vercel): filesystem is read-only, uploads go via Vercel Blob
-}
-
-const storage = multer.diskStorage({
-  destination: uploadsDir,
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    cb(null, `${crypto.randomUUID()}${ext}`);
-  },
-});
-
-const upload = multer({
-  storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
-  fileFilter: (_req, file, cb) => {
-    const allowed = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
-    const ext = path.extname(file.originalname).toLowerCase();
-    // Vérifie aussi le MIME déclaré (double garde ext + MIME)
-    const mimeOk = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.mimetype);
-    if (allowed.includes(ext) && mimeOk) {
-      cb(null, true);
-    } else {
-      cb(new Error('Format de fichier non supporté. Utilisez JPG, PNG ou WebP.'));
+// Lazy multer init — only created on servers with writable disk (local dev).
+// On Vercel serverless, uploads go through Vercel Blob, so multer is never used.
+let upload: multer.Multer | null = null;
+function getUpload(): multer.Multer {
+  if (upload) return upload;
+  const dir = getUploadsDir();
+  try {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
     }
-  },
-});
+  } catch {
+    // Serverless: filesystem read-only, uploads go via Vercel Blob
+    throw new Error('Upload local non disponible sur ce serveur.');
+  }
+  const storage = multer.diskStorage({
+    destination: dir,
+    filename: (_req, file, cb) => {
+      const ext = path.extname(file.originalname).toLowerCase();
+      cb(null, `${crypto.randomUUID()}${ext}`);
+    },
+  });
+  upload = multer({
+    storage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+    fileFilter: (_req, file, cb) => {
+      const allowed = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
+      const ext = path.extname(file.originalname).toLowerCase();
+      const mimeOk = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.mimetype);
+      if (allowed.includes(ext) && mimeOk) {
+        cb(null, true);
+      } else {
+        cb(new Error('Format de fichier non supporté. Utilisez JPG, PNG ou WebP.'));
+      }
+    },
+  });
+  return upload;
+}
 
 // Fallback: POST /api/upload — upload a single image (dev local)
 router.post('/api/upload', authenticateToken, requireAdmin, (req, res) => {
-  upload.single('image')(req, res, (err) => {
+  getUpload().single('image')(req, res, (err) => {
     if (err instanceof multer.MulterError) {
       if (err.code === 'LIMIT_FILE_SIZE') {
         return res.status(400).json({ error: 'Le fichier ne doit pas dépasser 5 Mo.' });
@@ -122,7 +127,7 @@ router.post('/api/upload', authenticateToken, requireAdmin, (req, res) => {
 
 // Fallback: POST /api/upload/multiple — upload up to 5 images (dev local)
 router.post('/api/upload/multiple', authenticateToken, requireAdmin, (req, res) => {
-  upload.array('images', 5)(req, res, (err) => {
+  getUpload().array('images', 5)(req, res, (err) => {
     if (err instanceof multer.MulterError) {
       if (err.code === 'LIMIT_FILE_SIZE') {
         return res.status(400).json({ error: 'Chaque fichier ne doit pas dépasser 5 Mo.' });
