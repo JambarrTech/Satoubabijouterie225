@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>SaTouba Bijouterie - Or 18K, Diamants & Bijoux de Luxe | Abidjan</title>
-    <meta name="description" content="SaTouba Bijouterie - Vente de bijoux en or 18K, diamants, argent & accessoires de luxe à Abidjan. Création sur-mesure, réparation & SAV. Coursier SaTouba (Abidjan & environs) Gratuit — Remise en main propre sous 24-48h avec certificat d’authenticité." />
+    <meta name="description" content="SaTouba Bijouterie - Vente de bijoux en or 18K, diamants, argent & accessoires de luxe à Abidjan. Création sur-mesure, réparation & SAV. Coursier SaTouba (Abidjan & environs) Gratuit — Remise en main propre sous 24-48h avec certificat d'authenticité." />
     <meta name="keywords" content="bijoux or 18K, diamants, bijouterie Abidjan, bague diamant, collier or, alliance mariage, sur-mesure, réparation bijoux, SaTouba" />
     
     <!-- Open Graph -->
@@ -58,7 +58,7 @@
         "opens": "09:00",
         "closes": "19:00"
       },
-      "priceRange": "$$$$",
+      "priceRange": "",
       "sameAs": ["https://www.instagram.com/Satouba225_bijouterie"]
     }
     </script>
@@ -66,47 +66,5 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    
-    <!-- Service Worker Registration for Push Notifications -->
-    <script>
-      if ('serviceWorker' in navigator) {
-        function sendConfigToSW(reg) {
-          const fbConfig = window.FIREBASE_CONFIG;
-          if (fbConfig && fbConfig.apiKey && reg.active) {
-            reg.active.postMessage({ type: 'FIREBASE_CONFIG', config: fbConfig });
-          }
-        }
-
-        navigator.serviceWorker.register('/firebase-messaging-sw.js')
-          .then((registration) => {
-            console.log('SW registered:', registration.scope);
-            sendConfigToSW(registration);
-            // Retry config when SW activates
-            registration.addEventListener('updatefound', () => {
-              const newWorker = registration.installing;
-              if (newWorker) {
-                newWorker.addEventListener('statechange', () => {
-                  if (newWorker.state === 'activated') {
-                    sendConfigToSW(registration);
-                  }
-                });
-              }
-            });
-          })
-          .catch((error) => {
-            console.error('SW registration failed:', error);
-          });
-
-        // Listen for config requests from SW
-        navigator.serviceWorker.addEventListener('message', (event) => {
-          if (event.data && event.data.type === 'REQUEST_FIREBASE_CONFIG' && event.source) {
-            const fbConfig = window.FIREBASE_CONFIG;
-            if (fbConfig && fbConfig.apiKey) {
-              event.source.postMessage({ type: 'FIREBASE_CONFIG', config: fbConfig });
-            }
-          }
-        });
-      }
-    </script>
   </body>
 </html>

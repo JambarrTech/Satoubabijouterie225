@@ -81,14 +81,7 @@ export async function sendPushNotification(message: PushMessage, userId?: string
         },
       },
       webpush: {
-        notification: {
-          icon: '/icons/icon-192.png',
-          badge: '/icons/badge-72.png',
-          image: message.imageUrl,
-          actions: [
-            { action: 'view', title: 'Voir' },
-          ],
-        },
+        data: { title: message.title, body: message.body, imageUrl: message.imageUrl || '', ...message.data },
       },
     });
 
@@ -132,7 +125,7 @@ export async function sendMulticastPushNotification(
         payload: { aps: { alert: { title, body }, badge: 1, sound: 'default', 'content-available': 1 } },
       },
       webpush: {
-        notification: { title, body, image: imageUrl, icon: '/logo.jpg' },
+        data: { title, body, imageUrl: imageUrl || '', ...data },
       },
     });
 
