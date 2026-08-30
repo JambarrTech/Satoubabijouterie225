@@ -49,7 +49,7 @@ export async function getFCMToken(): Promise<string | null> {
   if (!init) return null;
 
   const { messaging } = init;
-  const vapidKey = (import.meta as any).env.VITE_FIREBASE_VAPID_KEY;
+  const vapidKey = (import.meta as any).env.VITE_FIREBASE_VAPID_KEY || 'BOYz6u1atbyOe6VKwLD8Ea2tyTHNPh8ldGLpQhWmw8HyYCuzq6f92-ZJHqaLs91lwXfjNO6kxnPS1wZPGL9lFgI';
 
   try {
     const token = await getToken(messaging, { vapidKey });
