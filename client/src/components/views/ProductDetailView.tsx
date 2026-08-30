@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, Heart, Share2, ShieldCheck, Truck, MessageSquare, Check, ShoppingBag } from 'lucide-react';
 import { Product } from '../../types';
@@ -24,7 +24,7 @@ export function ProductDetailView({
   isFavorite
 }: ProductDetailViewProps) {
   const { toast } = useToast();
-  const [selectedImage, setSelectedImage] = useState(product.images?.[0] || ');
+  const [selectedImage, setSelectedImage] = useState(product.images?.[0] || '');
   const [imgError, setImgError] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [selectedSize, setSelectedSize] = useState('');

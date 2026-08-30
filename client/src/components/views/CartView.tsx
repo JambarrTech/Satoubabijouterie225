@@ -1,4 +1,4 @@
-﻿import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Trash2, ShoppingBag, ArrowRight, Check, Plus, Minus, Square, CheckSquare, MapPin, Phone, User } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Cart } from "../../types";
@@ -29,7 +29,7 @@ export function CartView({ cart, onUpdateCart, onNavigate, onRefreshCart }: Cart
     city: "",
     notes: ""
   });
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<Record<string, string | undefined>>({});
 
   useEffect(() => {
     setSelectedIds((prev: Set<string>) => {
@@ -101,7 +101,7 @@ export function CartView({ cart, onUpdateCart, onNavigate, onRefreshCart }: Cart
   };
 
   const validateShipping = (): boolean => {
-    const newErrors: Record<string, string> = {};
+    const newErrors: Record<string, string | undefined> = {};
     if (!shippingInfo.fullName.trim() || shippingInfo.fullName.trim().length < 2) {
       newErrors.fullName = "Nom complet requis (min. 2 caracteres)";
     }
