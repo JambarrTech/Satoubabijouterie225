@@ -1,15 +1,4 @@
 import { cpSync, rmSync, mkdirSync, existsSync } from 'fs';
-import { execSync } from 'child_process';
-
-// Bundle api/_index.ts → api/index.mjs (ESM avec createRequire pour les builtins Node)
-console.log('Bundling api/_index.ts → api/index.mjs (ESM + createRequire) ...');
-execSync(
-  'npx esbuild api/_index.ts --bundle --format=esm --platform=node ' +
-  '--banner:js="import{createRequire as __cr}from\'module\';const require=__cr(import.meta.url);" ' +
-  '--outfile=api/index.mjs --log-level=warning',
-  { stdio: 'inherit' }
-);
-console.log('api/index.mjs bundled');
 
 // Assemble les builds client + gérant dans ./dist (format Vercel)
 rmSync('dist', { recursive: true, force: true });
