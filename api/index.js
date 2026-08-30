@@ -35,7 +35,7 @@ __export(index_exports, {
 module.exports = __toCommonJS(index_exports);
 
 // backend/app.ts
-var import_express15 = __toESM(require("express"), 1);
+var import_express16 = __toESM(require("express"), 1);
 var import_cors = __toESM(require("cors"), 1);
 var import_path2 = __toESM(require("path"), 1);
 var import_fs2 = __toESM(require("fs"), 1);
@@ -2388,9 +2388,177 @@ router14.get("/api/health/live", (_req, res) => {
 });
 var health_default = router14;
 
+// backend/routes/sms.ts
+var import_express15 = require("express");
+var router15 = (0, import_express15.Router)();
+router15.post("/api/sms/send", authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { phone, message, userId } = req.body;
+    if (!phone || !message) {
+      return res.status(400).json({ error: "Telephone et message requis" });
+    }
+    if (message.length > 160) {
+      return res.status(400).json({ error: "Message trop long (max 160 caracteres)" });
+    }
+    const result = await sendSMS({ to: phone, message });
+    logger_default.info({
+      from: req.userId,
+      to: phone,
+      userId: userId || null,
+      success: result.success,
+      messageId: result.messageId
+    }, "Admin custom SMS sent");
+    if (result.success) {
+      res.json({ success: true, messageId: result.messageId });
+    } else {
+      res.status(500).json({ error: result.error || "Echec envoi SMS" });
+    }
+  } catch (error) {
+    logger_default.error({ err: error }, "SMS send error");
+    res.status(500).json({ error: "Erreur lors de l'envoi du SMS" });
+  }
+});
+router15.post("/api/sms/order-reply", authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { orderId, message } = req.body;
+    if (!orderId || !message) {
+      return res.status(400).json({ error: "Commande et message requis" });
+    }
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: { user: { select: { id: true, phone: true, name: true } } }
+    });
+    if (!order) {
+      return res.status(404).json({ error: "Commande non trouvee" });
+    }
+    const phone = order.user?.phone || order.phone;
+    if (!phone) {
+      return res.status(400).json({ error: "Pas de numero de telephone pour cette commande" });
+    }
+    const result = await sendSMS({ to: phone, message });
+    logger_default.info({
+      from: req.userId,
+      orderId,
+      customerId: order.user?.id,
+      phone,
+      success: result.success,
+      messageId: result.messageId
+    }, "Order reply SMS sent");
+    if (result.success) {
+      if (order.user?.id) {
+        await prisma.notification.create({
+          data: {
+            userId: order.user.id,
+            title: `Reponse SaTouba - Commande ${order.orderNumber}`,
+            message,
+            type: "ORDER"
+          }
+        });
+      }
+      res.json({ success: true, messageId: result.messageId });
+    } else {
+      res.status(500).json({ error: result.error || "Echec envoi SMS" });
+    }
+  } catch (error) {
+    logger_default.error({ err: error }, "Order reply SMS error");
+    res.status(500).json({ error: "Erreur lors de l'envoi du SMS" });
+  }
+});
+router15.post("/api/sms/custom-reply", authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { requestId, message } = req.body;
+    if (!requestId || !message) {
+      return res.status(400).json({ error: "Demande et message requis" });
+    }
+    const request = await prisma.customRequest.findUnique({
+      where: { id: requestId },
+      include: { user: { select: { id: true, phone: true, name: true } } }
+    });
+    if (!request) {
+      return res.status(404).json({ error: "Demande non trouvee" });
+    }
+    const phone = request.user?.phone;
+    if (!phone) {
+      return res.status(400).json({ error: "Pas de numero de telephone pour cette demande" });
+    }
+    const result = await sendSMS({ to: phone, message });
+    logger_default.info({
+      from: req.userId,
+      requestId,
+      customerId: request.user?.id,
+      phone,
+      success: result.success
+    }, "Custom request reply SMS sent");
+    if (result.success) {
+      if (request.user?.id) {
+        await prisma.notification.create({
+          data: {
+            userId: request.user.id,
+            title: "Reponse SaTouba - Demande sur-mesure",
+            message,
+            type: "CUSTOM"
+          }
+        });
+      }
+      res.json({ success: true, messageId: result.messageId });
+    } else {
+      res.status(500).json({ error: result.error || "Echec envoi SMS" });
+    }
+  } catch (error) {
+    logger_default.error({ err: error }, "Custom reply SMS error");
+    res.status(500).json({ error: "Erreur lors de l'envoi du SMS" });
+  }
+});
+router15.post("/api/sms/repair-reply", authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { requestId, message } = req.body;
+    if (!requestId || !message) {
+      return res.status(400).json({ error: "Demande et message requis" });
+    }
+    const request = await prisma.repairRequest.findUnique({
+      where: { id: requestId },
+      include: { user: { select: { id: true, phone: true, name: true } } }
+    });
+    if (!request) {
+      return res.status(404).json({ error: "Demande non trouvee" });
+    }
+    const phone = request.user?.phone;
+    if (!phone) {
+      return res.status(400).json({ error: "Pas de numero de telephone pour cette demande" });
+    }
+    const result = await sendSMS({ to: phone, message });
+    logger_default.info({
+      from: req.userId,
+      requestId,
+      customerId: request.user?.id,
+      phone,
+      success: result.success
+    }, "Repair reply SMS sent");
+    if (result.success) {
+      if (request.user?.id) {
+        await prisma.notification.create({
+          data: {
+            userId: request.user.id,
+            title: "Reponse SaTouba - Demande de reparation",
+            message,
+            type: "REPAIR"
+          }
+        });
+      }
+      res.json({ success: true, messageId: result.messageId });
+    } else {
+      res.status(500).json({ error: result.error || "Echec envoi SMS" });
+    }
+  } catch (error) {
+    logger_default.error({ err: error }, "Repair reply SMS error");
+    res.status(500).json({ error: "Erreur lors de l'envoi du SMS" });
+  }
+});
+var sms_default = router15;
+
 // backend/app.ts
 var import_meta2 = {};
-var app = (0, import_express15.default)();
+var app = (0, import_express16.default)();
 var __filename;
 var __dirname;
 try {
@@ -2433,8 +2601,8 @@ app.use((0, import_cors.default)({
   allowedHeaders: ["Content-Type", "Authorization"],
   maxAge: 86400
 }));
-app.use(import_express15.default.json({ limit: "1mb" }));
-app.use(import_express15.default.urlencoded({ extended: true, limit: "1mb" }));
+app.use(import_express16.default.json({ limit: "1mb" }));
+app.use(import_express16.default.urlencoded({ extended: true, limit: "1mb" }));
 function resolveUploadsDir() {
   if (process.env.UPLOADS_DIR) return process.env.UPLOADS_DIR;
   const cwdBackend = import_path2.default.join(process.cwd(), "backend", "uploads");
@@ -2448,11 +2616,12 @@ try {
   }
 } catch {
 }
-app.use("/uploads", import_express15.default.static(uploadsDir, {
+app.use("/uploads", import_express16.default.static(uploadsDir, {
   maxAge: "1y",
   etag: true
 }));
 app.use(health_default);
+app.use(sms_default);
 app.use(auth_default);
 app.use(categories_default);
 app.use(products_default);

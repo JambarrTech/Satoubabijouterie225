@@ -21,6 +21,7 @@ import publicRoutes from "./routes/public";
 import settingsRoutes from "./routes/settings";
 import uploadRoutes from "./routes/upload";
 import healthRoutes from "./routes/health";
+import smsRoutes from "./routes/sms";
 
 const app = express();
 // ESM + CJS compatible __dirname (esbuild cjs bundle leaves import.meta empty)
@@ -104,6 +105,7 @@ app.use('/uploads', express.static(uploadsDir, {
 
 // Health check
 app.use(healthRoutes);
+app.use(smsRoutes);
 
 // Mount all routes
 app.use(authRoutes);

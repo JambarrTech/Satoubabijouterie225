@@ -1,4 +1,4 @@
-﻿import axios from 'axios';
+import axios from 'axios';
 import logger from './logger';
 
 const AT_USERNAME = process.env.AFRICASTALKING_USERNAME || 'sandbox';
