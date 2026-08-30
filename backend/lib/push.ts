@@ -123,14 +123,16 @@ export async function sendMulticastPushNotification(
     const messaging = admin.messaging(app);
     const response = await messaging.sendEachForMulticast({
       tokens,
-      notification: { title, body, imageUrl },
-      data: data || {},
+      data: { title, body, imageUrl: imageUrl || '', ...data },
       android: {
         priority: 'high',
-        notification: { channelId: 'satouba_default', icon: 'ic_notification', color: '#0B5D1E' },
+        notification: { title, body, channelId: 'satouba_default', icon: 'ic_notification', color: '#0B5D1E' },
       },
       apns: {
-        payload: { aps: { alert: { title, body }, badge: 1, sound: 'default' } },
+        payload: { aps: { alert: { title, body }, badge: 1, sound: 'default', 'content-available': 1 } },
+      },
+      webpush: {
+        notification: { title, body, image: imageUrl, icon: '/logo.jpg' },
       },
     });
 

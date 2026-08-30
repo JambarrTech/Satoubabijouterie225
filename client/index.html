@@ -71,18 +71,42 @@
     <!-- Service Worker Registration for Push Notifications -->
     <script>
       if ('serviceWorker' in navigator) {
+        function sendConfigToSW(reg) {
+          const fbConfig = window.FIREBASE_CONFIG;
+          if (fbConfig && fbConfig.apiKey && reg.active) {
+            reg.active.postMessage({ type: 'FIREBASE_CONFIG', config: fbConfig });
+          }
+        }
+
         navigator.serviceWorker.register('/firebase-messaging-sw.js')
           .then((registration) => {
             console.log('SW registered:', registration.scope);
-            // Inject Firebase config into SW via postMessage
-            const fbConfig = window.FIREBASE_CONFIG;
-            if (fbConfig && fbConfig.apiKey && registration.active) {
-              registration.active.postMessage({ type: 'FIREBASE_CONFIG', config: fbConfig });
-            }
+            sendConfigToSW(registration);
+            // Retry config when SW activates
+            registration.addEventListener('updatefound', () => {
+              const newWorker = registration.installing;
+              if (newWorker) {
+                newWorker.addEventListener('statechange', () => {
+                  if (newWorker.state === 'activated') {
+                    sendConfigToSW(registration);
+                  }
+                });
+              }
+            });
           })
           .catch((error) => {
             console.error('SW registration failed:', error);
           });
+
+        // Listen for config requests from SW
+        navigator.serviceWorker.addEventListener('message', (event) => {
+          if (event.data && event.data.type === 'REQUEST_FIREBASE_CONFIG' && event.source) {
+            const fbConfig = window.FIREBASE_CONFIG;
+            if (fbConfig && fbConfig.apiKey) {
+              event.source.postMessage({ type: 'FIREBASE_CONFIG', config: fbConfig });
+            }
+          }
+        });
       }
     </script>
   </body>
