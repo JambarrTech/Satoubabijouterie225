@@ -1,4 +1,4 @@
-import{createRequire as __cr}from'module';const require=__cr(import.meta.url);
+import{createRequire as __cr}from'module';const require=__cr(import.meta.url);import{fileURLToPath as __ful}from'url';import{dirname as __dn}from'path';const __filename=__ful(import.meta.url);const __dirname=__dn(__filename);
 var __create = Object.create;
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
