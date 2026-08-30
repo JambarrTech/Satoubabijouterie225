@@ -16,7 +16,7 @@ declare global {
 }
 
 const FIREBASE_DEFAULTS = {
-  apiKey: 'AIzaSyB6tBRmQR69BzDMgz5yRbWgtVEVEtO6I3U',
+  apiKey: 'AIzaSyCJkM3D8Sv-1cjDfhIfp-tqt9bNB7l6H8Y',
   authDomain: 'plateformesatouba.firebaseapp.com',
   projectId: 'plateformesatouba',
   storageBucket: 'plateformesatouba.firebasestorage.app',
