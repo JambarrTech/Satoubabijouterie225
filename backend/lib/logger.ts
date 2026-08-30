@@ -1,11 +1,12 @@
 ﻿import pino from 'pino';
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 const logger = pino({
-  level: process.env.LOG_LEVEL || (process.env.NODE_ENV === 'production' ? 'info' : 'debug'),
-  // pino-pretty only in development; JSON logs in production for Cloud Run / ELK
-  transport: process.env.NODE_ENV !== 'production'
-    ? { target: 'pino-pretty', options: { colorize: true, translateTime: 'SYS:standard' } }
-    : undefined,
+  level: process.env.LOG_LEVEL || (isProduction ? 'info' : 'debug'),
+  // Disable pino-pretty transport entirely in bundled/serverless environments
+  // (worker-thread transport doesn't survive esbuild bundling)
+  transport: undefined,
   // Redact sensitive fields
   redact: {
     paths: ['req.headers.authorization', 'req.headers.cookie', 'password', 'token', 'FIREBASE_PRIVATE_KEY', 'JWT_SECRET', 'SMTP_PASS', 'AFRICASTALKING_API_KEY'],

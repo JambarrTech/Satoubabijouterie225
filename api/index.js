@@ -257275,10 +257275,12 @@ import { createRequire } from "module";
 
 // backend/lib/logger.ts
 var import_pino = __toESM(require_pino(), 1);
+var isProduction = process.env.NODE_ENV === "production";
 var logger = (0, import_pino.default)({
-  level: process.env.LOG_LEVEL || (process.env.NODE_ENV === "production" ? "info" : "debug"),
-  // pino-pretty only in development; JSON logs in production for Cloud Run / ELK
-  transport: process.env.NODE_ENV !== "production" ? { target: "pino-pretty", options: { colorize: true, translateTime: "SYS:standard" } } : void 0,
+  level: process.env.LOG_LEVEL || (isProduction ? "info" : "debug"),
+  // Disable pino-pretty transport entirely in bundled/serverless environments
+  // (worker-thread transport doesn't survive esbuild bundling)
+  transport: void 0,
   // Redact sensitive fields
   redact: {
     paths: ["req.headers.authorization", "req.headers.cookie", "password", "token", "FIREBASE_PRIVATE_KEY", "JWT_SECRET", "SMTP_PASS", "AFRICASTALKING_API_KEY"],
