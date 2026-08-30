@@ -300,9 +300,6 @@ async function sendSMS(options) {
       to: phone,
       message: options.message
     };
-    if (AT_USERNAME !== "sandbox" && !AT_USERNAME.startsWith("sandbox")) {
-      params.from = options.senderId || AT_SENDER_ID;
-    }
     const response = await import_axios.default.post(
       `${AT_BASE_URL}/version1/messaging`,
       new URLSearchParams(params),

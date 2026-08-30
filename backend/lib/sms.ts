@@ -73,10 +73,6 @@ export async function sendSMS(options: SMSOptions): Promise<SMSResponse> {
       to: phone,
       message: options.message,
     };
-    // Only include sender ID in production (sandbox doesn't support it)
-    if (AT_USERNAME !== 'sandbox' && !AT_USERNAME.startsWith('sandbox')) {
-      params.from = options.senderId || AT_SENDER_ID;
-    }
 
     const response = await axios.post(
       `${AT_BASE_URL}/version1/messaging`,
@@ -159,9 +155,6 @@ export async function sendBulkSMS(phones: string[], message: string, senderId?: 
       to: formattedPhones,
       message,
     };
-    if (AT_USERNAME !== 'sandbox' && !AT_USERNAME.startsWith('sandbox')) {
-      bulkParams.from = senderId || AT_SENDER_ID;
-    }
 
     const response = await axios.post(
       `${AT_BASE_URL}/version1/messaging`,
