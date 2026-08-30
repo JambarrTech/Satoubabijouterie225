@@ -9,8 +9,8 @@ import logger from '../lib/logger';
 const router = Router();
 
 const ALLOWED_PROFILE_FIELDS = ['name', 'phone', 'address', 'city', 'country', 'avatar'];
-const MAX_FAILED_ATTEMPTS = 5;
-const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
+const MAX_FAILED_ATTEMPTS = 8;
+const LOCKOUT_DURATION_MS = 10 * 60 * 1000; // 10 minutes
 const PASSWORD_RESET_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes (OTP par SMS)
 const GERANT_IDENTIFIER = process.env.GERANT_IDENTIFIER || 'gerantSatoubaBijouterie6002';
 
@@ -28,7 +28,7 @@ function isStrongPassword(password: string): { valid: boolean; error?: string } 
 }
 
 // Register (rate limited: 5 per minute)
-router.post('/api/auth/register', rateLimit(5, 60_000), async (req, res) => {
+router.post('/api/auth/register', rateLimit(15, 60_000), async (req, res) => {
   try {
     const { name, identifier, password, phone } = req.body;
 
@@ -70,7 +70,7 @@ router.post('/api/auth/register', rateLimit(5, 60_000), async (req, res) => {
 });
 
 // Login (rate limited: 10 per minute, with account lockout)
-router.post('/api/auth/login', rateLimit(10, 60_000), async (req, res) => {
+router.post('/api/auth/login', rateLimit(30, 60_000), async (req, res) => {
   try {
     const { identifier, password } = req.body;
 
@@ -117,7 +117,7 @@ router.post('/api/auth/login', rateLimit(10, 60_000), async (req, res) => {
         return res.status(401).json({ error: `Identifiant ou mot de passe incorrect. ${remaining} tentative${remaining > 1 ? 's' : ''} restante${remaining > 1 ? 's' : ''}.` });
       }
       return res.status(423).json({
-        error: 'Compte temporairement verrouillé après 5 tentatives échouées. Réessayez dans 15 minutes.',
+        error: 'Compte temporairement verrouillé après 8 tentatives échouées. Réessayez dans 10 minutes.',
         lockedUntil: updateData.lockedUntil.toISOString(),
       });
     }
@@ -140,7 +140,7 @@ router.post('/api/auth/login', rateLimit(10, 60_000), async (req, res) => {
 });
 
 // Gerant login (fixed identifier: gerantSatoubaBijouterie6002)
-router.post('/api/auth/login-gerant', rateLimit(10, 60_000), async (req, res) => {
+router.post('/api/auth/login-gerant', rateLimit(30, 60_000), async (req, res) => {
   try {
     const { identifier, password } = req.body;
     const loginId = identifier || GERANT_IDENTIFIER;
@@ -187,7 +187,7 @@ router.post('/api/auth/login-gerant', rateLimit(10, 60_000), async (req, res) =>
         return res.status(401).json({ error: `Identifiant ou mot de passe incorrect. ${remaining} tentative${remaining > 1 ? 's' : ''} restante${remaining > 1 ? 's' : ''}.` });
       }
       return res.status(423).json({
-        error: 'Compte temporairement verrouillé après 5 tentatives échouées. Réessayez dans 15 minutes.',
+        error: 'Compte temporairement verrouillé après 8 tentatives échouées. Réessayez dans 10 minutes.',
         lockedUntil: updateData.lockedUntil.toISOString(),
       });
     }
@@ -295,7 +295,7 @@ router.post('/api/auth/change-password', authenticateToken, async (req: AuthRequ
 });
 
 // Request password reset — sends OTP by SMS
-router.post('/api/auth/forgot-password', rateLimit(3, 60_000), async (req, res) => {
+router.post('/api/auth/forgot-password', rateLimit(10, 60_000), async (req, res) => {
   try {
     const { phone } = req.body;
 
@@ -342,7 +342,7 @@ router.post('/api/auth/forgot-password', rateLimit(3, 60_000), async (req, res) 
 });
 
 // Reset password with OTP (rate limited: 5 per minute)
-router.post('/api/auth/reset-password', rateLimit(5, 60_000), async (req, res) => {
+router.post('/api/auth/reset-password', rateLimit(15, 60_000), async (req, res) => {
   try {
     const { phone, otp, newPassword } = req.body;
 

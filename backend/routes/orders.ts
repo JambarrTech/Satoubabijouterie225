@@ -90,7 +90,7 @@ router.get('/api/orders/:id', authenticateToken, async (req: AuthRequest, res) =
 
 // Create order (rate limited: 10 per minute)
 // Body peut contenir `cartItemIds?: string[]` pour commander 1 ou N articles selectionnes
-router.post('/api/orders', authenticateToken, rateLimit(10, 60_000), async (req: AuthRequest, res) => {
+router.post('/api/orders', authenticateToken, rateLimit(30, 60_000), async (req: AuthRequest, res) => {
   try {
     const { shippingAddress, cartItemIds } = req.body;
 

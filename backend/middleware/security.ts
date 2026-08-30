@@ -52,11 +52,11 @@ export function setupSecurity(app: Express) {
   });
 
   // Stricter rate limit for auth endpoints
-  const authRateLimit = rateLimit(15, 60 * 1000);
+  const authRateLimit = rateLimit(30, 60 * 1000);
   app.use('/api/auth', authRateLimit);
 
   // Rate limit for order creation
-  const orderRateLimit = rateLimit(10, 60 * 1000);
+  const orderRateLimit = rateLimit(30, 60 * 1000);
   app.use('/api/orders', orderRateLimit);
 
   // Rate limit for uploads
