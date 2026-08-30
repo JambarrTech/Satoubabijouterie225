@@ -150,7 +150,7 @@ export function GerantOverview() {
                     <td className="py-4">
                       <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${order.status === "DELIVERED" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
                         {order.status === 'DELIVERED' ? <CheckCircle size={12} /> : <Clock size={12} />}
-                        {order.status === 'DELIVERED' ? 'Livre' : order.status === 'SHIPPED' ? 'Expédie' : order.status === 'CANCELLED' ? 'Annule' : order.status === 'PREPARING' ? 'En Atelier' : 'Confirmee'}
+                        {order.status === 'DELIVERED' ? 'Livrée' : order.status === 'SHIPPED' ? 'Expédiée' : order.status === 'CANCELLED' ? 'Annulée' : order.status === 'PREPARING' ? 'En atelier' : 'Confirmée'}
                       </span>
                     </td>
                   </tr>

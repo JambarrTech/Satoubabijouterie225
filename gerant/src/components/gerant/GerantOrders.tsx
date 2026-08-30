@@ -26,10 +26,20 @@ export function GerantOrders() {
     try {
       await apiPut(`/api/orders/${orderId}/status`, { status: newStatus });
       fetchOrders();
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || err?.message || 'Erreur lors de la mise a jour du statut';
+      alert(msg);
     }
   };
+
+  
+const ALLOWED_TRANSITIONS: Record<string, string[]> = {
+  CONFIRMED: ['PREPARING', 'CANCELLED'],
+  PREPARING: ['SHIPPED', 'CANCELLED'],
+  SHIPPED: ['DELIVERED', 'CANCELLED'],
+  DELIVERED: [],
+  CANCELLED: [],
+};
 
   const statusConfig: Record<string, { label: string; color: string }> = {
     CONFIRMED: { label: 'Confirmée', color: 'bg-amber-50 text-amber-800 border-amber-200' },
@@ -78,8 +88,8 @@ export function GerantOrders() {
                   onChange={(e) => handleStatusChange(order.id, e.target.value)}
                   className={`text-xs font-semibold px-3 py-2 rounded-xl border focus:outline-none ${statusConfig[order.status]?.color || 'bg-gray-50 text-gray-800 border-gray-200'}`}
                 >
-                  {Object.entries(statusConfig).map(([value, cfg]) => (
-                    <option key={value} value={value}>{cfg.label}</option>
+                  {[order.status, ...(ALLOWED_TRANSITIONS[order.status] || [])].map((value) => (
+                    <option key={value} value={value}>{statusConfig[value]?.label || value}</option>
                   ))}
                 </select>
               </div>
