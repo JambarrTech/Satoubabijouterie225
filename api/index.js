@@ -2407,7 +2407,7 @@ var import_multer = __toESM(require("multer"), 1);
 var import_path = __toESM(require("path"), 1);
 var import_fs = __toESM(require("fs"), 1);
 var import_url = require("url");
-var import_uuid = require("uuid");
+var import_crypto2 = __toESM(require("crypto"), 1);
 var import_client2 = require("@vercel/blob/client");
 var import_meta = {};
 var router13 = (0, import_express13.Router)();
@@ -2464,7 +2464,7 @@ var storage = import_multer.default.diskStorage({
   destination: uploadsDir,
   filename: (_req, file, cb) => {
     const ext = import_path.default.extname(file.originalname).toLowerCase();
-    cb(null, `${(0, import_uuid.v4)()}${ext}`);
+    cb(null, `${import_crypto2.default.randomUUID()}${ext}`);
   }
 });
 var upload = (0, import_multer.default)({

@@ -3,7 +3,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { v4 as uuid } from 'uuid';
+import crypto from 'crypto';
 import { authenticateToken, requireAdmin } from '../middleware/auth';
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 
@@ -75,7 +75,7 @@ const storage = multer.diskStorage({
   destination: uploadsDir,
   filename: (_req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
-    cb(null, `${uuid()}${ext}`);
+    cb(null, `${crypto.randomUUID()}${ext}`);
   },
 });
 
