@@ -1727,8 +1727,8 @@ router5.post("/api/orders", authenticateToken, rateLimit(10, 6e4), async (req, r
     const order = await prisma.$transaction(async (tx) => {
       for (const item of itemsToOrder) {
         const result = await tx.$executeRaw`
-          UPDATE product SET stockQuantity = stockQuantity - ${item.quantity}
-          WHERE id = ${item.productId} AND stockQuantity >= ${item.quantity}
+          UPDATE "Product" SET "stockQuantity" = "stockQuantity" - ${item.quantity}
+          WHERE "id" = ${item.productId} AND "stockQuantity" >= ${item.quantity}
         `;
         if (result === 0) {
           const product = await tx.product.findUnique({

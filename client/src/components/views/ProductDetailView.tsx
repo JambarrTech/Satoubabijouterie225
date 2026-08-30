@@ -24,7 +24,8 @@ export function ProductDetailView({
   isFavorite
 }: ProductDetailViewProps) {
   const { toast } = useToast();
-  const [selectedImage, setSelectedImage] = useState(product.images[0]);
+  const [selectedImage, setSelectedImage] = useState(product.images?.[0] || ');
+  const [imgError, setImgError] = useState(false);
   const [quantity, setQuantity] = useState(1);
   const [selectedSize, setSelectedSize] = useState('');
   const [settings, setSettings] = useState<StoreSettings | null>(null);
@@ -102,7 +103,7 @@ export function ProductDetailView({
             <AnimatePresence mode="wait">
               <motion.img
                 key={selectedImage}
-                src={selectedImage}
+                src={imgError ? '/placeholder.svg' : (selectedImage || '/placeholder.svg')}
                 alt={product.name}
                 initial={{ opacity: 0, scale: 1.05 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -110,6 +111,7 @@ export function ProductDetailView({
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
                 className="w-full h-full object-cover"
                 referrerPolicy="no-referrer"
+                onError={() => setImgError(true)}
               />
             </AnimatePresence>
             {product.isPromo && <div className="absolute top-4 left-4"><Badge variant="gold">Promotion</Badge></div>}
@@ -125,7 +127,7 @@ export function ProductDetailView({
                     selectedImage === img ? 'border-[#0B5D1E] scale-105 shadow-md' : 'border-gray-200 opacity-70'
                   }`}
                 >
-                  <img src={img} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  <img src={img || '/placeholder.svg'} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }} />
                 </button>
               ))}
             </div>

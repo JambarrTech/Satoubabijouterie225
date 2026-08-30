@@ -23,6 +23,7 @@ export function ProductCard({
   onAddToCart
 }: ProductCardProps) {
   const [imgLoaded, setImgLoaded] = useState(false);
+  const [imgError, setImgError] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
   const { toast } = useToast();
 
@@ -56,10 +57,11 @@ export function ProductCard({
           <div className="absolute inset-0 bg-gradient-to-r from-gray-100 via-gray-50 to-gray-100 animate-pulse" />
         )}
         <img
-          src={product.images[0]}
+          src={imgError ? '/placeholder.svg' : (product.images?.[0] || '/placeholder.svg')}
           alt={product.name}
           loading="lazy"
           onLoad={() => setImgLoaded(true)}
+          onError={() => setImgError(true)}
           className={`w-full h-full object-cover object-center group-hover:scale-110 transition-all duration-700 ease-out ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
           referrerPolicy="no-referrer"
         />

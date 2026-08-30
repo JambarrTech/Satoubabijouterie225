@@ -242,7 +242,7 @@ export function HomeView({
             className="bg-gradient-to-r from-[#0B5D1E] to-[#064A15] rounded-3xl p-6 sm:p-10 text-white relative overflow-hidden shadow-xl"
           >
             <div className="absolute right-0 top-0 bottom-0 w-1/2 opacity-20 hidden md:block">
-              <img src={promoProducts[0].images[0]} alt="Promo" className="w-full h-full object-cover" />
+              <img src={promoProducts[0].images?.[0] || '/placeholder.svg'} alt="Promo" onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }} className="w-full h-full object-cover" />
             </div>
             <div className="relative z-10 max-w-xl space-y-4">
               <span className="px-3 py-1 rounded-full bg-[#D9A441] text-white text-xs font-bold uppercase tracking-wider">

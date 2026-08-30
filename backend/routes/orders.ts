@@ -138,8 +138,8 @@ router.post('/api/orders', authenticateToken, rateLimit(10, 60_000), async (req:
       // Atomic stock check + decrement (prevents overselling)
       for (const item of itemsToOrder) {
         const result = await tx.$executeRaw`
-          UPDATE product SET stockQuantity = stockQuantity - ${item.quantity}
-          WHERE id = ${item.productId} AND stockQuantity >= ${item.quantity}
+          UPDATE "Product" SET "stockQuantity" = "stockQuantity" - ${item.quantity}
+          WHERE "id" = ${item.productId} AND "stockQuantity" >= ${item.quantity}
         `;
         if (result === 0) {
           const product = await tx.product.findUnique({

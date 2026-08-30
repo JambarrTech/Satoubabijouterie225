@@ -128,10 +128,11 @@ export function SearchModal({ isOpen, onClose, onSelectProduct }: SearchModalPro
                     className="flex items-center gap-4 p-3 bg-white/95 rounded-xl hover:bg-white transition-colors cursor-pointer shadow-sm group"
                   >
                     <img
-                      src={product.images[0]}
+                      src={product.images?.[0] || '/placeholder.svg'}
                       alt={product.name}
                       className="w-16 h-16 rounded-lg object-cover"
                       referrerPolicy="no-referrer"
+                      onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }}
                     />
                     <div className="flex-1">
                       <span className="text-[10px] text-gray-400 uppercase font-semibold">{product.material || 'Bijou SaTouba'}</span>
