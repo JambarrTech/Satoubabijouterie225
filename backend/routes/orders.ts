@@ -234,11 +234,11 @@ router.put('/api/orders/:id/status', authenticateToken, requireAdmin, async (req
     const currentHistory = safeJsonParse(existingOrder.statusHistory as string, []);
 
     const statusLabels: Record<string, string> = {
-      CONFIRMED: 'Commande confirmee',
-      PREPARING: 'En cours de fabrication',
-      SHIPPED: 'Expediee',
-      DELIVERED: 'Livree',
-      CANCELLED: 'Annulee',
+      CONFIRMED: 'Confirmée',
+      PREPARING: 'En atelier',
+      SHIPPED: 'Expédiée',
+      DELIVERED: 'Livrée',
+      CANCELLED: 'Annulée',
     };
 
     const newEntry = {

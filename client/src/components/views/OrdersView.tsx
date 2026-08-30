@@ -82,8 +82,8 @@ export function OrdersView() {
               >
                 <div className="flex items-center justify-between mb-2">
                   <span className="font-serif font-bold text-sm text-gray-900">{order.orderNumber}</span>
-                  <Badge variant={order.status === 'SHIPPED' ? 'gold' : 'primary'}>
-                    {order.status === 'SHIPPED' ? 'Expédié' : order.status === 'CONFIRMED' ? 'Confirmé' : order.status === 'DELIVERED' ? 'Livré' : order.status === 'CANCELLED' ? 'Annulé' : order.status === 'PREPARING' ? 'En atelier' : order.status}
+                  <Badge variant={order.status === 'SHIPPED' ? 'gold' : order.status === 'CANCELLED' ? 'outline' : order.status === 'DELIVERED' ? 'success' : 'primary'}>
+                    {order.status === 'SHIPPED' ? 'Expédiée' : order.status === 'CONFIRMED' ? 'Confirmée' : order.status === 'DELIVERED' ? 'Livrée' : order.status === 'CANCELLED' ? 'Annulée' : order.status === 'PREPARING' ? 'En atelier' : order.status}
                   </Badge>
                 </div>
                 <p className="text-xs text-gray-500 mb-3">
