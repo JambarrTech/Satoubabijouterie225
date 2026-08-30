@@ -3,13 +3,16 @@ import { prisma } from '../lib/prisma';
 import { authenticateToken, requireAdmin, AuthRequest } from '../middleware/auth';
 
 const router = Router();
+const HIDDEN_KEYS = ['email'];
 
 // Public: get all store settings
 router.get('/api/store-settings', async (_req, res) => {
   try {
     const settings = await prisma.storeSettings.findMany();
     const result: Record<string, string> = {};
-    settings.forEach((s) => { result[s.key] = s.value; });
+    settings.forEach((s) => {
+      if (!HIDDEN_KEYS.includes(s.key)) result[s.key] = s.value;
+    });
     res.json(result);
   } catch {
     res.status(500).json({ error: 'Erreur' });
@@ -21,6 +24,7 @@ router.put('/api/store-settings', authenticateToken, requireAdmin, async (req: A
   try {
     const updates = req.body as Record<string, string>;
     for (const [key, value] of Object.entries(updates)) {
+      if (HIDDEN_KEYS.includes(key)) continue;
       await prisma.storeSettings.upsert({
         where: { key },
         update: { value },
@@ -29,7 +33,9 @@ router.put('/api/store-settings', authenticateToken, requireAdmin, async (req: A
     }
     const settings = await prisma.storeSettings.findMany();
     const result: Record<string, string> = {};
-    settings.forEach((s) => { result[s.key] = s.value; });
+    settings.forEach((s) => {
+      if (!HIDDEN_KEYS.includes(s.key)) result[s.key] = s.value;
+    });
     res.json(result);
   } catch {
     res.status(500).json({ error: 'Erreur' });

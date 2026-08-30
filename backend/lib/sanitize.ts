@@ -32,7 +32,3 @@ export function isValidPhone(phone: string): boolean {
   const cleaned = phone.replace(/\D/g, '');
   return cleaned.length >= 8 && cleaned.length <= 15;
 }
-
-export function isValidEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}

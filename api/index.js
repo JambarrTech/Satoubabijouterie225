@@ -53,7 +53,7 @@ var logger = (0, import_pino.default)({
   transport: void 0,
   // Redact sensitive fields
   redact: {
-    paths: ["req.headers.authorization", "req.headers.cookie", "password", "token", "FIREBASE_PRIVATE_KEY", "JWT_SECRET", "SMTP_PASS", "AFRICASTALKING_API_KEY"],
+    paths: ["req.headers.authorization", "req.headers.cookie", "password", "token", "FIREBASE_PRIVATE_KEY", "JWT_SECRET", "AFRICASTALKING_API_KEY"],
     censor: "[REDACTED]"
   },
   base: {
@@ -2367,12 +2367,13 @@ var public_default = router11;
 // backend/routes/settings.ts
 var import_express12 = require("express");
 var router12 = (0, import_express12.Router)();
+var HIDDEN_KEYS = ["email"];
 router12.get("/api/store-settings", async (_req, res) => {
   try {
     const settings = await prisma.storeSettings.findMany();
     const result = {};
     settings.forEach((s) => {
-      result[s.key] = s.value;
+      if (!HIDDEN_KEYS.includes(s.key)) result[s.key] = s.value;
     });
     res.json(result);
   } catch {
@@ -2383,6 +2384,7 @@ router12.put("/api/store-settings", authenticateToken, requireAdmin, async (req,
   try {
     const updates = req.body;
     for (const [key, value] of Object.entries(updates)) {
+      if (HIDDEN_KEYS.includes(key)) continue;
       await prisma.storeSettings.upsert({
         where: { key },
         update: { value },
@@ -2392,7 +2394,7 @@ router12.put("/api/store-settings", authenticateToken, requireAdmin, async (req,
     const settings = await prisma.storeSettings.findMany();
     const result = {};
     settings.forEach((s) => {
-      result[s.key] = s.value;
+      if (!HIDDEN_KEYS.includes(s.key)) result[s.key] = s.value;
     });
     res.json(result);
   } catch {

@@ -1,4 +1,4 @@
-﻿import pino from 'pino';
+import pino from 'pino';
 
 const isProduction = process.env.NODE_ENV === 'production';
 
@@ -9,7 +9,7 @@ const logger = pino({
   transport: undefined,
   // Redact sensitive fields
   redact: {
-    paths: ['req.headers.authorization', 'req.headers.cookie', 'password', 'token', 'FIREBASE_PRIVATE_KEY', 'JWT_SECRET', 'SMTP_PASS', 'AFRICASTALKING_API_KEY'],
+    paths: ['req.headers.authorization', 'req.headers.cookie', 'password', 'token', 'FIREBASE_PRIVATE_KEY', 'JWT_SECRET', 'AFRICASTALKING_API_KEY'],
     censor: '[REDACTED]',
   },
   base: {

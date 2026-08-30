@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Phone, Mail, MapPin, ShieldCheck, Truck, Clock, Instagram, MessageSquare } from 'lucide-react';
+import { Phone, MapPin, ShieldCheck, Truck, Clock, Instagram, MessageSquare } from 'lucide-react';
 import { fetchStoreSettings, StoreSettings } from '../../lib/api/settings';
 
 interface FooterProps {
@@ -115,10 +115,6 @@ export function Footer({ onNavigate }: FooterProps) {
                   {settings?.phone_secondary && <span>{settings.phone_secondary}</span>}
                   {settings?.phone_tertiary && <span>{settings.phone_tertiary}</span>}
                 </div>
-              </li>
-              <li className="flex items-center gap-2.5">
-                <Mail size={16} className="text-[#D9A441] shrink-0" />
-                <span>{settings?.email || 'contact@satouba-bijouterie.ci'}</span>
               </li>
               {settings?.instagram && (
                 <li className="flex items-center gap-2.5">

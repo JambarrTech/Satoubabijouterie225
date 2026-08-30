@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { MessageSquare, Phone, Mail, MapPin, Sparkles } from 'lucide-react';
+import { MessageSquare, Phone, MapPin, Sparkles } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { fetchStoreSettings, StoreSettings } from '../../lib/api/settings';
 
@@ -66,10 +66,6 @@ export function ChatView() {
             <li className="flex items-center gap-3">
               <Phone size={20} className="text-[#0B5D1E] shrink-0" />
               <span>{settings?.phone_main} / {settings?.phone_secondary}</span>
-            </li>
-            <li className="flex items-center gap-3">
-              <Mail size={20} className="text-[#0B5D1E] shrink-0" />
-              <span>{settings?.email}</span>
             </li>
           </ul>
 

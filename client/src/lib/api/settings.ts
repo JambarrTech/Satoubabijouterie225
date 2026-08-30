@@ -10,7 +10,6 @@ export interface StoreSettings {
   phone_tertiary: string;
   whatsapp: string;
   instagram: string;
-  email: string;
   opening_hours: string;
   currency: string;
   shipping_fee: number;

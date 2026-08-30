@@ -1,4 +1,4 @@
-﻿# Déploiement — Vercel (frontend + backend serverless) + Neon (PostgreSQL)
+# Déploiement — Vercel (frontend + backend serverless) + Neon (PostgreSQL)
 
 Ce guide décrit comment déployer la plateforme SaTouba en production : Vercel pour le
 frontend React et le backend Express (serverless), Neon pour la base PostgreSQL, Vercel Blob
@@ -44,10 +44,9 @@ Dans le projet, ajouter (Project Settings → Environment Variables, scope Produ
 | `COUNTRY_CODE` | `225` (Côte d'Ivoire) |
 | `CONTACT_PHONE` | Ex. `+225 07 47 13 52 01` |
 
-### Firestore / Push / SMTP / SMS
+### Firestore / Push / SMS
 - `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` (Admin SDK) +
   les `VITE_FIREBASE_*` (frontend).
-- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM` (Nodemailer).
 - `AFRICASTALKING_USERNAME`, `AFRICASTALKING_API_KEY`, `AFRICASTALKING_SENDER_ID`.
 
 > Les variables préfixées `VITE_` doivent étre définies **avec** leur valeur réelle dans
