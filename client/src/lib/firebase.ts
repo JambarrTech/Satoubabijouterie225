@@ -21,8 +21,8 @@ const FIREBASE_DEFAULTS = {
   projectId: 'plateformesatouba',
   storageBucket: 'plateformesatouba.firebasestorage.app',
   messagingSenderId: '758245641576',
-  appId: '1:758245641576:web:5bfab6e8017a355afc5add',
-  measurementId: 'G-HWFY9LFXN1',
+  appId: '1:758245641576:web:b035eddece1f23b6fc5add',
+  measurementId: 'G-BT229N1P1E',
 };
 
 const getFirebaseConfig = () => {
