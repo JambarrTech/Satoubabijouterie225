@@ -40,7 +40,8 @@ export function setupForegroundHandler(onMessage: (payload: any) => void) {
   }
   initFirebase().then((fb) => {
     if (fb?.messaging) {
-      messageListener = onForegroundMessage(onMessage);
+      const unsub = onForegroundMessage(onMessage);
+      if (unsub) messageListener = unsub;
     }
   });
 }

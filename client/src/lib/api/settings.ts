@@ -8,9 +8,9 @@ export interface StoreSettings {
   phone_main: string;
   phone_secondary: string;
   phone_tertiary: string;
-  email: string;
   whatsapp: string;
   instagram: string;
+  email: string;
   opening_hours: string;
   currency: string;
   shipping_fee: number;
