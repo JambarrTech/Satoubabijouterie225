@@ -1,37 +1,52 @@
-import { useState, useEffect } from 'react';
-import { GerantLogin } from './components/auth/GerantLogin';
-import { GerantDashboard } from './components/gerant/GerantDashboard';
-import { ToastProvider } from './components/ui/Toast';
-import { User } from './types';
+import { useState, useEffect } from "react";
+import { GerantLogin } from "./components/auth/GerantLogin";
+import { GerantDashboard } from "./components/gerant/GerantDashboard";
+import { ToastProvider } from "./components/ui/Toast";
+import { User } from "./types";
+import { registerPushNotifications, setupForegroundHandler, clearForegroundHandler } from "./lib/notifications";
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    const savedToken = localStorage.getItem('satouba_gerant_token');
-    const savedUser = localStorage.getItem('satouba_gerant_user');
+    const savedToken = localStorage.getItem("satouba_gerant_token");
+    const savedUser = localStorage.getItem("satouba_gerant_user");
     if (savedToken && savedUser) {
       try {
         const parsedUser = JSON.parse(savedUser) as User;
-        if (parsedUser.role === 'ADMIN') {
+        if (parsedUser.role === "ADMIN") {
           setUser(parsedUser);
         }
       } catch {
-        localStorage.removeItem('satouba_gerant_token');
-        localStorage.removeItem('satouba_gerant_user');
+        localStorage.removeItem("satouba_gerant_token");
+        localStorage.removeItem("satouba_gerant_user");
       }
     }
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+
+    registerPushNotifications(user.id).catch(() => {});
+
+    setupForegroundHandler((payload) => {
+      console.log("Push notification received (gerant):", payload);
+    });
+
+    return () => {
+      clearForegroundHandler();
+    };
+  }, [user]);
 
   const handleLogin = (loggedInUser: User, _token: string) => {
     setUser(loggedInUser);
   };
 
   const handleSwitchToClient = () => {
-    window.location.href = '/';
+    window.location.href = "/";
   };
 
-  if (!user || user.role !== 'ADMIN') {
+  if (!user || user.role !== "ADMIN") {
     return (
       <ToastProvider>
         <GerantLogin onLogin={handleLogin} />

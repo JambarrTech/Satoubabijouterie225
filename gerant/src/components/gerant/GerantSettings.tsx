@@ -8,7 +8,7 @@ import { fetchStoreSettings, StoreSettings } from '../../lib/api/settings';
 export function GerantSettings() {
   const [settings, setSettings] = useState<StoreSettings | null>(null);
   const [editingSettings, setEditingSettings] = useState(false);
-  const [settingsForm, setSettingsForm] = useState({ brand_name: '', address: '', phone_main: '', phone_secondary: '', phone_tertiary: '', email: '', instagram: '', whatsapp: '', shipping_fee: '', free_shipping_threshold: '', tagline: '', description: '' });
+  const [settingsForm, setSettingsForm] = useState({ brand_name: '', address: '', phone_main: '', phone_secondary: '', phone_tertiary: '', instagram: '', whatsapp: '', shipping_fee: '', free_shipping_threshold: '', tagline: '', description: '' });
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -20,7 +20,6 @@ export function GerantSettings() {
         phone_main: s?.phone_main || '',
         phone_secondary: s?.phone_secondary || '',
         phone_tertiary: s?.phone_tertiary || '',
-        email: s?.email || '',
         instagram: s?.instagram || '',
         whatsapp: s?.whatsapp || '',
         shipping_fee: s?.shipping_fee != null ? String(s.shipping_fee) : '',
@@ -67,7 +66,7 @@ export function GerantSettings() {
               <Button size="sm" onClick={handleSaveSettings} icon={<Check size={14} />}>Sauvegarder</Button>
               <Button variant="outline" size="sm" onClick={() => { setEditingSettings(false); setSettingsForm({
                 brand_name: settings?.brand_name || '', address: settings?.address || '', phone_main: settings?.phone_main || '',
-                phone_secondary: settings?.phone_secondary || '', phone_tertiary: settings?.phone_tertiary || '', email: settings?.email || '',
+                phone_secondary: settings?.phone_secondary || '', phone_tertiary: settings?.phone_tertiary || '',
                 instagram: settings?.instagram || '', whatsapp: settings?.whatsapp || '', shipping_fee: settings?.shipping_fee != null ? String(settings.shipping_fee) : '',
                 free_shipping_threshold: settings?.free_shipping_threshold != null ? String(settings.free_shipping_threshold) : '', tagline: settings?.tagline || '', description: settings?.description || '',
               }); }}>Annuler</Button>
@@ -82,7 +81,6 @@ export function GerantSettings() {
             <Input label="Téléphone principal" value={settingsForm.phone_main} onChange={e => setSettingsForm({ ...settingsForm, phone_main: e.target.value })} />
             <Input label="Téléphone 2" value={settingsForm.phone_secondary} onChange={e => setSettingsForm({ ...settingsForm, phone_secondary: e.target.value })} />
             <Input label="Téléphone 3" value={settingsForm.phone_tertiary} onChange={e => setSettingsForm({ ...settingsForm, phone_tertiary: e.target.value })} />
-            <Input label="Email" value={settingsForm.email} onChange={e => setSettingsForm({ ...settingsForm, email: e.target.value })} />
             <Input label="Instagram" value={settingsForm.instagram} onChange={e => setSettingsForm({ ...settingsForm, instagram: e.target.value })} />
             <Input label="WhatsApp" value={settingsForm.whatsapp} onChange={e => setSettingsForm({ ...settingsForm, whatsapp: e.target.value })} />
             <Input label="Frais de livraison (FCFA)" type="number" value={settingsForm.shipping_fee} onChange={e => setSettingsForm({ ...settingsForm, shipping_fee: e.target.value })} />
