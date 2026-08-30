@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeft, Heart, Share2, ShieldCheck, Truck, MessageSquare, Check, ShoppingBag } from 'lucide-react';
 import { Product } from '../../types';
@@ -38,7 +38,7 @@ export function ProductDetailView({
   const handleWhatsApp = () => {
     const phone = settings?.whatsapp || '221055413074';
     const brandName = settings?.brand_name || 'SaTouba Bijouterie';
-    const text = encodeURIComponent(`Bonjour ${brandName}, je suis intéressé(e) par le bijou : "${product.name}" (${product.price.toLocaleString()} FCFA). Est-il disponible ?`);
+    const text = encodeURIComponent(`Bonjour ${brandName}, je suis intÃ©ressÃ©(e) par le bijou : "${product.name}" (${product.price.toLocaleString()} FCFA). Est-il disponible ?`);
     window.open(`https://wa.me/${phone}?text=${text}`, '_blank');
   };
 
@@ -137,7 +137,7 @@ export function ProductDetailView({
         <div className="lg:col-span-5 space-y-6">
           <div>
             <span className="text-xs uppercase tracking-widest text-[#0B5D1E] font-semibold mb-2 block">
-              {product.material || 'Haute Joaillerie'} {product.collection ? `• Collection ${product.collection}` : ''}
+              {product.material || 'Haute Joaillerie'} {product.collection ? `â€¢ Collection ${product.collection}` : ''}
             </span>
             <h1 className="font-serif text-3xl font-bold text-gray-900 mb-3">{product.name}</h1>
           </div>
@@ -173,7 +173,7 @@ export function ProductDetailView({
           )}
 
           <div className="space-y-2">
-            <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider">Quantité</span>
+            <span className="text-xs font-semibold text-gray-700 uppercase tracking-wider">QuantitÃ©</span>
             <div className="flex items-center gap-4 bg-gray-50 border border-gray-200 rounded-xl w-fit p-1">
               <button
                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
@@ -251,7 +251,7 @@ export function ProductDetailView({
               </div>
               <div>
                 <h4 className="text-xs font-bold text-gray-900">Livraison VIP</h4>
-                <p className="text-[10px] text-gray-500">Sécurisée & Rapide</p>
+                <p className="text-[10px] text-gray-500">SÃ©curisÃ©e & Rapide</p>
               </div>
             </div>
           </div>
@@ -262,3 +262,7 @@ export function ProductDetailView({
     </motion.div>
   );
 }
+
+
+
+

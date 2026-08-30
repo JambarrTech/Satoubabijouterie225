@@ -1,12 +1,12 @@
-﻿import { useState, useMemo, useEffect } from '\''react'\'';
-import { Trash2, ShoppingBag, ArrowRight, Check, Plus, Minus, Square, CheckSquare, MapPin, Phone, User } from '\''lucide-react'\'';
-import { motion, AnimatePresence } from '\''motion/react'\'';
-import { Cart } from '../../types';
-import { removeFromCart, updateCartItemQuantity } from '../../lib/api/cart';
-import { createOrder } from '../../lib/api/orders';
-import { Price } from '../ui/Price';
-import { Button } from '../ui/Button';
-import { useToast } from '../ui/Toast';
+﻿import { useState, useMemo, useEffect } from "react";
+import { Trash2, ShoppingBag, ArrowRight, Check, Plus, Minus, Square, CheckSquare, MapPin, Phone, User } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
+import { Cart } from "../../types";
+import { removeFromCart, updateCartItemQuantity } from "../../lib/api/cart";
+import { createOrder } from "../../lib/api/orders";
+import { Price } from "../ui/Price";
+import { Button } from "../ui/Button";
+import { useToast } from "../ui/Toast";
 
 interface CartViewProps {
   cart: Cart;
@@ -23,11 +23,11 @@ export function CartView({ cart, onUpdateCart, onNavigate, onRefreshCart }: Cart
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showShippingForm, setShowShippingForm] = useState(false);
   const [shippingInfo, setShippingInfo] = useState({
-    fullName: '',
-    phone: '',
-    address: '',
-    city: '',
-    notes: ''
+    fullName: "",
+    phone: "",
+    address: "",
+    city: "",
+    notes: ""
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -83,7 +83,7 @@ export function CartView({ cart, onUpdateCart, onNavigate, onRefreshCart }: Cart
       const updated = await removeFromCart(itemId);
       onUpdateCart(updated);
     } catch (e) {
-      toast('Erreur lors de la suppression', 'error');
+      toast("Erreur lors de la suppression", "error");
     }
   };
 
@@ -94,7 +94,7 @@ export function CartView({ cart, onUpdateCart, onNavigate, onRefreshCart }: Cart
       const updated = await updateCartItemQuantity(itemId, newQty);
       onUpdateCart(updated);
     } catch (e: any) {
-      toast(e.message || 'Erreur de mise a jour', 'error');
+      toast(e.message || "Erreur de mise a jour", "error");
     } finally {
       setUpdatingId(null);
     }
@@ -103,17 +103,17 @@ export function CartView({ cart, onUpdateCart, onNavigate, onRefreshCart }: Cart
   const validateShipping = (): boolean => {
     const newErrors: Record<string, string> = {};
     if (!shippingInfo.fullName.trim() || shippingInfo.fullName.trim().length < 2) {
-      newErrors.fullName = 'Nom complet requis (min. 2 caracteres)';
+      newErrors.fullName = "Nom complet requis (min. 2 caracteres)";
     }
-    const phoneClean = shippingInfo.phone.replace(/\s/g, '');
+    const phoneClean = shippingInfo.phone.replace(/\s/g, "");
     if (!phoneClean || phoneClean.length < 8 || !/^\+?\d{8,}$/.test(phoneClean)) {
-      newErrors.phone = 'Numero de telephone invalide (+225 XX XX XX XX XX)';
+      newErrors.phone = "Numero de telephone invalide (+225 XX XX XX XX XX)";
     }
     if (!shippingInfo.address.trim() || shippingInfo.address.trim().length < 5) {
-      newErrors.address = 'Adresse requise (min. 5 caracteres)';
+      newErrors.address = "Adresse requise (min. 5 caracteres)";
     }
     if (!shippingInfo.city.trim()) {
-      newErrors.city = 'Ville requise';
+      newErrors.city = "Ville requise";
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -138,13 +138,13 @@ export function CartView({ cart, onUpdateCart, onNavigate, onRefreshCart }: Cart
         },
         cartItemIds: Array.from(selectedIds),
       });
-      toast('Commande confirmee !', 'success');
+      toast("Commande confirmee !", "success");
       setShowShippingForm(false);
-      setShippingInfo({ fullName: '', phone: '', address: '', city: '', notes: '' });
-      onNavigate('commandes');
+      setShippingInfo({ fullName: "", phone: "", address: "", city: "", notes: "" });
+      onNavigate("commandes");
       onRefreshCart?.();
     } catch (err: any) {
-      toast(err.message || 'Erreur lors de la commande', 'error');
+      toast(err.message || "Erreur lors de la commande", "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -152,7 +152,7 @@ export function CartView({ cart, onUpdateCart, onNavigate, onRefreshCart }: Cart
 
   const inputClass = (field: string) =>
     `w-full rounded-xl border p-3 text-sm focus:outline-none transition-colors ${
-      errors[field] ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-[#0B5D1E]'
+      errors[field] ? "border-red-400 focus:border-red-500" : "border-gray-200 focus:border-[#0B5D1E]"
     }`;
 
   return (
@@ -165,7 +165,7 @@ export function CartView({ cart, onUpdateCart, onNavigate, onRefreshCart }: Cart
         {safeItems.length > 0 && (
           <button onClick={toggleSelectAll} className="text-xs font-semibold text-[#0B5D1E] flex items-center gap-1.5 hover:underline">
             {isAllSelected ? <CheckSquare size={16}/> : <Square size={16}/>}
-            {isAllSelected ? 'Tout deselectionner' : 'Tout selectionner'}
+            {isAllSelected ? "Tout deselectionner" : "Tout selectionner"}
           </button>
         )}
       </div>
@@ -178,7 +178,7 @@ export function CartView({ cart, onUpdateCart, onNavigate, onRefreshCart }: Cart
           <h3 className="font-serif text-xl font-bold text-gray-900">Votre panier est vide</h3>
           <p className="text-sm text-gray-500">Ajoutez 1 ou plusieurs bijoux pour commander.</p>
           <div className="pt-4">
-            <Button onClick={() => onNavigate('catalogue')} icon={<ArrowRight size={16} />}>Explorer le catalogue</Button>
+            <Button onClick={() => onNavigate("catalogue")} icon={<ArrowRight size={16} />}>Explorer le catalogue</Button>
           </div>
         </motion.div>
       ) : (
@@ -198,32 +198,32 @@ export function CartView({ cart, onUpdateCart, onNavigate, onRefreshCart }: Cart
                   initial={{ opacity: 0, y: 20, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, x: -60, scale: 0.9, transition: { duration: 0.25 } }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                  className={`flex items-center gap-3 bg-white p-4 rounded-2xl border-2 shadow-xs transition-colors ${isSelected ? 'border-[#0B5D1E]/30 bg-[#EAF7ED]/10' : 'border-gray-100 opacity-75'}`}
+                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                  className={`flex items-center gap-3 bg-white p-4 rounded-2xl border-2 shadow-xs transition-colors ${isSelected ? "border-[#0B5D1E]/30 bg-[#EAF7ED]/10" : "border-gray-100 opacity-75"}`}
                 >
                   <button
                     onClick={() => toggleSelect(item.id)}
-                    className={`shrink-0 w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors ${isSelected ? 'bg-[#0B5D1E] border-[#0B5D1E] text-white' : 'border-gray-300 text-transparent'}`}
-                    aria-label={isSelected ? 'Deselectionner' : 'Selectionner'}
+                    className={`shrink-0 w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors ${isSelected ? "bg-[#0B5D1E] border-[#0B5D1E] text-white" : "border-gray-300 text-transparent"}`}
+                    aria-label={isSelected ? "Deselectionner" : "Selectionner"}
                   >
                     <Check size={14} />
                   </button>
                   {images[0] ? (
-                    <img src={images[0]} alt={item.product.name || ''} className="w-20 h-20 rounded-xl object-cover shrink-0" referrerPolicy="no-referrer" />
+                    <img src={images[0]} alt={item.product.name || ""} className="w-20 h-20 rounded-xl object-cover shrink-0" referrerPolicy="no-referrer" />
                   ) : (
                     <div className="w-20 h-20 rounded-xl bg-gray-100 shrink-0" />
                   )}
                   <div className="flex-1 min-w-0">
                     <span className="text-[10px] uppercase font-semibold text-gray-400">
-                      {item.product.material || 'Or 18K'} {item.selectedSize ? '- Taille ' + item.selectedSize : ''}
+                      {item.product.material || "Or 18K"} {item.selectedSize ? "- Taille " + item.selectedSize : ""}
                     </span>
-                    <h3 className="font-serif font-medium text-gray-900 text-sm truncate mb-1">{item.product.name || 'Produit'}</h3>
+                    <h3 className="font-serif font-medium text-gray-900 text-sm truncate mb-1">{item.product.name || "Produit"}</h3>
                     <Price amount={price} size="sm" />
                     <div className="flex items-center gap-2 mt-2">
                       <button onClick={() => handleQuantity(item.id, qty - 1)} disabled={updatingId === item.id || qty <= 1} className="w-7 h-7 rounded-lg bg-white border border-gray-200 flex items-center justify-center hover:border-[#0B5D1E] disabled:opacity-40">
                         <Minus size={12} />
                       </button>
-                      <span className="w-8 text-center text-xs font-bold">{updatingId === item.id ? '...' : qty}</span>
+                      <span className="w-8 text-center text-xs font-bold">{updatingId === item.id ? "..." : qty}</span>
                       <button onClick={() => handleQuantity(item.id, qty + 1)} disabled={updatingId === item.id || qty >= (item.product.stockQuantity || 0)} className="w-7 h-7 rounded-lg bg-white border border-gray-200 flex items-center justify-center hover:border-[#0B5D1E] disabled:opacity-40">
                         <Plus size={12} />
                       </button>
@@ -244,7 +244,7 @@ export function CartView({ cart, onUpdateCart, onNavigate, onRefreshCart }: Cart
           <div className="lg:col-span-5 space-y-6">
             <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-6">
               <h3 className="font-serif text-lg font-bold text-gray-900 pb-4 border-b border-gray-100">
-                Resume - {selectedItems.length}/{safeItems.length} selectionne{selectedItems.length > 1 ? 's' : ''}
+                Resume - {selectedItems.length}/{safeItems.length} selectionne{selectedItems.length > 1 ? "s" : ""}
               </h3>
               <div className="space-y-3 pt-4 border-t border-gray-100 text-sm">
                 <div className="flex justify-between text-gray-600">
@@ -253,7 +253,7 @@ export function CartView({ cart, onUpdateCart, onNavigate, onRefreshCart }: Cart
                 </div>
                 <div className="flex justify-between text-gray-600">
                   <span>Livraison</span>
-                  <span className="font-medium text-gray-900">{displayShipping === 0 ? 'Gratuite' : displayShipping.toLocaleString() + ' FCFA'}</span>
+                  <span className="font-medium text-gray-900">{displayShipping === 0 ? "Gratuite" : displayShipping.toLocaleString() + " FCFA"}</span>
                 </div>
                 <div className="flex justify-between text-base font-bold text-gray-900 pt-4 border-t border-gray-100">
                   <span>Total estime</span>
@@ -263,7 +263,7 @@ export function CartView({ cart, onUpdateCart, onNavigate, onRefreshCart }: Cart
 
               {!showShippingForm ? (
                 <Button size="lg" onClick={() => setShowShippingForm(true)} icon={<ArrowRight size={18} />} className="w-full shadow-lg" disabled={selectedIds.size === 0}>
-                  {selectedIds.size === 0 ? 'Selectionnez des articles' : 'Commander ' + selectedCount + ' article' + (selectedCount > 1 ? 's' : '')}
+                  {selectedIds.size === 0 ? "Selectionnez des articles" : "Commander " + selectedCount + " article" + (selectedCount > 1 ? "s" : "")}
                 </Button>
               ) : (
                 <div className="space-y-4">
@@ -280,7 +280,7 @@ export function CartView({ cart, onUpdateCart, onNavigate, onRefreshCart }: Cart
                       type="text"
                       value={shippingInfo.fullName}
                       onChange={(e) => { setShippingInfo(prev => ({ ...prev, fullName: e.target.value })); setErrors(prev => ({ ...prev, fullName: undefined })); }}
-                      className={inputClass('fullName')}
+                      className={inputClass("fullName")}
                       placeholder="Votre nom complet"
                     />
                     {errors.fullName && <p className="text-xs text-red-500 mt-1">{errors.fullName}</p>}
@@ -294,7 +294,7 @@ export function CartView({ cart, onUpdateCart, onNavigate, onRefreshCart }: Cart
                       type="tel"
                       value={shippingInfo.phone}
                       onChange={(e) => { setShippingInfo(prev => ({ ...prev, phone: e.target.value })); setErrors(prev => ({ ...prev, phone: undefined })); }}
-                      className={inputClass('phone')}
+                      className={inputClass("phone")}
                       placeholder="+225 07 00 00 00 00"
                     />
                     {errors.phone && <p className="text-xs text-red-500 mt-1">{errors.phone}</p>}
@@ -308,7 +308,7 @@ export function CartView({ cart, onUpdateCart, onNavigate, onRefreshCart }: Cart
                       type="text"
                       value={shippingInfo.address}
                       onChange={(e) => { setShippingInfo(prev => ({ ...prev, address: e.target.value })); setErrors(prev => ({ ...prev, address: undefined })); }}
-                      className={inputClass('address')}
+                      className={inputClass("address")}
                       placeholder="Quartier, rue, repères..."
                     />
                     {errors.address && <p className="text-xs text-red-500 mt-1">{errors.address}</p>}
@@ -320,7 +320,7 @@ export function CartView({ cart, onUpdateCart, onNavigate, onRefreshCart }: Cart
                       type="text"
                       value={shippingInfo.city}
                       onChange={(e) => { setShippingInfo(prev => ({ ...prev, city: e.target.value })); setErrors(prev => ({ ...prev, city: undefined })); }}
-                      className={inputClass('city')}
+                      className={inputClass("city")}
                       placeholder="Abidjan"
                     />
                     {errors.city && <p className="text-xs text-red-500 mt-1">{errors.city}</p>}
