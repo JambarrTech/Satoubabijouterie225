@@ -15,12 +15,22 @@ declare global {
   }
 }
 
+const FIREBASE_DEFAULTS = {
+  apiKey: 'AIzaSyB6tBRmQR69BzDMgz5yRbWgtVEVEtO6I3U',
+  authDomain: 'plateformesatouba.firebaseapp.com',
+  projectId: 'plateformesatouba',
+  storageBucket: 'plateformesatouba.firebasestorage.app',
+  messagingSenderId: '758245641576',
+  appId: '1:758245641576:web:5bfab6e8017a355afc5add',
+  measurementId: 'G-HWFY9LFXN1',
+};
+
 const getFirebaseConfig = () => {
   if (typeof window !== 'undefined' && (window as any).FIREBASE_CONFIG?.apiKey) {
     return (window as any).FIREBASE_CONFIG;
   }
   // @ts-ignore vite env
-  return {
+  const envCfg = {
     // @ts-ignore
     apiKey: (import.meta as any).env.VITE_FIREBASE_API_KEY,
     // @ts-ignore
@@ -36,6 +46,9 @@ const getFirebaseConfig = () => {
     // @ts-ignore
     measurementId: (import.meta as any).env.VITE_FIREBASE_MEASUREMENT_ID,
   };
+  // Fallback to defaults if env vars are empty (build without .env)
+  if (!envCfg.apiKey) return FIREBASE_DEFAULTS;
+  return envCfg;
 };
 
 const firebaseConfig = getFirebaseConfig();
