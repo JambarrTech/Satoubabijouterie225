@@ -10,56 +10,6 @@
   </head>
   <body>
     <div id="root"></div>
-    <script type="module" src="./src/main.tsx"></script>
-    
-    <!-- Service Worker Registration for Push Notifications -->
-    <script>
-      window.FIREBASE_CONFIG = {
-        apiKey: "AIzaSyB6tBRmQR69BzDMgz5yRbWgtVEVEtO6I3U",
-        authDomain: "plateformesatouba.firebaseapp.com",
-        projectId: "plateformesatouba",
-        storageBucket: "plateformesatouba.firebasestorage.app",
-        messagingSenderId: "758245641576",
-        appId: "1:758245641576:web:b035eddece1f23b6fc5add",
-        measurementId: "G-BT229N1P1E"
-      };
-
-      if ('serviceWorker' in navigator) {
-        function sendConfigToSW(reg) {
-          var fbConfig = window.FIREBASE_CONFIG;
-          if (fbConfig && fbConfig.apiKey && reg.active) {
-            reg.active.postMessage({ type: 'FIREBASE_CONFIG', config: fbConfig });
-          }
-        }
-
-        navigator.serviceWorker.register('/firebase-messaging-sw.js')
-          .then(function(registration) {
-            console.log('SW registered:', registration.scope);
-            sendConfigToSW(registration);
-            registration.addEventListener('updatefound', function() {
-              var newWorker = registration.installing;
-              if (newWorker) {
-                newWorker.addEventListener('statechange', function() {
-                  if (newWorker.state === 'activated') {
-                    sendConfigToSW(registration);
-                  }
-                });
-              }
-            });
-          })
-          .catch(function(error) {
-            console.error('SW registration failed:', error);
-          });
-
-        navigator.serviceWorker.addEventListener('message', function(event) {
-          if (event.data && event.data.type === 'REQUEST_FIREBASE_CONFIG' && event.source) {
-            var fbConfig = window.FIREBASE_CONFIG;
-            if (fbConfig && fbConfig.apiKey) {
-              event.source.postMessage({ type: 'FIREBASE_CONFIG', config: fbConfig });
-            }
-          }
-        });
-      }
-    </script>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
