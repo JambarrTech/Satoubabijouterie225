@@ -35,7 +35,7 @@ __export(index_exports, {
 module.exports = __toCommonJS(index_exports);
 
 // backend/app.ts
-var import_express16 = __toESM(require("express"), 1);
+var import_express15 = __toESM(require("express"), 1);
 var import_cors = __toESM(require("cors"), 1);
 var import_path2 = __toESM(require("path"), 1);
 var import_fs2 = __toESM(require("fs"), 1);
@@ -150,8 +150,8 @@ function setupSecurity(app2) {
         scriptSrc: ["'self'"],
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         fontSrc: ["'self'", "https://fonts.gstatic.com"],
-        imgSrc: ["'self'", "data:", "https:", "blob:", "https://firebasestorage.googleapis.com", "https://*.googleapis.com"],
-        connectSrc: ["'self'", "https://wa.me", "https://api.sandbox.africastalking.com", "https://api.africastalking.com", "https://*.googleapis.com", "https://*.firebaseio.com", "https://fcm.googleapis.com", "https://*.firebaseapp.com"],
+        imgSrc: ["'self'", "data:", "https:", "blob:", "https://*.googleapis.com"],
+        connectSrc: ["'self'", "https://wa.me", "https://api.sandbox.africastalking.com", "https://api.africastalking.com", "https://*.googleapis.com"],
         frameSrc: ["'none'"],
         objectSrc: ["'none'"],
         baseUri: ["'self'"],
@@ -181,14 +181,12 @@ function setupSecurity(app2) {
     }
     next();
   });
-  const authRateLimit = rateLimit(15, 60 * 1e3);
+  const authRateLimit = rateLimit(30, 60 * 1e3);
   app2.use("/api/auth", authRateLimit);
-  const orderRateLimit = rateLimit(10, 60 * 1e3);
+  const orderRateLimit = rateLimit(30, 60 * 1e3);
   app2.use("/api/orders", orderRateLimit);
   const uploadRateLimit = rateLimit(20, 60 * 1e3);
   app2.use("/api/upload", uploadRateLimit);
-  const pushRateLimit = rateLimit(10, 60 * 1e3);
-  app2.use("/api/push", pushRateLimit);
   app2.use("/uploads", (_req, res, next) => {
     res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
     next();
@@ -428,8 +426,8 @@ async function sendNewCustomToGerantSMS(phone, requestId, customerName, jewelryT
 // backend/routes/auth.ts
 var router = (0, import_express.Router)();
 var ALLOWED_PROFILE_FIELDS = ["name", "phone", "address", "city", "country", "avatar"];
-var MAX_FAILED_ATTEMPTS = 5;
-var LOCKOUT_DURATION_MS = 15 * 60 * 1e3;
+var MAX_FAILED_ATTEMPTS = 8;
+var LOCKOUT_DURATION_MS = 10 * 60 * 1e3;
 var PASSWORD_RESET_EXPIRY_MS = 10 * 60 * 1e3;
 var GERANT_IDENTIFIER = process.env.GERANT_IDENTIFIER || "gerantSatoubaBijouterie6002";
 function isValidIdentifier(id) {
@@ -443,7 +441,7 @@ function isStrongPassword(password) {
   if (!/[0-9]/.test(password)) return { valid: false, error: "Le mot de passe doit contenir au moins un chiffre" };
   return { valid: true };
 }
-router.post("/api/auth/register", rateLimit(5, 6e4), async (req, res) => {
+router.post("/api/auth/register", rateLimit(15, 6e4), async (req, res) => {
   try {
     const { name, identifier, password, phone } = req.body;
     if (!name || !identifier || !password) {
@@ -477,7 +475,7 @@ router.post("/api/auth/register", rateLimit(5, 6e4), async (req, res) => {
     res.status(500).json({ error: "Erreur lors de l'inscription" });
   }
 });
-router.post("/api/auth/login", rateLimit(10, 6e4), async (req, res) => {
+router.post("/api/auth/login", rateLimit(30, 6e4), async (req, res) => {
   try {
     const { identifier, password } = req.body;
     if (!identifier || !password) {
@@ -514,7 +512,7 @@ router.post("/api/auth/login", rateLimit(10, 6e4), async (req, res) => {
         return res.status(401).json({ error: `Identifiant ou mot de passe incorrect. ${remaining} tentative${remaining > 1 ? "s" : ""} restante${remaining > 1 ? "s" : ""}.` });
       }
       return res.status(423).json({
-        error: "Compte temporairement verrouill\xE9 apr\xE8s 5 tentatives \xE9chou\xE9es. R\xE9essayez dans 15 minutes.",
+        error: "Compte temporairement verrouill\xE9 apr\xE8s 8 tentatives \xE9chou\xE9es. R\xE9essayez dans 10 minutes.",
         lockedUntil: updateData.lockedUntil.toISOString()
       });
     }
@@ -531,7 +529,7 @@ router.post("/api/auth/login", rateLimit(10, 6e4), async (req, res) => {
     res.status(500).json({ error: "Erreur lors de la connexion" });
   }
 });
-router.post("/api/auth/login-gerant", rateLimit(10, 6e4), async (req, res) => {
+router.post("/api/auth/login-gerant", rateLimit(30, 6e4), async (req, res) => {
   try {
     const { identifier, password } = req.body;
     const loginId = identifier || GERANT_IDENTIFIER;
@@ -569,7 +567,7 @@ router.post("/api/auth/login-gerant", rateLimit(10, 6e4), async (req, res) => {
         return res.status(401).json({ error: `Identifiant ou mot de passe incorrect. ${remaining} tentative${remaining > 1 ? "s" : ""} restante${remaining > 1 ? "s" : ""}.` });
       }
       return res.status(423).json({
-        error: "Compte temporairement verrouill\xE9 apr\xE8s 5 tentatives \xE9chou\xE9es. R\xE9essayez dans 15 minutes.",
+        error: "Compte temporairement verrouill\xE9 apr\xE8s 8 tentatives \xE9chou\xE9es. R\xE9essayez dans 10 minutes.",
         lockedUntil: updateData.lockedUntil.toISOString()
       });
     }
@@ -654,7 +652,7 @@ router.post("/api/auth/change-password", authenticateToken, async (req, res) => 
     res.status(500).json({ error: "Erreur lors du changement de mot de passe" });
   }
 });
-router.post("/api/auth/forgot-password", rateLimit(3, 6e4), async (req, res) => {
+router.post("/api/auth/forgot-password", rateLimit(10, 6e4), async (req, res) => {
   try {
     const { phone } = req.body;
     if (!phone || typeof phone !== "string" || phone.trim().length < 8) {
@@ -687,7 +685,7 @@ router.post("/api/auth/forgot-password", rateLimit(3, 6e4), async (req, res) => 
     res.status(500).json({ error: "Erreur lors de la demande de r\xE9initialisation" });
   }
 });
-router.post("/api/auth/reset-password", rateLimit(5, 6e4), async (req, res) => {
+router.post("/api/auth/reset-password", rateLimit(15, 6e4), async (req, res) => {
   try {
     const { phone, otp, newPassword } = req.body;
     if (!phone || !otp || !newPassword) {
@@ -1182,146 +1180,7 @@ var cart_default = router4;
 // backend/routes/orders.ts
 var import_express5 = require("express");
 
-// backend/lib/push.ts
-var import_firebase_admin = __toESM(require("firebase-admin"), 1);
-var firebaseApp = null;
-function initFirebase() {
-  if (firebaseApp) return firebaseApp;
-  const projectId = process.env.FIREBASE_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
-  if (!projectId || !clientEmail || !privateKey) {
-    console.warn("Firebase credentials not configured, push notifications disabled");
-    return null;
-  }
-  try {
-    firebaseApp = import_firebase_admin.default.initializeApp({
-      credential: import_firebase_admin.default.credential.cert({
-        projectId,
-        clientEmail,
-        privateKey
-      })
-    });
-    console.log("Firebase Admin SDK initialized");
-    return firebaseApp;
-  } catch (error) {
-    console.error("Firebase init error:", error);
-    return null;
-  }
-}
-async function sendMulticastPushNotification(tokens, title, body, data, imageUrl) {
-  const app2 = initFirebase();
-  if (!app2) {
-    return { success: 0, failed: tokens.length, errors: ["Firebase not initialized"] };
-  }
-  if (tokens.length === 0) {
-    return { success: 0, failed: 0, errors: [] };
-  }
-  try {
-    const messaging = import_firebase_admin.default.messaging(app2);
-    const response = await messaging.sendEachForMulticast({
-      tokens,
-      notification: { title, body, imageUrl },
-      data: data || {},
-      android: {
-        priority: "high",
-        notification: { channelId: "satouba_default", icon: "ic_notification", color: "#0B5D1E" }
-      },
-      apns: {
-        payload: { aps: { alert: { title, body }, badge: 1, sound: "default" } }
-      }
-    });
-    const errors = [];
-    const invalidTokens = [];
-    response.responses.forEach((resp, idx) => {
-      if (!resp.success) {
-        errors.push(`Token ${idx}: ${resp.error?.message}`);
-        if (resp.error?.code === "messaging/registration-token-not-registered") {
-          invalidTokens.push({ userId: "", token: tokens[idx] });
-        }
-      }
-    });
-    if (invalidTokens.length > 0) {
-      try {
-        const invalidTokenStrings = invalidTokens.map((t) => t.token);
-        const users = await prisma.user.findMany({
-          select: { id: true, pushTokens: true }
-        });
-        for (const user of users) {
-          const tokens2 = typeof user.pushTokens === "string" ? JSON.parse(user.pushTokens || "[]") : Array.isArray(user.pushTokens) ? user.pushTokens : [];
-          const cleaned = tokens2.filter((t) => !invalidTokenStrings.includes(t));
-          if (cleaned.length !== tokens2.length) {
-            await prisma.user.update({
-              where: { id: user.id },
-              data: { pushTokens: JSON.stringify(cleaned) }
-            });
-          }
-        }
-      } catch {
-      }
-    }
-    return {
-      success: response.successCount,
-      failed: response.failureCount,
-      errors
-    };
-  } catch (error) {
-    console.error("Multicast push error:", error);
-    return { success: 0, failed: tokens.length, errors: [error.message] };
-  }
-}
-function getOrderPushContent(data) {
-  switch (data.type) {
-    case "CONFIRMED":
-      return {
-        title: "Commande confirm\xE9e",
-        body: `Votre commande ${data.orderNumber} a \xE9t\xE9 confirm\xE9e. Nos artisans commencent la fabrication.`,
-        clickAction: `/commandes/${data.orderId}`
-      };
-    case "PREPARING":
-      return {
-        title: "En cours de fabrication",
-        body: `Votre commande ${data.orderNumber} est en cours de pr\xE9paration par nos artisans.`,
-        clickAction: `/commandes/${data.orderId}`
-      };
-    case "SHIPPED":
-      return {
-        title: "Commande exp\xE9di\xE9e",
-        body: `Votre commande ${data.orderNumber} est en route. Livraison pr\xE9vue sous 24-48h.`,
-        clickAction: `/commandes/${data.orderId}`
-      };
-    case "DELIVERED":
-      return {
-        title: "Livr\xE9 avec succ\xE8s",
-        body: `Commande ${data.orderNumber} livr\xE9e. Merci pour votre confiance SaTouba !`,
-        clickAction: `/commandes/${data.orderId}`
-      };
-    case "CANCELLED":
-      return {
-        title: "Commande annul\xE9e",
-        body: `Votre commande ${data.orderNumber} a \xE9t\xE9 annul\xE9e. Contactez-nous pour plus d'infos.`,
-        clickAction: `/commandes/${data.orderId}`
-      };
-    default:
-      return {
-        title: "SaTouba",
-        body: `Mise \xE0 jour pour votre commande ${data.orderNumber}`,
-        clickAction: `/commandes/${data.orderId}`
-      };
-  }
-}
-
 // backend/lib/notifications.ts
-function getPushTokens(user) {
-  try {
-    const tokens = user.pushTokens;
-    if (Array.isArray(tokens)) return tokens;
-    if (typeof tokens === "string") return JSON.parse(tokens);
-    return [];
-  } catch {
-    return [];
-  }
-}
 async function createNotification(options) {
   try {
     const notification = await prisma.notification.create({
@@ -1333,50 +1192,30 @@ async function createNotification(options) {
         read: false
       }
     });
-    await sendNotificationToUser({
-      userId: options.userId,
-      title: options.title,
-      body: options.message,
-      data: options.data,
-      channel: options.channel || "BOTH"
-    });
     return notification;
   } catch (error) {
     logger_default.error({ err: error }, "Create notification error");
     throw error;
   }
 }
-async function sendNotificationToUser(options) {
-  const user = await prisma.user.findUnique({
-    where: { id: options.userId },
-    select: { pushTokens: true }
-  });
-  if (!user) return;
-  const tokens = getPushTokens({ pushTokens: user.pushTokens });
-  if (options.channel === "PUSH" || options.channel === "BOTH") {
-    if (tokens.length > 0) {
-      await sendMulticastPushNotification(tokens, options.title, options.body, options.data);
-    }
-  }
-}
 async function notifyNewOrder(orderId) {
   const order = await prisma.order.findUnique({
     where: { id: orderId },
     include: {
-      user: { select: { id: true, name: true, phone: true, pushTokens: true } },
+      user: { select: { id: true, name: true, phone: true } },
       items: true
     }
   });
   if (!order) return;
-  const pushData = { orderId, orderNumber: order.orderNumber, type: "CONFIRMED" };
-  const { title, body, clickAction } = getOrderPushContent(pushData);
+  const title = "Commande confirmee";
+  const body = `Votre commande ${order.orderNumber} a ete confirmee. Nos artisans commencent la fabrication.`;
   await createNotification({
     userId: order.user.id,
     title,
     message: body,
     type: "ORDER",
     channel: "PUSH",
-    data: { orderId, orderNumber: order.orderNumber, status: "CONFIRMED", clickAction },
+    data: { orderId: order.id, orderNumber: order.orderNumber, status: "CONFIRMED" },
     orderId
   });
   if (order.user.phone) {
@@ -1387,15 +1226,15 @@ async function notifyNewOrder(orderId) {
 async function notifyGerantsNewOrder(order) {
   const admins = await prisma.user.findMany({
     where: { role: "ADMIN" },
-    select: { id: true, phone: true, pushTokens: true }
+    select: { id: true, phone: true }
   });
   const itemCount = order.items.reduce((sum, i) => sum + i.quantity, 0);
   const itemsList = order.items.map((i) => `${i.productName} x${i.quantity}`).join(", ");
-  for (const admin2 of admins) {
+  for (const admin of admins) {
     const title = "Nouvelle commande";
     const message = `Commande ${order.orderNumber} de ${order.customerName} \u2014 ${order.totalAmount.toLocaleString()} FCFA (${itemCount} article${itemCount > 1 ? "s" : ""}). Articles: ${itemsList}.`;
     await createNotification({
-      userId: admin2.id,
+      userId: admin.id,
       title,
       message,
       type: "ORDER",
@@ -1403,26 +1242,33 @@ async function notifyGerantsNewOrder(order) {
       data: { orderId: order.id, orderNumber: order.orderNumber, type: "NEW_ORDER" },
       orderId: order.id
     });
-    if (admin2.phone) {
-      await sendNewOrderSMS(admin2.phone, order.orderNumber, order.customerName, order.totalAmount);
+    if (admin.phone) {
+      await sendNewOrderSMS(admin.phone, order.orderNumber, order.customerName, order.totalAmount);
     }
   }
 }
 async function notifyOrderStatusChange(orderId, status) {
   const order = await prisma.order.findUnique({
     where: { id: orderId },
-    include: { user: { select: { id: true, phone: true, pushTokens: true } } }
+    include: { user: { select: { id: true, phone: true } } }
   });
   if (!order || !order.user) return;
-  const pushData = { orderId, orderNumber: order.orderNumber, type: status };
-  const { title, body, clickAction } = getOrderPushContent(pushData);
+  const statusLabels = {
+    CONFIRMED: "Commande confirmee",
+    PREPARING: "En cours de fabrication",
+    SHIPPED: "Commande expediee",
+    DELIVERED: "Livree avec succes",
+    CANCELLED: "Commande annulee"
+  };
+  const title = statusLabels[status] || "Statut mis a jour";
+  const body = `Votre commande ${order.orderNumber}: ${statusLabels[status] || status}.`;
   await createNotification({
     userId: order.user.id,
     title,
     message: body,
     type: "ORDER",
     channel: "PUSH",
-    data: { orderId, orderNumber: order.orderNumber, status, clickAction },
+    data: { orderId: order.id, orderNumber: order.orderNumber, status },
     orderId
   });
   if (order.user.phone) {
@@ -1448,7 +1294,7 @@ async function notifyOrderStatusChange(orderId, status) {
 async function notifyCustomRequest(userId, requestId) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { name: true, phone: true, pushTokens: true }
+    select: { name: true, phone: true }
   });
   await createNotification({
     userId,
@@ -1466,7 +1312,7 @@ async function notifyCustomRequest(userId, requestId) {
 async function notifyGerantsNewCustom(userId, requestId) {
   const admins = await prisma.user.findMany({
     where: { role: "ADMIN" },
-    select: { id: true, phone: true, pushTokens: true }
+    select: { id: true, phone: true }
   });
   const request = await prisma.customRequest.findUnique({
     where: { id: requestId },
@@ -1478,26 +1324,26 @@ async function notifyGerantsNewCustom(userId, requestId) {
   });
   const customerName = user?.name || "Client";
   const jewelryType = request?.jewelryType || "Bijou";
-  for (const admin2 of admins) {
+  for (const admin of admins) {
     const title = "Nouvelle demande sur-mesure";
     const message = `Demande ${requestId} de ${customerName} \u2014 ${jewelryType}. Connectez-vous pour gerer.`;
     await createNotification({
-      userId: admin2.id,
+      userId: admin.id,
       title,
       message,
       type: "CUSTOM",
       channel: "PUSH",
       data: { requestId, type: "new_custom" }
     });
-    if (admin2.phone) {
-      await sendNewCustomToGerantSMS(admin2.phone, requestId, customerName, jewelryType);
+    if (admin.phone) {
+      await sendNewCustomToGerantSMS(admin.phone, requestId, customerName, jewelryType);
     }
   }
 }
 async function notifyRepairRequest(userId, requestId) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { name: true, phone: true, pushTokens: true }
+    select: { name: true, phone: true }
   });
   await createNotification({
     userId,
@@ -1515,7 +1361,7 @@ async function notifyRepairRequest(userId, requestId) {
 async function notifyGerantsNewRepair(userId, requestId) {
   const admins = await prisma.user.findMany({
     where: { role: "ADMIN" },
-    select: { id: true, phone: true, pushTokens: true }
+    select: { id: true, phone: true }
   });
   const request = await prisma.repairRequest.findUnique({
     where: { id: requestId },
@@ -1527,30 +1373,30 @@ async function notifyGerantsNewRepair(userId, requestId) {
   });
   const customerName = user?.name || "Client";
   const jewelryType = request?.jewelryType || "Bijou";
-  for (const admin2 of admins) {
+  for (const admin of admins) {
     const title = "Nouvelle demande de reparation";
     const message = `Demande ${requestId} de ${customerName} \u2014 ${jewelryType}. Connectez-vous pour gerer.`;
     await createNotification({
-      userId: admin2.id,
+      userId: admin.id,
       title,
       message,
       type: "REPAIR",
       channel: "PUSH",
       data: { requestId, type: "new_repair" }
     });
-    if (admin2.phone) {
-      await sendNewRepairToGerantSMS(admin2.phone, requestId, customerName, jewelryType);
+    if (admin.phone) {
+      await sendNewRepairToGerantSMS(admin.phone, requestId, customerName, jewelryType);
     }
   }
 }
 async function notifyRepairStatusChange(requestId, status) {
   const request = await prisma.repairRequest.findUnique({
     where: { id: requestId },
-    include: { user: { select: { id: true, phone: true, pushTokens: true } } }
+    include: { user: { select: { id: true, phone: true } } }
   });
   if (!request || !request.user) return;
   const statusLabels = {
-    RECUE: "Reparation recue",
+    RECEIVED: "Reparation recue",
     IN_PROGRESS: "En cours de traitement",
     WAITING_PARTS: "En attente de pieces",
     COMPLETED: "Reparation terminee",
@@ -1574,7 +1420,7 @@ async function notifyRepairStatusChange(requestId, status) {
 async function notifyCustomStatusChange(requestId, status) {
   const request = await prisma.customRequest.findUnique({
     where: { id: requestId },
-    include: { user: { select: { id: true, phone: true, pushTokens: true } } }
+    include: { user: { select: { id: true, phone: true } } }
   });
   if (!request || !request.user) return;
   const statusLabels = {
@@ -1598,31 +1444,6 @@ async function notifyCustomStatusChange(requestId, status) {
   if (request.user.phone) {
     await sendCustomStatusSMS(request.user.phone, requestId, status);
   }
-}
-async function registerPushToken(userId, token) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { pushTokens: true }
-  });
-  const tokens = getPushTokens({ pushTokens: user?.pushTokens });
-  if (!tokens.includes(token)) {
-    tokens.push(token);
-    await prisma.user.update({
-      where: { id: userId },
-      data: { pushTokens: JSON.stringify(tokens) }
-    });
-  }
-}
-async function unregisterPushToken(userId, token) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { pushTokens: true }
-  });
-  const tokens = getPushTokens({ pushTokens: user?.pushTokens }).filter((t) => t !== token);
-  await prisma.user.update({
-    where: { id: userId },
-    data: { pushTokens: JSON.stringify(tokens) }
-  });
 }
 
 // backend/routes/orders.ts
@@ -1690,7 +1511,7 @@ router5.get("/api/orders/:id", authenticateToken, async (req, res) => {
     res.status(500).json({ error: "Erreur" });
   }
 });
-router5.post("/api/orders", authenticateToken, rateLimit(10, 6e4), async (req, res) => {
+router5.post("/api/orders", authenticateToken, async (req, res) => {
   try {
     const { shippingAddress, cartItemIds } = req.body;
     const sanitizedAddress = shippingAddress ? {
@@ -1807,11 +1628,11 @@ router5.put("/api/orders/:id/status", authenticateToken, requireAdmin, async (re
     }
     const currentHistory = safeJsonParse(existingOrder.statusHistory, []);
     const statusLabels = {
-      CONFIRMED: "Commande confirmee",
-      PREPARING: "En cours de fabrication",
-      SHIPPED: "Expediee",
-      DELIVERED: "Livree",
-      CANCELLED: "Annulee"
+      CONFIRMED: "Confirm\xE9e",
+      PREPARING: "En atelier",
+      SHIPPED: "Exp\xE9di\xE9e",
+      DELIVERED: "Livr\xE9e",
+      CANCELLED: "Annul\xE9e"
     };
     const newEntry = {
       status,
@@ -1838,7 +1659,9 @@ router5.put("/api/orders/:id/status", authenticateToken, requireAdmin, async (re
       });
       logger_default.info({ orderId: order.id }, "Stock restored after cancellation");
     }
-    await notifyOrderStatusChange(order.id, status);
+    notifyOrderStatusChange(order.id, status).catch(
+      (err) => logger_default.error({ err, orderId: order.id }, "Failed to send status change notifications")
+    );
     res.json({
       ...order,
       statusHistory: safeJsonParse(order.statusHistory, [])
@@ -2534,51 +2357,10 @@ router13.post("/api/upload/multiple", authenticateToken, requireAdmin, (req, res
 });
 var upload_default = router13;
 
-// backend/routes/push.ts
+// backend/routes/health.ts
 var import_express14 = require("express");
 var router14 = (0, import_express14.Router)();
-router14.post("/api/push/register", authenticateToken, async (req, res) => {
-  try {
-    const { token } = req.body;
-    if (!token) {
-      return res.status(400).json({ error: "Token FCM requis" });
-    }
-    await registerPushToken(req.userId, token);
-    res.json({ success: true });
-  } catch {
-    res.status(500).json({ error: "Erreur enregistrement token" });
-  }
-});
-router14.delete("/api/push/register", authenticateToken, async (req, res) => {
-  try {
-    const { token } = req.body;
-    if (!token) {
-      return res.status(400).json({ error: "Token FCM requis" });
-    }
-    await unregisterPushToken(req.userId, token);
-    res.json({ success: true });
-  } catch {
-    res.status(500).json({ error: "Erreur suppression token" });
-  }
-});
-router14.post("/api/push/unregister", authenticateToken, async (req, res) => {
-  try {
-    const { token } = req.body;
-    if (!token) {
-      return res.status(400).json({ error: "Token FCM requis" });
-    }
-    await unregisterPushToken(req.userId, token);
-    res.json({ success: true });
-  } catch {
-    res.status(500).json({ error: "Erreur suppression token" });
-  }
-});
-var push_default = router14;
-
-// backend/routes/health.ts
-var import_express15 = require("express");
-var router15 = (0, import_express15.Router)();
-router15.get("/api/health", async (_req, res) => {
+router14.get("/api/health", async (_req, res) => {
   const checks = {};
   let healthy = true;
   try {
@@ -2601,14 +2383,14 @@ router15.get("/api/health", async (_req, res) => {
     timestamp: (/* @__PURE__ */ new Date()).toISOString()
   });
 });
-router15.get("/api/health/live", (_req, res) => {
+router14.get("/api/health/live", (_req, res) => {
   res.json({ status: "alive", timestamp: (/* @__PURE__ */ new Date()).toISOString() });
 });
-var health_default = router15;
+var health_default = router14;
 
 // backend/app.ts
 var import_meta2 = {};
-var app = (0, import_express16.default)();
+var app = (0, import_express15.default)();
 var __filename;
 var __dirname;
 try {
@@ -2651,8 +2433,8 @@ app.use((0, import_cors.default)({
   allowedHeaders: ["Content-Type", "Authorization"],
   maxAge: 86400
 }));
-app.use(import_express16.default.json({ limit: "1mb" }));
-app.use(import_express16.default.urlencoded({ extended: true, limit: "1mb" }));
+app.use(import_express15.default.json({ limit: "1mb" }));
+app.use(import_express15.default.urlencoded({ extended: true, limit: "1mb" }));
 function resolveUploadsDir() {
   if (process.env.UPLOADS_DIR) return process.env.UPLOADS_DIR;
   const cwdBackend = import_path2.default.join(process.cwd(), "backend", "uploads");
@@ -2666,7 +2448,7 @@ try {
   }
 } catch {
 }
-app.use("/uploads", import_express16.default.static(uploadsDir, {
+app.use("/uploads", import_express15.default.static(uploadsDir, {
   maxAge: "1y",
   etag: true
 }));
@@ -2684,7 +2466,6 @@ app.use(admin_default);
 app.use(public_default);
 app.use(settings_default);
 app.use(upload_default);
-app.use(push_default);
 app.use((req, res, next) => {
   if (req.path.startsWith("/api/")) {
     return res.status(404).json({ error: "Route non trouv\xE9e" });
