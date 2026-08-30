@@ -1,11 +1,11 @@
-import { useState, useMemo, useEffect } from 'react';
-import { Trash2, ShoppingBag, ArrowRight, Check, Plus, Minus, Square, CheckSquare } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+﻿import { useState, useMemo, useEffect } from '\''react'\'';
+import { Trash2, ShoppingBag, ArrowRight, Check, Plus, Minus, Square, CheckSquare, MapPin, Phone, User } from '\''lucide-react'\'';
+import { motion, AnimatePresence } from '\''motion/react'\'';
 import { Cart } from '../../types';
 import { removeFromCart, updateCartItemQuantity } from '../../lib/api/cart';
+import { createOrder } from '../../lib/api/orders';
 import { Price } from '../ui/Price';
 import { Button } from '../ui/Button';
-import { CheckoutModal } from '../checkout/CheckoutModal';
 import { useToast } from '../ui/Toast';
 
 interface CartViewProps {
@@ -20,7 +20,16 @@ export function CartView({ cart, onUpdateCart, onNavigate, onRefreshCart }: Cart
   const safeItems = cart?.items ?? [];
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set<string>(safeItems.map(i => i.id)));
   const [updatingId, setUpdatingId] = useState<string | null>(null);
-  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showShippingForm, setShowShippingForm] = useState(false);
+  const [shippingInfo, setShippingInfo] = useState({
+    fullName: '',
+    phone: '',
+    address: '',
+    city: '',
+    notes: ''
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     setSelectedIds((prev: Set<string>) => {
@@ -91,12 +100,60 @@ export function CartView({ cart, onUpdateCart, onNavigate, onRefreshCart }: Cart
     }
   };
 
-  const handleOrder = () => {
+  const validateShipping = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    if (!shippingInfo.fullName.trim() || shippingInfo.fullName.trim().length < 2) {
+      newErrors.fullName = 'Nom complet requis (min. 2 caracteres)';
+    }
+    const phoneClean = shippingInfo.phone.replace(/\s/g, '');
+    if (!phoneClean || phoneClean.length < 8 || !/^\+?\d{8,}$/.test(phoneClean)) {
+      newErrors.phone = 'Numero de telephone invalide (+225 XX XX XX XX XX)';
+    }
+    if (!shippingInfo.address.trim() || shippingInfo.address.trim().length < 5) {
+      newErrors.address = 'Adresse requise (min. 5 caracteres)';
+    }
+    if (!shippingInfo.city.trim()) {
+      newErrors.city = 'Ville requise';
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleOrder = async () => {
     if (selectedIds.size === 0) {
       return;
     }
-    setIsCheckoutOpen(true);
+    if (!validateShipping()) {
+      return;
+    }
+    setIsSubmitting(true);
+    try {
+      await createOrder({
+        shippingAddress: {
+          fullName: shippingInfo.fullName.trim(),
+          phone: shippingInfo.phone.trim(),
+          address: shippingInfo.address.trim(),
+          city: shippingInfo.city.trim(),
+          notes: shippingInfo.notes.trim() || undefined
+        },
+        cartItemIds: Array.from(selectedIds),
+      });
+      toast('Commande confirmee !', 'success');
+      setShowShippingForm(false);
+      setShippingInfo({ fullName: '', phone: '', address: '', city: '', notes: '' });
+      onNavigate('commandes');
+      onRefreshCart?.();
+    } catch (err: any) {
+      toast(err.message || 'Erreur lors de la commande', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  const inputClass = (field: string) =>
+    `w-full rounded-xl border p-3 text-sm focus:outline-none transition-colors ${
+      errors[field] ? 'border-red-400 focus:border-red-500' : 'border-gray-200 focus:border-[#0B5D1E]'
+    }`;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -203,25 +260,100 @@ export function CartView({ cart, onUpdateCart, onNavigate, onRefreshCart }: Cart
                   <span className="text-[#0B5D1E] text-xl">{displayTotal.toLocaleString()} FCFA</span>
                 </div>
               </div>
-              <Button size="lg" onClick={handleOrder} icon={<ArrowRight size={18} />} className="w-full shadow-lg" disabled={selectedIds.size === 0}>
-                {selectedIds.size === 0 ? 'Selectionnez des articles' : 'Commander ' + selectedCount + ' article' + (selectedCount > 1 ? 's' : '')}
-              </Button>
-              {selectedIds.size > 0 && !isAllSelected && (
-                <p className="text-xs text-center text-gray-500">{safeItems.length - selectedIds.size} article(s) resteront dans votre panier.</p>
+
+              {!showShippingForm ? (
+                <Button size="lg" onClick={() => setShowShippingForm(true)} icon={<ArrowRight size={18} />} className="w-full shadow-lg" disabled={selectedIds.size === 0}>
+                  {selectedIds.size === 0 ? 'Selectionnez des articles' : 'Commander ' + selectedCount + ' article' + (selectedCount > 1 ? 's' : '')}
+                </Button>
+              ) : (
+                <div className="space-y-4">
+                  <div className="p-4 bg-[#EAF7ED]/40 rounded-xl border border-[#0B5D1E]/20 text-sm">
+                    <p className="font-semibold text-[#064A15]">Resume : {selectedIds.size} article(s)</p>
+                    <p className="text-gray-600">Total : {displayTotal.toLocaleString()} FCFA</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">
+                      <User size={12} className="inline mr-1" />Nom complet
+                    </label>
+                    <input
+                      type="text"
+                      value={shippingInfo.fullName}
+                      onChange={(e) => { setShippingInfo(prev => ({ ...prev, fullName: e.target.value })); setErrors(prev => ({ ...prev, fullName: undefined })); }}
+                      className={inputClass('fullName')}
+                      placeholder="Votre nom complet"
+                    />
+                    {errors.fullName && <p className="text-xs text-red-500 mt-1">{errors.fullName}</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">
+                      <Phone size={12} className="inline mr-1" />Telephone
+                    </label>
+                    <input
+                      type="tel"
+                      value={shippingInfo.phone}
+                      onChange={(e) => { setShippingInfo(prev => ({ ...prev, phone: e.target.value })); setErrors(prev => ({ ...prev, phone: undefined })); }}
+                      className={inputClass('phone')}
+                      placeholder="+225 07 00 00 00 00"
+                    />
+                    {errors.phone && <p className="text-xs text-red-500 mt-1">{errors.phone}</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">
+                      <MapPin size={12} className="inline mr-1" />Adresse de livraison
+                    </label>
+                    <input
+                      type="text"
+                      value={shippingInfo.address}
+                      onChange={(e) => { setShippingInfo(prev => ({ ...prev, address: e.target.value })); setErrors(prev => ({ ...prev, address: undefined })); }}
+                      className={inputClass('address')}
+                      placeholder="Quartier, rue, repères..."
+                    />
+                    {errors.address && <p className="text-xs text-red-500 mt-1">{errors.address}</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">Ville</label>
+                    <input
+                      type="text"
+                      value={shippingInfo.city}
+                      onChange={(e) => { setShippingInfo(prev => ({ ...prev, city: e.target.value })); setErrors(prev => ({ ...prev, city: undefined })); }}
+                      className={inputClass('city')}
+                      placeholder="Abidjan"
+                    />
+                    {errors.city && <p className="text-xs text-red-500 mt-1">{errors.city}</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">Notes (optionnel)</label>
+                    <textarea
+                      rows={2}
+                      value={shippingInfo.notes}
+                      onChange={(e) => setShippingInfo(prev => ({ ...prev, notes: e.target.value }))}
+                      className="w-full rounded-xl border border-gray-200 p-3 text-sm focus:outline-none focus:border-[#0B5D1E]"
+                      placeholder="Instructions de livraison..."
+                    />
+                  </div>
+
+                  <div className="pt-4 flex gap-3">
+                    <Button variant="outline" onClick={() => setShowShippingForm(false)} className="flex-1">Annuler</Button>
+                    <Button type="button" size="lg" onClick={handleOrder} isLoading={isSubmitting} className="flex-1">
+                      Confirmer la commande
+                    </Button>
+                  </div>
+
+                  {selectedIds.size > 0 && !isAllSelected && (
+                    <p className="text-xs text-center text-gray-500">{safeItems.length - selectedIds.size} article(s) resteront dans votre panier.</p>
+                  )}
+                </div>
               )}
+
             </div>
           </div>
         </div>
       )}
-
-      <CheckoutModal
-        isOpen={isCheckoutOpen}
-        onClose={() => setIsCheckoutOpen(false)}
-        selectedIds={selectedIds}
-        selectedSubtotal={selectedSubtotal}
-        onSuccess={() => { onNavigate('commandes'); }}
-        onCartRefresh={onRefreshCart}
-      />
     </div>
   );
 }

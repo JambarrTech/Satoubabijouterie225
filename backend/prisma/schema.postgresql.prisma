@@ -1,4 +1,4 @@
-generator client {
+﻿generator client {
   provider = "prisma-client-js"
 }
 
@@ -22,30 +22,30 @@ enum OrderStatus {
 }
 
 model User {
-  id                  String               @id @default(cuid())
-  name                String
-  identifier          String               @unique
-  password            String
-  phone               String?
-  avatar              String?
-  role                Role                 @default(CUSTOMER)
-  address             String?
-  city                String?
-  country             String?
-  failedLoginAttempts Int                  @default(0)
+  id        String   @id @default(cuid())
+  name      String
+  identifier String  @unique
+  password  String
+  phone     String?
+  avatar    String?
+  role      Role     @default(CUSTOMER)
+  address   String?
+  city      String?
+  country   String?
+  failedLoginAttempts Int      @default(0)
   lockedUntil         DateTime?
   lastLoginAt         DateTime?
-  createdAt           DateTime             @default(now())
-  pushTokens          String               @default("[]")
+  createdAt DateTime @default(now())
+  pushTokens String   @default("[]") @db.Text
 
-  orders              Order[]
-  favorites           Favorite[]
-  likes               Like[]
-  notifications       Notification[]
-  customRequests      CustomRequest[]
-  repairRequests      RepairRequest[]
-  cart                Cart?
-  passwordResets      PasswordResetToken[]
+  orders          Order[]
+  favorites       Favorite[]
+  likes           Like[]
+  notifications   Notification[]
+  customRequests  CustomRequest[]
+  repairRequests  RepairRequest[]
+  cart            Cart?
+  passwordResets  PasswordResetToken[]
 
   @@index([role])
 }
@@ -81,10 +81,10 @@ model Product {
   weightGrams    Float?
   createdAt      DateTime @default(now())
 
-  cartItems  CartItem[]
-  orderItems OrderItem[]
-  favorites  Favorite[]
-  likes      Like[]
+  cartItems   CartItem[]
+  orderItems  OrderItem[]
+  favorites   Favorite[]
+  likes       Like[]
 
   @@index([categoryId])
   @@index([isBestSeller])
@@ -114,24 +114,20 @@ model CartItem {
 }
 
 model Order {
-  id              String      @id @default(cuid())
-  orderNumber     String      @unique
+  id              String        @id @default(cuid())
+  orderNumber     String        @unique
   userId          String
-  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   customerName    String
   phone           String
   address         String
   items           OrderItem[]
   totalAmount     Int
-  status          OrderStatus @default(CONFIRMED)
-  paymentMethod   String      @default("WAVE")
-  paymentRef      String?
-  paymentStatus   String      @default("PENDING")
-  paymentUrl      String?
-  shippingAddress String?
-  statusHistory   String?
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  status          OrderStatus   @default(CONFIRMED)
+  shippingAddress String?       @db.Text
+  statusHistory   String?       @db.Text
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @default(now()) @updatedAt
 
   @@index([userId])
   @@index([status])
@@ -240,10 +236,10 @@ model RepairRequest {
 }
 
 model StoreSettings {
-  id          String  @id @default(cuid())
-  key         String  @unique
-  value       String
-  description String?
+  id            String @id @default(cuid())
+  key           String @unique
+  value         String
+  description   String?
 }
 
 model PasswordResetToken {

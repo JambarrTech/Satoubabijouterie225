@@ -202,7 +202,7 @@ export function GerantProducts() {
               {filteredProducts.map(prod => (
                 <tr key={prod.id} className={`hover:bg-gray-50/50 ${!prod.inStock ? 'opacity-60' : ''}`}>
                   <td className="p-4 flex items-center gap-3">
-                    <img src={prod.images?.[0]} alt={prod.name} className="w-12 h-12 rounded-xl object-cover border border-gray-200 shrink-0" referrerPolicy="no-referrer" />
+                    <img src={prod.images?.[0] || '/placeholder.svg'} alt={prod.name} className="w-12 h-12 rounded-xl object-cover border border-gray-200 shrink-0" referrerPolicy="no-referrer" />
                     <div>
                       <p className="font-bold text-gray-900 line-clamp-1">{prod.name}</p>
                       <div className="flex items-center gap-2">
@@ -293,7 +293,7 @@ export function GerantProducts() {
             <div className="flex flex-wrap gap-3">
               {images.map((img, idx) => (
                 <div key={idx} className="relative w-24 h-24 rounded-xl overflow-hidden border border-gray-200 group">
-                  <img src={img} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  <img src={img || '/placeholder.svg'} alt="" onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                   <button
                     type="button"
                     onClick={() => handleRemoveImage(idx)}

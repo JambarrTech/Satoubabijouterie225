@@ -1,4 +1,4 @@
-generator client {
+﻿generator client {
   provider = "prisma-client-js"
 }
 
@@ -124,10 +124,6 @@ model Order {
   items           OrderItem[]
   totalAmount     Int
   status          OrderStatus @default(CONFIRMED)
-  paymentMethod   String      @default("WAVE")
-  paymentRef      String?
-  paymentStatus   String      @default("PENDING")
-  paymentUrl      String?
   shippingAddress String?     @db.Text
   statusHistory   String?     @db.Text
   createdAt       DateTime    @default(now())
