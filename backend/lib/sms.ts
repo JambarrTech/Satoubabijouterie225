@@ -71,10 +71,10 @@ export async function sendSMS(options: SMSOptions): Promise<SMSResponse> {
     const response = await axios.post(
       `${AT_BASE_URL}/version1/messaging`,
       new URLSearchParams({
+        ...(AT_USERNAME !== 'sandbox' ? { from: options.senderId || AT_SENDER_ID } : {}),
         username: AT_USERNAME,
         to: phone,
         message: options.message,
-        from: options.senderId || AT_SENDER_ID,
       }),
       {
         headers: {
@@ -152,10 +152,10 @@ export async function sendBulkSMS(phones: string[], message: string, senderId?: 
     const response = await axios.post(
       `${AT_BASE_URL}/version1/messaging`,
       new URLSearchParams({
+        ...(AT_USERNAME !== 'sandbox' ? { from: senderId || AT_SENDER_ID } : {}),
         username: AT_USERNAME,
         to: formattedPhones,
         message,
-        from: senderId || AT_SENDER_ID,
       }),
       {
         headers: {

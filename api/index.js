@@ -298,10 +298,10 @@ async function sendSMS(options) {
     const response = await import_axios.default.post(
       `${AT_BASE_URL}/version1/messaging`,
       new URLSearchParams({
+        ...AT_USERNAME !== "sandbox" ? { from: options.senderId || AT_SENDER_ID } : {},
         username: AT_USERNAME,
         to: phone,
-        message: options.message,
-        from: options.senderId || AT_SENDER_ID
+        message: options.message
       }),
       {
         headers: {
