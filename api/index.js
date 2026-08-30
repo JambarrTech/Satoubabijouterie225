@@ -295,14 +295,17 @@ async function sendSMS(options) {
     environment: AT_USERNAME
   }, "SMS send attempt");
   try {
+    const params = {
+      username: AT_USERNAME,
+      to: phone,
+      message: options.message
+    };
+    if (AT_USERNAME !== "sandbox" && !AT_USERNAME.startsWith("sandbox")) {
+      params.from = options.senderId || AT_SENDER_ID;
+    }
     const response = await import_axios.default.post(
       `${AT_BASE_URL}/version1/messaging`,
-      new URLSearchParams({
-        ...AT_USERNAME !== "sandbox" ? { from: options.senderId || AT_SENDER_ID } : {},
-        username: AT_USERNAME,
-        to: phone,
-        message: options.message
-      }),
+      new URLSearchParams(params),
       {
         headers: {
           "apiKey": AT_API_KEY,

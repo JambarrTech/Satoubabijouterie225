@@ -68,14 +68,19 @@ export async function sendSMS(options: SMSOptions): Promise<SMSResponse> {
   }, 'SMS send attempt');
 
   try {
+    const params: Record<string, string> = {
+      username: AT_USERNAME,
+      to: phone,
+      message: options.message,
+    };
+    // Only include sender ID in production (sandbox doesn't support it)
+    if (AT_USERNAME !== 'sandbox' && !AT_USERNAME.startsWith('sandbox')) {
+      params.from = options.senderId || AT_SENDER_ID;
+    }
+
     const response = await axios.post(
       `${AT_BASE_URL}/version1/messaging`,
-      new URLSearchParams({
-        ...(AT_USERNAME !== 'sandbox' ? { from: options.senderId || AT_SENDER_ID } : {}),
-        username: AT_USERNAME,
-        to: phone,
-        message: options.message,
-      }),
+      new URLSearchParams(params),
       {
         headers: {
           'apiKey': AT_API_KEY,
@@ -149,14 +154,18 @@ export async function sendBulkSMS(phones: string[], message: string, senderId?: 
   }, 'Bulk SMS send attempt');
 
   try {
+    const bulkParams: Record<string, string> = {
+      username: AT_USERNAME,
+      to: formattedPhones,
+      message,
+    };
+    if (AT_USERNAME !== 'sandbox' && !AT_USERNAME.startsWith('sandbox')) {
+      bulkParams.from = senderId || AT_SENDER_ID;
+    }
+
     const response = await axios.post(
       `${AT_BASE_URL}/version1/messaging`,
-      new URLSearchParams({
-        ...(AT_USERNAME !== 'sandbox' ? { from: senderId || AT_SENDER_ID } : {}),
-        username: AT_USERNAME,
-        to: formattedPhones,
-        message,
-      }),
+      new URLSearchParams(bulkParams),
       {
         headers: {
           'apiKey': AT_API_KEY,
