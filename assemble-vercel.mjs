@@ -15,6 +15,13 @@ cpSync('client/dist', 'dist', { recursive: true });
 mkdirSync('dist/gerant', { recursive: true });
 cpSync('gerant/dist', 'dist/gerant', { recursive: true });
 
+// Copy product/category images so /uploads/products/* URLs work in production
+const uploadsSrc = 'backend/uploads';
+if (existsSync(uploadsSrc)) {
+  cpSync(uploadsSrc, 'dist/uploads', { recursive: true });
+  console.log('  dist/uploads/ (images static)');
+}
+
 const files = ['dist/index.html', 'dist/gerant/index.html'];
 console.log('Vercel dist assemblé :');
 console.log('  ' + files.join('  '));
