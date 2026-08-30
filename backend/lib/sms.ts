@@ -8,6 +8,7 @@ const AT_BASE_URL = AT_USERNAME === 'sandbox'
   ? 'https://api.sandbox.africastalking.com'
   : 'https://api.africastalking.com';
 const COUNTRY_CODE = process.env.COUNTRY_CODE || '225';
+const CONTACT_PHONE = process.env.CONTACT_PHONE || '+225 07 47 13 52 01';
 
 interface SMSOptions {
   to: string;
@@ -191,92 +192,226 @@ export async function sendBulkSMS(phones: string[], message: string, senderId?: 
   }
 }
 
-// --- Template SMS functions ---
+// ====================================================
+// COMMANDES — Templates SMS
+// ====================================================
 
 export async function sendOrderConfirmationSMS(phone: string, orderNumber: string, total: number): Promise<SMSResponse> {
-  const message = `SaTouba: Commande ${orderNumber} confirmee (${total.toLocaleString()} FCFA). Nos artisans preparent votre bijou. Merci !`;
-  return sendSMS({ to: phone, message });
-}
-
-export async function sendShippingSMS(phone: string, orderNumber: string, trackingUrl?: string): Promise<SMSResponse> {
-  const message = `SaTouba: Commande ${orderNumber} expediee ! ${trackingUrl ? `Suivi: ${trackingUrl}` : 'Livraison sous 24-48h.'}`;
-  return sendSMS({ to: phone, message });
-}
-
-export async function sendDeliverySMS(phone: string, orderNumber: string): Promise<SMSResponse> {
-  const message = `SaTouba: Commande ${orderNumber} livree avec succes. Merci pour votre confiance ! Votre avis nous interesse.`;
-  return sendSMS({ to: phone, message });
-}
-
-export async function sendOTPSMS(phone: string, code: string): Promise<SMSResponse> {
-  const message = `Votre code SaTouba: ${code}. Valable 10 min. Ne le partagez pas.`;
-  return sendSMS({ to: phone, message });
-}
-
-export async function sendCustomRequestSMS(phone: string, requestId: string): Promise<SMSResponse> {
-  const message = `SaTouba: Demande sur-mesure ${requestId} recue. Notre equipe vous contactera sous 24h pour discuter de votre projet.`;
-  return sendSMS({ to: phone, message });
-}
-
-export async function sendRepairRequestSMS(phone: string, requestId: string): Promise<SMSResponse> {
-  const message = `SaTouba: Demande reparation ${requestId} recue. Deposez votre bijou en boutique ou coursier prevu. Details a suivre.`;
+  const message = [
+    `SaTouba Bijouterie`,
+    `Bonjour, votre commande ${orderNumber} a bien ete confirmee.`,
+    `Montant: ${total.toLocaleString()} FCFA.`,
+    `Nos artisans artisan commence la fabrication de votre bijou.`,
+    `Vous recevrez un SMS a chaque etape (fabrication, expedition, livraison).`,
+    `Questions? Appelez-nous: ${CONTACT_PHONE}`,
+  ].join(' ');
   return sendSMS({ to: phone, message });
 }
 
 export async function sendPreparingSMS(phone: string, orderNumber: string): Promise<SMSResponse> {
-  const message = `SaTouba: Commande ${orderNumber} est en cours de fabrication par nos artisans. Nous vous tiendrons informe de l'expedition.`;
+  const message = [
+    `SaTouba Bijouterie`,
+    `Votre commande ${orderNumber} est en cours de fabrication par nos artisans.`,
+    `Delai estime: 3 a 7 jours ouvrables selon le type de bijou.`,
+    `Nous vous notifierons des que votre commande sera expediee.`,
+    `Suivi: ${CONTACT_PHONE}`,
+  ].join(' ');
+  return sendSMS({ to: phone, message });
+}
+
+export async function sendShippingSMS(phone: string, orderNumber: string, trackingUrl?: string): Promise<SMSResponse> {
+  const tracking = trackingUrl ? `\nSuivi colis: ${trackingUrl}` : '';
+  const message = [
+    `SaTouba Bijouterie`,
+    `Bonne nouvelle! Votre commande ${orderNumber} est en route vers vous.`,
+    `Livraison prevue sous 24 a 48h a Abidjan, 48 a 72h en province.${tracking}`,
+    `En cas d'absence, le coursier vous contactera.`,
+    `Questions? ${CONTACT_PHONE}`,
+  ].join(' ');
+  return sendSMS({ to: phone, message });
+}
+
+export async function sendDeliverySMS(phone: string, orderNumber: string): Promise<SMSResponse> {
+  const message = [
+    `SaTouba Bijouterie`,
+    `Votre commande ${orderNumber} a ete livree avec succes!`,
+    `Merci pour votre confiance. Votre satisfaction est notre priorite.`,
+    `Nous vous remercions de prendre un moment pour nous laisser un avis sur l'application.`,
+    `Pour toute question sur votre bijou: ${CONTACT_PHONE}`,
+  ].join(' ');
   return sendSMS({ to: phone, message });
 }
 
 export async function sendCancelledSMS(phone: string, orderNumber: string, reason?: string): Promise<SMSResponse> {
-  const reasonPart = reason ? ` Motif: ${reason}.` : '';
-  const message = `SaTouba: Commande ${orderNumber} annulee.${reasonPart} Contactez-nous pour toute question.`;
+  const reasonPart = reason ? `\nMotif: ${reason}.` : '';
+  const message = [
+    `SaTouba Bijouterie`,
+    `Votre commande ${orderNumber} a ete annulee.${reasonPart}`,
+    `Si un paiement a ete effectue, le remboursement sera traite sous 3 a 5 jours ouvrables.`,
+    `Pour plus d'informations, contactez-nous: ${CONTACT_PHONE}`,
+  ].join(' ');
   return sendSMS({ to: phone, message });
 }
 
 export async function sendNewOrderSMS(phone: string, orderNumber: string, customerName: string, total: number): Promise<SMSResponse> {
-  const message = `SaTouba: Nouvelle commande ${orderNumber} de ${customerName} (${total.toLocaleString()} FCFA). Connectez-vous pour gerer.`;
+  const message = [
+    `SaTouba - Nouvelle Commande`,
+    `Commande ${orderNumber} de ${customerName}.`,
+    `Montant: ${total.toLocaleString()} FCFA.`,
+    `Connectez-vous au tableau de bord pour gerer cette commande.`,
+  ].join(' ');
   return sendSMS({ to: phone, message });
 }
 
-// --- Repair status change SMS ---
+// ====================================================
+// DEMANDE SUR-MESURE — Templates SMS
+// ====================================================
 
-export async function sendRepairStatusSMS(phone: string, requestId: string, status: string): Promise<SMSResponse> {
-  const statusMessages: Record<string, string> = {
-    IN_PROGRESS: `Votre reparation ${requestId} est en cours de traitement.`,
-    WAITING_PARTS: `Votre reparation ${requestId}: en attente de pieces. Nous vous tiendrons informe.`,
-    COMPLETED: `Votre reparation ${requestId} est terminee. Vous pouvez recuperer votre bijou.`,
-    DELIVERED: `Votre reparation ${requestId} vous a ete remise. Merci pour votre confiance !`,
-    CANCELLED: `Votre reparation ${requestId} a ete annulee. Contactez-nous pour plus d'infos.`,
-  };
-  const statusText = statusMessages[status] || `Statut de votre reparation ${requestId} mis a jour: ${status}`;
-  const message = `SaTouba: ${statusText}`;
+export async function sendCustomRequestSMS(phone: string, requestId: string): Promise<SMSResponse> {
+  const message = [
+    `SaTouba Bijouterie - Sur-mesure`,
+    `Votre demande de creation sur-mesure ${requestId} a bien ete recue.`,
+    `Notre equipe va etudier votre projet et vous contacter sous 24h pour:`,
+    `- Discuter de vos preferences (materiaux, style, budget)`,
+    `- Vous proposer un devis detaille`,
+    `- Organiser un rendez-vous en boutique si besoin`,
+    `Contact direct: ${CONTACT_PHONE}`,
+  ].join(' ');
   return sendSMS({ to: phone, message });
 }
-
-// --- Custom request status change SMS ---
 
 export async function sendCustomStatusSMS(phone: string, requestId: string, status: string): Promise<SMSResponse> {
   const statusMessages: Record<string, string> = {
-    IN_PROGRESS: `Votre demande sur-mesure ${requestId} est en cours d'etude.`,
-    QUOTE_SENT: `Votre demande sur-mesure ${requestId}: devis disponible. Connectez-vous pour le consulter.`,
-    APPROVED: `Votre demande sur-mesure ${requestId} est approuvee. Nos artisans commencent la fabrication.`,
-    COMPLETED: `Votre bijou sur-mesure ${requestId} est termine. Vous pouvez le recuperer.`,
-    CANCELLED: `Votre demande sur-mesure ${requestId} a ete annulee. Contactez-nous pour plus d'infos.`,
+    IN_PROGRESS: [
+      `SaTouba Bijouterie - Sur-mesure`,
+      `Votre demande ${requestId} est en cours d'etude par nos artisans.`,
+      `Nous analysons vos preferences et preparons une proposition personnalisee.`,
+      `Devis detaille sous 48h. Questions? ${CONTACT_PHONE}`,
+    ].join(' '),
+    QUOTE_SENT: [
+      `SaTouba Bijouterie - Sur-mesure`,
+      `Votre devis pour la demande ${requestId} est disponible!`,
+      `Connectez-vous a l'application pour consulter les details (materiaux, delai, prix).`,
+      `Vous pouvez modifier ou valider le devis en ligne.`,
+      `Contact: ${CONTACT_PHONE}`,
+    ].join(' '),
+    APPROVED: [
+      `SaTouba Bijouterie - Sur-mesure`,
+      `Excellente nouvelle! Votre demande ${requestId} est approuvee.`,
+      `Nos artisans commencent la fabrication de votre bijou sur-mesure.`,
+      `Delai de fabrication: 2 a 4 semaines selon la complexite.`,
+      `Vous recevrez des photos d'avancement et un SMS a chaque etape.`,
+      `Contact: ${CONTACT_PHONE}`,
+    ].join(' '),
+    COMPLETED: [
+      `SaTouba Bijouterie - Sur-mesure`,
+      `Felicitations! Votre bijou sur-mesure ${requestId} est termine!`,
+      `Il est disponible en boutique pour retrait ou peut vous etre livre.`,
+      `Pour organiser la remise, contactez-nous: ${CONTACT_PHONE}`,
+    ].join(' '),
+    CANCELLED: [
+      `SaTouba Bijouterie - Sur-mesure`,
+      `Votre demande ${requestId} a ete annulee.`,
+      `Si un acompte a ete verse, contactez-nous pour les modalites de remboursement.`,
+      `Nous restons a votre disposition: ${CONTACT_PHONE}`,
+    ].join(' '),
   };
-  const statusText = statusMessages[status] || `Statut de votre demande ${requestId} mis a jour: ${status}`;
-  const message = `SaTouba: ${statusText}`;
-  return sendSMS({ to: phone, message });
-}
-
-// --- Notify gerant about new repair/custom ---
-
-export async function sendNewRepairToGerantSMS(phone: string, requestId: string, customerName: string, jewelryType: string): Promise<SMSResponse> {
-  const message = `SaTouba: Nouvelle reparation ${requestId} de ${customerName} — ${jewelryType}. Connectez-vous pour gerer.`;
-  return sendSMS({ to: phone, message });
+  const statusText = statusMessages[status] || [
+    `SaTouba Bijouterie - Sur-mesure`,
+    `Mise a jour pour votre demande ${requestId}.`,
+    `Statut: ${status}.`,
+    `Consultez l'application pour plus de details.`,
+  ].join(' ');
+  return sendSMS({ to: phone, message: statusText });
 }
 
 export async function sendNewCustomToGerantSMS(phone: string, requestId: string, customerName: string, jewelryType: string): Promise<SMSResponse> {
-  const message = `SaTouba: Nouvelle demande sur-mesure ${requestId} de ${customerName} — ${jewelryType}. Connectez-vous pour gerer.`;
+  const message = [
+    `SaTouba - Nouvelle Demande Sur-mesure`,
+    `Demande ${requestId} de ${customerName}.`,
+    `Type de bijou: ${jewelryType}.`,
+    `Connectez-vous au tableau de bord pour consulter les details et repondre au client.`,
+  ].join(' ');
+  return sendSMS({ to: phone, message });
+}
+
+// ====================================================
+// REPARATION — Templates SMS
+// ====================================================
+
+export async function sendRepairRequestSMS(phone: string, requestId: string): Promise<SMSResponse> {
+  const message = [
+    `SaTouba Bijouterie - Reparation`,
+    `Votre demande de reparation ${requestId} a bien ete enregistree.`,
+    `Prochaines etapes:`,
+    `- Deposez votre bijou en boutique: Koumassi, feux de prodromo, Abidjan`,
+    `- Ou demandez un enlevement a domicile: ${CONTACT_PHONE}`,
+    `- Notre artisan evaluerat le bijou et vous contactera avec un devis`,
+    `Questions? ${CONTACT_PHONE}`,
+  ].join(' ');
+  return sendSMS({ to: phone, message });
+}
+
+export async function sendRepairStatusSMS(phone: string, requestId: string, status: string): Promise<SMSResponse> {
+  const statusMessages: Record<string, string> = {
+    IN_PROGRESS: [
+      `SaTouba Bijouterie - Reparation`,
+      `Votre reparation ${requestId} est en cours de traitement.`,
+      `Notre artisan a commence les reparations sur votre bijou.`,
+      `Delai estime: 5 a 10 jours ouvrables selon la nature des reparations.`,
+      `Contact: ${CONTACT_PHONE}`,
+    ].join(' '),
+    WAITING_PARTS: [
+      `SaTouba Bijouterie - Reparation`,
+      `Votre reparation ${requestId}: nous attendons l'arrivee de pieces de rechange.`,
+      `Delai supplementaire prevu: 3 a 7 jours.`,
+      `Nous vous tenons informe des que les pieces seront recues.`,
+      `Contact: ${CONTACT_PHONE}`,
+    ].join(' '),
+    COMPLETED: [
+      `SaTouba Bijouterie - Reparation`,
+      `Bonne nouvelle! Votre reparation ${requestId} est terminee!`,
+      `Votre bijou est pret a etre recupere en boutique.`,
+      `Horaires: Lundi a Samedi, 8h a 19h.`,
+      `Pour organiser la remise: ${CONTACT_PHONE}`,
+    ].join(' '),
+    DELIVERED: [
+      `SaTouba Bijouterie - Reparation`,
+      `Votre reparation ${requestId} vous a ete remise.`,
+      `Merci pour votre confiance! Votre bijou est maintenant en parfait etat.`,
+      `Pour toute question ulterieure: ${CONTACT_PHONE}`,
+    ].join(' '),
+    CANCELLED: [
+      `SaTouba Bijouterie - Reparation`,
+      `Votre reparation ${requestId} a ete annulee.`,
+      `Si un depot a ete effectue, contactez-nous pour recuperer votre bijou.`,
+      `Contact: ${CONTACT_PHONE}`,
+    ].join(' '),
+  };
+  const statusText = statusMessages[status] || [
+    `SaTouba Bijouterie - Reparation`,
+    `Mise a jour pour votre reparation ${requestId}.`,
+    `Statut: ${status}.`,
+    `Consultez l'application pour plus de details.`,
+  ].join(' ');
+  return sendSMS({ to: phone, message: statusText });
+}
+
+export async function sendNewRepairToGerantSMS(phone: string, requestId: string, customerName: string, jewelryType: string): Promise<SMSResponse> {
+  const message = [
+    `SaTouba - Nouvelle Demande de Reparation`,
+    `Demande ${requestId} de ${customerName}.`,
+    `Type de bijou: ${jewelryType}.`,
+    `Connectez-vous au tableau de bord pour evaluer la reparation et repondre au client.`,
+  ].join(' ');
+  return sendSMS({ to: phone, message });
+}
+
+// ====================================================
+// OTP — Code de verification
+// ====================================================
+
+export async function sendOTPSMS(phone: string, code: string): Promise<SMSResponse> {
+  const message = `SaTouba Bijouterie: Votre code de verification est ${code}. Valable 10 minutes. Ne partagez ce code avec personne.`;
   return sendSMS({ to: phone, message });
 }
