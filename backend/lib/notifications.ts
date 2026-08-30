@@ -85,7 +85,14 @@ async function sendNotificationToUser(options: {
 
   if (options.channel === 'PUSH' || options.channel === 'BOTH') {
     if (tokens.length > 0) {
-      await sendMulticastPushNotification(tokens, options.title, options.body, options.data);
+      try {
+        const result = await sendMulticastPushNotification(tokens, options.title, options.body, options.data);
+        if (result.failed > 0) {
+          console.warn(`Push: ${result.failed}/${tokens.length} tokens failed`, result.errors);
+        }
+      } catch (err) {
+        console.error('Push notification send error:', err);
+      }
     }
   }
 }

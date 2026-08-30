@@ -271,7 +271,9 @@ router.put('/api/orders/:id/status', authenticateToken, requireAdmin, async (req
     }
 
     // Notify customer for all status changes
-    await notifyOrderStatusChange(order.id, status as any);
+    notifyOrderStatusChange(order.id, status as any).catch((err) =>
+      logger.error({ err, orderId: order.id }, 'Failed to send status change notifications')
+    );
 
     res.json({
       ...order,

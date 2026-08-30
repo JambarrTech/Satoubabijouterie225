@@ -5,6 +5,13 @@ let messageListener: (() => void) | null = null;
 
 export async function registerPushNotifications(_userId: string): Promise<boolean> {
   try {
+    // Request permission first (required for FCM token)
+    const permission = await requestNotificationPermission();
+    if (permission !== 'granted') {
+      console.warn('Notification permission not granted:', permission);
+      return false;
+    }
+
     const token = await getFCMToken();
     if (!token) {
       console.warn('No FCM token available');
