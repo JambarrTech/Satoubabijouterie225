@@ -11,9 +11,9 @@ const router = Router();
 
 const createCustomSchema = z.object({
   jewelryType: z.string().trim().min(1, 'Type de bijou requis').max(200),
-  material: z.string().trim().max(200).optional(),
+  material: z.string().trim().min(1, 'Material requis').max(200),
   description: z.string().trim().min(1, 'Description requise').max(2000),
-  budget: z.string().trim().max(100).optional(),
+  budget: z.string().trim().min(1, 'Budget requis').max(100),
   phone: z.string().trim().min(8, 'Numéro de téléphone valide requis').max(20),
   referenceImageUrl: z.string().max(500).optional(),
 });
@@ -86,7 +86,7 @@ router.post('/api/custom-requests', authenticateToken, async (req: AuthRequest, 
       data: {
         userId: req.userId!,
         jewelryType: sanitizeString(jewelryType),
-        material: material ? sanitizeString(material) : null,
+        material: sanitizeString(material || ''),
         description: sanitizeString(description),
         budget: budget ? sanitizeString(budget) : null,
         referenceImageUrl: referenceImageUrl ? sanitizeString(referenceImageUrl) as string : null,

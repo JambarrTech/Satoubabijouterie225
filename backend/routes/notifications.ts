@@ -11,7 +11,7 @@ const createNotificationSchema = z.object({
   userId: z.string().min(1, 'Utilisateur requis'),
   title: z.string().trim().min(1, 'Titre requis').max(200),
   message: z.string().trim().min(1, 'Message requis').max(2000),
-  type: z.enum(['ORDER', 'PROMO', 'SYSTEM', 'REPAIR', 'CUSTOM']).optional(),
+  type: z.enum(['ORDER', 'PROMO', 'SYSTEM', 'REPAIR', 'CUSTOM']),
 });
 
 function validateNotification<T extends z.ZodTypeAny>(schema: T, data: unknown): { success: true; data: z.infer<T> } | { success: false; error: string } {
@@ -101,7 +101,7 @@ router.post('/api/notifications', authenticateToken, requireAdmin, async (req: A
         userId,
         title: sanitizeString(title),
         message: sanitizeString(message),
-        type: type || 'SYSTEM',
+        type,
       },
     });
     res.status(201).json(notification);

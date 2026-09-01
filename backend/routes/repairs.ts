@@ -13,7 +13,7 @@ const router = Router();
 const createRepairSchema = z.object({
   jewelryType: z.string().trim().min(1, 'Type de bijou requis').max(200),
   problemType: z.string().trim().min(1, 'Type de problème requis').max(200),
-  description: z.string().trim().max(2000).optional(),
+  description: z.string().trim().min(1, 'Description requise').max(2000),
   phone: z.string().trim().min(8, 'Numéro de téléphone valide requis').max(20),
   photos: z.array(z.string()).optional(),
 });
