@@ -51,7 +51,7 @@ export function GerantLogs() {
   const fetchLogs = async (offset = 0) => {
     setLoading(true);
     try {
-      const data = await apiGet(`/api/audit-logs?limit=${LIMIT}&offset=${offset}`);
+      const data = await apiGet(`/api/audit-logs?limit=${LIMIT}&offset=${offset}`) as { logs: AuditLogEntry[]; total: number };
       setLogs(data.logs);
       setTotal(data.total);
     } catch {
