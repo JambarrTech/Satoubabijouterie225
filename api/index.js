@@ -35,7 +35,7 @@ __export(index_exports, {
 module.exports = __toCommonJS(index_exports);
 
 // backend/app.ts
-var import_express16 = __toESM(require("express"), 1);
+var import_express19 = __toESM(require("express"), 1);
 var import_cors = __toESM(require("cors"), 1);
 var import_path2 = __toESM(require("path"), 1);
 var import_fs2 = __toESM(require("fs"), 1);
@@ -53,7 +53,7 @@ var logger = (0, import_pino.default)({
   transport: void 0,
   // Redact sensitive fields
   redact: {
-    paths: ["req.headers.authorization", "req.headers.cookie", "password", "token", "FIREBASE_PRIVATE_KEY", "JWT_SECRET", "AFRICASTALKING_API_KEY"],
+    paths: ["req.headers.authorization", "req.headers.cookie", "password", "token", "JWT_SECRET", "AFRICASTALKING_API_KEY"],
     censor: "[REDACTED]"
   },
   base: {
@@ -121,8 +121,8 @@ function rateLimit(maxRequests, windowMs) {
         }
         return next();
       } catch (err) {
-        console.error("Rate limit Redis error:", err);
-        return next();
+        logger_default.error({ err }, "Rate limit Redis error");
+        return res.status(503).json({ error: "Service temporairement indisponible. R\xE9essayez dans quelques instants." });
       }
     }
     const now = Date.now();
@@ -198,7 +198,8 @@ function setupSecurity(app2) {
 // backend/routes/auth.ts
 var import_express = require("express");
 var import_bcryptjs = __toESM(require("bcryptjs"), 1);
-var import_crypto = __toESM(require("crypto"), 1);
+var import_crypto2 = __toESM(require("crypto"), 1);
+var import_zod = require("zod");
 
 // backend/lib/prisma.ts
 var import_client = require("@prisma/client");
@@ -212,6 +213,7 @@ prisma.$connect().catch(() => {
 
 // backend/middleware/auth.ts
 var import_jsonwebtoken = __toESM(require("jsonwebtoken"), 1);
+var import_crypto = __toESM(require("crypto"), 1);
 function getJWTSecret() {
   const secret = process.env.JWT_SECRET || (process.env.NODE_ENV === "test" ? "test-jwt-secret-for-vitest-only" : "");
   if (!secret) {
@@ -258,7 +260,35 @@ function requireAdmin(req, res, next) {
   next();
 }
 function generateToken(userId, role) {
-  return import_jsonwebtoken.default.sign({ userId, role }, getJWTSecret(), { expiresIn: "7d" });
+  return import_jsonwebtoken.default.sign({ userId, role }, getJWTSecret(), { expiresIn: "15m" });
+}
+async function generateRefreshToken(userId) {
+  const token = import_crypto.default.randomBytes(40).toString("hex");
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1e3);
+  await prisma.refreshToken.create({
+    data: {
+      token,
+      userId,
+      expiresAt
+    }
+  });
+  return token;
+}
+async function verifyRefreshToken(token) {
+  const refreshToken = await prisma.refreshToken.findUnique({
+    where: { token }
+  });
+  if (!refreshToken) return null;
+  if (refreshToken.expiresAt < /* @__PURE__ */ new Date()) {
+    await prisma.refreshToken.delete({ where: { id: refreshToken.id } }).catch(() => {
+    });
+    return null;
+  }
+  return { userId: refreshToken.userId };
+}
+async function revokeRefreshToken(token) {
+  await prisma.refreshToken.deleteMany({ where: { token } }).catch(() => {
+  });
 }
 
 // backend/lib/sms.ts
@@ -268,7 +298,7 @@ var AT_API_KEY = process.env.AFRICASTALKING_API_KEY || "";
 var AT_SENDER_ID = process.env.AFRICASTALKING_SENDER_ID || "SaTouba";
 var AT_BASE_URL = AT_USERNAME === "sandbox" ? "https://api.sandbox.africastalking.com" : "https://api.africastalking.com";
 var COUNTRY_CODE = process.env.COUNTRY_CODE || "225";
-var CONTACT_PHONE = process.env.CONTACT_PHONE || "+225 07 47 13 52 01";
+var CONTACT_PHONE = process.env.CONTACT_PHONE || "+225 05 54 13 07 46";
 function formatPhoneNumber(phone) {
   let cleaned = phone.replace(/\D/g, "");
   if (cleaned.startsWith("0")) {
@@ -552,6 +582,55 @@ async function sendOTPSMS(phone, code) {
   return sendSMS({ to: phone, message });
 }
 
+// backend/lib/audit.ts
+async function logAction(data) {
+  try {
+    await prisma.auditLog.create({
+      data: {
+        userId: data.userId || null,
+        action: data.action,
+        entity: data.entity || null,
+        entityId: data.entityId || null,
+        details: data.details || void 0,
+        ipAddress: data.ipAddress || null
+      }
+    });
+  } catch (error) {
+    logger_default.error({ err: error }, "Failed to write audit log");
+  }
+}
+async function getAuditLogs(options = {}) {
+  const where = {};
+  if (options.userId) where.userId = options.userId;
+  if (options.action) where.action = options.action;
+  if (options.entity) where.entity = options.entity;
+  const [logs, total] = await Promise.all([
+    prisma.auditLog.findMany({
+      where,
+      include: { user: { select: { id: true, name: true, identifier: true } } },
+      orderBy: { createdAt: "desc" },
+      take: options.limit || 50,
+      skip: options.offset || 0
+    }),
+    prisma.auditLog.count({ where })
+  ]);
+  return { logs, total };
+}
+
+// backend/lib/sanitize.ts
+var HTML_TAG = /<[^>]*>/g;
+var SCRIPT_TAG = /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi;
+var EVENT_HANDLER = /\s*on\w+\s*=\s*["'][^"']*["']/gi;
+var MAX_LENGTH = 5e3;
+function sanitizeString(input) {
+  if (typeof input !== "string") return "";
+  return input.replace(SCRIPT_TAG, "").replace(EVENT_HANDLER, "").replace(HTML_TAG, "").trim().slice(0, MAX_LENGTH);
+}
+function isValidPhone(phone) {
+  const cleaned = phone.replace(/\D/g, "");
+  return cleaned.length >= 8 && cleaned.length <= 15;
+}
+
 // backend/routes/auth.ts
 var router = (0, import_express.Router)();
 var ALLOWED_PROFILE_FIELDS = ["name", "phone", "address", "city", "country", "avatar"];
@@ -559,101 +638,132 @@ var MAX_FAILED_ATTEMPTS = 8;
 var LOCKOUT_DURATION_MS = 10 * 60 * 1e3;
 var PASSWORD_RESET_EXPIRY_MS = 10 * 60 * 1e3;
 var GERANT_IDENTIFIER = process.env.GERANT_IDENTIFIER || "gerantSatoubaBijouterie6002";
-function isValidIdentifier(id) {
-  return typeof id === "string" && id.trim().length >= 3 && /^[a-zA-Z0-9_-]+$/.test(id);
-}
-function isStrongPassword(password) {
-  if (typeof password !== "string") return { valid: false, error: "Mot de passe invalide" };
-  if (password.length < 8) return { valid: false, error: "Le mot de passe doit contenir au moins 8 caract\xE8res" };
-  if (!/[A-Z]/.test(password)) return { valid: false, error: "Le mot de passe doit contenir au moins une majuscule" };
-  if (!/[a-z]/.test(password)) return { valid: false, error: "Le mot de passe doit contenir au moins une minuscule" };
-  if (!/[0-9]/.test(password)) return { valid: false, error: "Le mot de passe doit contenir au moins un chiffre" };
-  return { valid: true };
+var registerSchema = import_zod.z.object({
+  name: import_zod.z.string().trim().min(2, "Le nom doit contenir au moins 2 caract\xE8res").max(100),
+  identifier: import_zod.z.string().trim().min(3, "L'identifiant doit contenir au moins 3 caract\xE8res").max(50).regex(/^[a-zA-Z0-9_-]+$/, "L'identifiant ne peut contenir que des lettres, chiffres, tirets ou underscores"),
+  password: import_zod.z.string().min(8, "Le mot de passe doit contenir au moins 8 caract\xE8res").regex(/[A-Z]/, "Le mot de passe doit contenir au moins une majuscule").regex(/[a-z]/, "Le mot de passe doit contenir au moins une minuscule").regex(/[0-9]/, "Le mot de passe doit contenir au moins un chiffre"),
+  phone: import_zod.z.string().trim().optional()
+});
+var loginSchema = import_zod.z.object({
+  identifier: import_zod.z.string().trim().min(1, "Identifiant requis"),
+  password: import_zod.z.string().min(1, "Mot de passe requis")
+});
+var changePasswordSchema = import_zod.z.object({
+  currentPassword: import_zod.z.string().min(1, "Mot de passe actuel requis"),
+  newPassword: import_zod.z.string().min(8, "Le mot de passe doit contenir au moins 8 caract\xE8res").regex(/[A-Z]/, "Le mot de passe doit contenir au moins une majuscule").regex(/[a-z]/, "Le mot de passe doit contenir au moins une minuscule").regex(/[0-9]/, "Le mot de passe doit contenir au moins un chiffre")
+});
+var forgotPasswordSchema = import_zod.z.object({
+  phone: import_zod.z.string().trim().min(8, "Num\xE9ro de t\xE9l\xE9phone valide requis").max(20)
+});
+var resetPasswordSchema = import_zod.z.object({
+  phone: import_zod.z.string().trim().min(8, "Num\xE9ro de t\xE9l\xE9phone valide requis").max(20),
+  otp: import_zod.z.string().length(6, "Le code OTP doit contenir 6 chiffres").regex(/^\d{6}$/, "Le code OTP doit contenir uniquement des chiffres"),
+  newPassword: import_zod.z.string().min(8, "Le mot de passe doit contenir au moins 8 caract\xE8res").regex(/[A-Z]/, "Le mot de passe doit contenir au moins une majuscule").regex(/[a-z]/, "Le mot de passe doit contenir au moins une minuscule").regex(/[0-9]/, "Le mot de passe doit contenir au moins un chiffre")
+});
+function validate(schema, data) {
+  const result = schema.safeParse(data);
+  if (result.success) return { success: true, data: result.data };
+  const firstError = result.error.issues[0];
+  return { success: false, error: firstError?.message || "Donn\xE9es invalides" };
 }
 router.post("/api/auth/register", rateLimit(15, 6e4), async (req, res) => {
   try {
     const { name, identifier, password, phone } = req.body;
-    if (!name || !identifier || !password) {
-      return res.status(400).json({ error: "Nom, identifiant et mot de passe requis" });
+    const validation = validate(registerSchema, { name, identifier, password, phone });
+    if (!validation.success) {
+      return res.status(400).json({ error: validation.error });
     }
-    if (typeof name !== "string" || name.trim().length < 2) {
-      return res.status(400).json({ error: "Le nom doit contenir au moins 2 caract\xE8res" });
-    }
-    if (!isValidIdentifier(identifier)) {
-      return res.status(400).json({ error: "L'identifiant doit contenir au moins 3 caract\xE8res (lettres, chiffres, tirets ou underscores)" });
-    }
-    const pwdCheck = isStrongPassword(password);
-    if (!pwdCheck.valid) {
-      return res.status(400).json({ error: pwdCheck.error });
-    }
-    const existing = await prisma.user.findUnique({ where: { identifier: identifier.toLowerCase() } });
+    const { name: validName, identifier: validIdentifier, password: validPassword } = validation.data;
+    const existing = await prisma.user.findUnique({ where: { identifier: validIdentifier.toLowerCase() } });
     if (existing) {
       return res.status(400).json({ error: "Un compte existe d\xE9j\xE0 avec cet identifiant" });
     }
-    const hashedPassword = await import_bcryptjs.default.hash(password, 12);
+    const hashedPassword = await import_bcryptjs.default.hash(validPassword, 12);
     const user = await prisma.user.create({
-      data: { name: name.trim(), identifier: identifier.toLowerCase(), password: hashedPassword, phone: phone || null }
+      data: { name: validName, identifier: validIdentifier.toLowerCase(), password: hashedPassword, phone: validation.data.phone || null }
     });
     await prisma.cart.create({ data: { userId: user.id } });
     const token = generateToken(user.id, user.role);
+    const refreshToken = await generateRefreshToken(user.id);
     const { password: _, ...userWithoutPassword } = user;
     logger_default.info({ userId: user.id, identifier: user.identifier }, "User registered");
-    res.status(201).json({ user: userWithoutPassword, token });
+    res.status(201).json({ user: userWithoutPassword, token, refreshToken });
   } catch (error) {
     logger_default.error({ err: error }, "Register error");
     res.status(500).json({ error: "Erreur lors de l'inscription" });
   }
 });
+async function authenticateUser(identifier, password, options) {
+  const user = await prisma.user.findUnique({ where: { identifier: identifier.toLowerCase() } });
+  if (!user || options?.requireAdmin && user.role !== "ADMIN") {
+    throw Object.assign(new Error("Identifiant ou mot de passe incorrect"), { status: 401 });
+  }
+  if (user.lockedUntil && user.lockedUntil > /* @__PURE__ */ new Date()) {
+    const remainingMin = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 6e4);
+    const err = Object.assign(new Error(`Compte temporairement verrouill\xE9. R\xE9essayez dans ${remainingMin} minute${remainingMin > 1 ? "s" : ""}.`), {
+      status: 423,
+      details: { lockedUntil: user.lockedUntil.toISOString() }
+    });
+    throw err;
+  }
+  if (user.lockedUntil && user.lockedUntil <= /* @__PURE__ */ new Date()) {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { failedLoginAttempts: 0, lockedUntil: null }
+    });
+  }
+  const passwordMatch = await import_bcryptjs.default.compare(password, user.password);
+  if (!passwordMatch) {
+    const newFailedCount = user.failedLoginAttempts + 1;
+    const updateData = { failedLoginAttempts: newFailedCount };
+    if (newFailedCount >= MAX_FAILED_ATTEMPTS) {
+      updateData.lockedUntil = new Date(Date.now() + LOCKOUT_DURATION_MS);
+      logger_default.warn({ userId: user.id, identifier: user.identifier }, "Account locked after failed attempts");
+    }
+    await prisma.user.update({ where: { id: user.id }, data: updateData });
+    const remaining = MAX_FAILED_ATTEMPTS - newFailedCount;
+    if (remaining > 0) {
+      throw Object.assign(new Error(`Identifiant ou mot de passe incorrect. ${remaining} tentative${remaining > 1 ? "s" : ""} restante${remaining > 1 ? "s" : ""}.`), { status: 401 });
+    }
+    throw Object.assign(new Error("Compte temporairement verrouill\xE9 apr\xE8s 8 tentatives \xE9chou\xE9es. R\xE9essayez dans 10 minutes."), {
+      status: 423,
+      details: { lockedUntil: updateData.lockedUntil.toISOString() }
+    });
+  }
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { failedLoginAttempts: 0, lockedUntil: null, lastLoginAt: /* @__PURE__ */ new Date() }
+  });
+  const token = generateToken(user.id, user.role);
+  const refreshToken = await generateRefreshToken(user.id);
+  const { password: _, ...userWithoutPassword } = user;
+  return { user: userWithoutPassword, token, refreshToken };
+}
 router.post("/api/auth/login", rateLimit(30, 6e4), async (req, res) => {
   try {
     const { identifier, password } = req.body;
-    if (!identifier || !password) {
-      return res.status(400).json({ error: "Identifiant et mot de passe requis" });
+    const validation = validate(loginSchema, { identifier, password });
+    if (!validation.success) {
+      return res.status(400).json({ error: validation.error });
     }
-    const user = await prisma.user.findUnique({ where: { identifier: identifier.toLowerCase() } });
-    if (!user) {
-      return res.status(401).json({ error: "Identifiant ou mot de passe incorrect" });
-    }
-    if (user.lockedUntil && user.lockedUntil > /* @__PURE__ */ new Date()) {
-      const remainingMin = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 6e4);
-      return res.status(423).json({
-        error: `Compte temporairement verrouill\xE9. R\xE9essayez dans ${remainingMin} minute${remainingMin > 1 ? "s" : ""}.`,
-        lockedUntil: user.lockedUntil.toISOString()
-      });
-    }
-    if (user.lockedUntil && user.lockedUntil <= /* @__PURE__ */ new Date()) {
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { failedLoginAttempts: 0, lockedUntil: null }
-      });
-    }
-    const validPassword = await import_bcryptjs.default.compare(password, user.password);
-    if (!validPassword) {
-      const newFailedCount = user.failedLoginAttempts + 1;
-      const updateData = { failedLoginAttempts: newFailedCount };
-      if (newFailedCount >= MAX_FAILED_ATTEMPTS) {
-        updateData.lockedUntil = new Date(Date.now() + LOCKOUT_DURATION_MS);
-        logger_default.warn({ userId: user.id, identifier: user.identifier }, "Account locked after failed attempts");
-      }
-      await prisma.user.update({ where: { id: user.id }, data: updateData });
-      const remaining = MAX_FAILED_ATTEMPTS - newFailedCount;
-      if (remaining > 0) {
-        return res.status(401).json({ error: `Identifiant ou mot de passe incorrect. ${remaining} tentative${remaining > 1 ? "s" : ""} restante${remaining > 1 ? "s" : ""}.` });
-      }
-      return res.status(423).json({
-        error: "Compte temporairement verrouill\xE9 apr\xE8s 8 tentatives \xE9chou\xE9es. R\xE9essayez dans 10 minutes.",
-        lockedUntil: updateData.lockedUntil.toISOString()
-      });
-    }
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { failedLoginAttempts: 0, lockedUntil: null, lastLoginAt: /* @__PURE__ */ new Date() }
+    const { identifier: validIdentifier, password: validPassword } = validation.data;
+    const result = await authenticateUser(validIdentifier, validPassword);
+    logger_default.info({ userId: result.user.id, identifier: result.user.identifier }, "User logged in");
+    await logAction({
+      userId: result.user.id,
+      action: "LOGIN",
+      entity: "User",
+      entityId: result.user.id,
+      details: { role: result.user.role },
+      ipAddress: req.ip
     });
-    const token = generateToken(user.id, user.role);
-    const { password: _, ...userWithoutPassword } = user;
-    logger_default.info({ userId: user.id, identifier: user.identifier }, "User logged in");
-    res.json({ user: userWithoutPassword, token });
+    res.json(result);
   } catch (error) {
+    if (error.status) {
+      const body = { error: error.message };
+      if (error.details) Object.assign(body, error.details);
+      return res.status(error.status).json(body);
+    }
     logger_default.error({ err: error }, "Login error");
     res.status(500).json({ error: "Erreur lors de la connexion" });
   }
@@ -661,54 +771,28 @@ router.post("/api/auth/login", rateLimit(30, 6e4), async (req, res) => {
 router.post("/api/auth/login-gerant", rateLimit(30, 6e4), async (req, res) => {
   try {
     const { identifier, password } = req.body;
-    const loginId = identifier || GERANT_IDENTIFIER;
-    if (!password) {
-      return res.status(400).json({ error: "Mot de passe requis" });
+    const validation = validate(loginSchema, { identifier: identifier || GERANT_IDENTIFIER, password });
+    if (!validation.success) {
+      return res.status(400).json({ error: validation.error });
     }
-    const user = await prisma.user.findUnique({ where: { identifier: loginId } });
-    if (!user || user.role !== "ADMIN") {
-      return res.status(401).json({ error: "Identifiant ou mot de passe incorrect" });
-    }
-    if (user.lockedUntil && user.lockedUntil > /* @__PURE__ */ new Date()) {
-      const remainingMin = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 6e4);
-      return res.status(423).json({
-        error: `Compte temporairement verrouill\xE9. R\xE9essayez dans ${remainingMin} minute${remainingMin > 1 ? "s" : ""}.`,
-        lockedUntil: user.lockedUntil.toISOString()
-      });
-    }
-    if (user.lockedUntil && user.lockedUntil <= /* @__PURE__ */ new Date()) {
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { failedLoginAttempts: 0, lockedUntil: null }
-      });
-    }
-    const validPassword = await import_bcryptjs.default.compare(password, user.password);
-    if (!validPassword) {
-      const newFailedCount = user.failedLoginAttempts + 1;
-      const updateData = { failedLoginAttempts: newFailedCount };
-      if (newFailedCount >= MAX_FAILED_ATTEMPTS) {
-        updateData.lockedUntil = new Date(Date.now() + LOCKOUT_DURATION_MS);
-        logger_default.warn({ userId: user.id }, "Gerant account locked after failed attempts");
-      }
-      await prisma.user.update({ where: { id: user.id }, data: updateData });
-      const remaining = MAX_FAILED_ATTEMPTS - newFailedCount;
-      if (remaining > 0) {
-        return res.status(401).json({ error: `Identifiant ou mot de passe incorrect. ${remaining} tentative${remaining > 1 ? "s" : ""} restante${remaining > 1 ? "s" : ""}.` });
-      }
-      return res.status(423).json({
-        error: "Compte temporairement verrouill\xE9 apr\xE8s 8 tentatives \xE9chou\xE9es. R\xE9essayez dans 10 minutes.",
-        lockedUntil: updateData.lockedUntil.toISOString()
-      });
-    }
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { failedLoginAttempts: 0, lockedUntil: null, lastLoginAt: /* @__PURE__ */ new Date() }
+    const { identifier: loginId, password: validPassword } = validation.data;
+    const result = await authenticateUser(loginId, validPassword, { requireAdmin: true });
+    logger_default.info({ userId: result.user.id }, "Gerant logged in");
+    await logAction({
+      userId: result.user.id,
+      action: "LOGIN_GERANT",
+      entity: "User",
+      entityId: result.user.id,
+      details: { role: result.user.role },
+      ipAddress: req.ip
     });
-    const token = generateToken(user.id, user.role);
-    const { password: _, ...userWithoutPassword } = user;
-    logger_default.info({ userId: user.id }, "Gerant logged in");
-    res.json({ user: userWithoutPassword, token });
+    res.json(result);
   } catch (error) {
+    if (error.status) {
+      const body = { error: error.message };
+      if (error.details) Object.assign(body, error.details);
+      return res.status(error.status).json(body);
+    }
     logger_default.error({ err: error }, "Gerant login error");
     res.status(500).json({ error: "Erreur lors de la connexion" });
   }
@@ -732,7 +816,7 @@ router.put("/api/auth/me", authenticateToken, async (req, res) => {
     const updateData = {};
     for (const key of ALLOWED_PROFILE_FIELDS) {
       if (req.body[key] !== void 0) {
-        updateData[key] = req.body[key];
+        updateData[key] = typeof req.body[key] === "string" ? sanitizeString(req.body[key]) : req.body[key];
       }
     }
     if (Object.keys(updateData).length === 0) {
@@ -751,25 +835,23 @@ router.put("/api/auth/me", authenticateToken, async (req, res) => {
 router.post("/api/auth/change-password", authenticateToken, async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({ error: "Mot de passe actuel et nouveau mot de passe requis" });
+    const validation = validate(changePasswordSchema, { currentPassword, newPassword });
+    if (!validation.success) {
+      return res.status(400).json({ error: validation.error });
     }
-    const pwdCheck = isStrongPassword(newPassword);
-    if (!pwdCheck.valid) {
-      return res.status(400).json({ error: pwdCheck.error });
-    }
+    const { currentPassword: validCurrentPassword, newPassword: validNewPassword } = validation.data;
     const user = await prisma.user.findUnique({ where: { id: req.userId } });
     if (!user) {
       return res.status(404).json({ error: "Utilisateur non trouv\xE9" });
     }
-    const validPassword = await import_bcryptjs.default.compare(currentPassword, user.password);
-    if (!validPassword) {
+    const passwordMatch = await import_bcryptjs.default.compare(validCurrentPassword, user.password);
+    if (!passwordMatch) {
       return res.status(401).json({ error: "Mot de passe actuel incorrect" });
     }
-    if (currentPassword === newPassword) {
+    if (validCurrentPassword === validNewPassword) {
       return res.status(400).json({ error: "Le nouveau mot de passe doit \xEAtre diff\xE9rent de l'actuel" });
     }
-    const hashedPassword = await import_bcryptjs.default.hash(newPassword, 12);
+    const hashedPassword = await import_bcryptjs.default.hash(validNewPassword, 12);
     await prisma.user.update({
       where: { id: req.userId },
       data: { password: hashedPassword }
@@ -784,10 +866,12 @@ router.post("/api/auth/change-password", authenticateToken, async (req, res) => 
 router.post("/api/auth/forgot-password", rateLimit(10, 6e4), async (req, res) => {
   try {
     const { phone } = req.body;
-    if (!phone || typeof phone !== "string" || phone.trim().length < 8) {
-      return res.status(400).json({ error: "Num\xE9ro de t\xE9l\xE9phone valide requis" });
+    const validation = validate(forgotPasswordSchema, { phone });
+    if (!validation.success) {
+      return res.status(400).json({ error: validation.error });
     }
-    const user = await prisma.user.findFirst({ where: { phone: phone.trim() } });
+    const { phone: validPhone } = validation.data;
+    const user = await prisma.user.findFirst({ where: { phone: validPhone } });
     if (!user) {
       return res.json({ success: true, message: "Si un compte existe avec ce num\xE9ro, un code de r\xE9initialisation a \xE9t\xE9 envoy\xE9 par SMS." });
     }
@@ -795,8 +879,8 @@ router.post("/api/auth/forgot-password", rateLimit(10, 6e4), async (req, res) =>
       where: { userId: user.id, used: false },
       data: { used: true }
     });
-    const otp = import_crypto.default.randomInt(1e5, 999999).toString();
-    const hashedToken = import_crypto.default.createHash("sha256").update(otp).digest("hex");
+    const otp = import_crypto2.default.randomInt(1e5, 999999).toString();
+    const hashedToken = import_crypto2.default.createHash("sha256").update(otp).digest("hex");
     await prisma.passwordResetToken.create({
       data: {
         token: hashedToken,
@@ -817,18 +901,16 @@ router.post("/api/auth/forgot-password", rateLimit(10, 6e4), async (req, res) =>
 router.post("/api/auth/reset-password", rateLimit(15, 6e4), async (req, res) => {
   try {
     const { phone, otp, newPassword } = req.body;
-    if (!phone || !otp || !newPassword) {
-      return res.status(400).json({ error: "T\xE9l\xE9phone, code OTP et nouveau mot de passe requis" });
+    const validation = validate(resetPasswordSchema, { phone, otp, newPassword });
+    if (!validation.success) {
+      return res.status(400).json({ error: validation.error });
     }
-    const pwdCheck = isStrongPassword(newPassword);
-    if (!pwdCheck.valid) {
-      return res.status(400).json({ error: pwdCheck.error });
-    }
-    const user = await prisma.user.findFirst({ where: { phone: phone.trim() } });
+    const { phone: validPhone, otp: validOtp, newPassword: validNewPassword } = validation.data;
+    const user = await prisma.user.findFirst({ where: { phone: validPhone } });
     if (!user) {
-      return res.status(400).json({ error: "Aucun compte trouv\xE9 avec ce num\xE9ro" });
+      return res.status(400).json({ error: "Code invalide ou expir\xE9" });
     }
-    const hashedToken = import_crypto.default.createHash("sha256").update(otp.toString()).digest("hex");
+    const hashedToken = import_crypto2.default.createHash("sha256").update(validOtp).digest("hex");
     const resetRecord = await prisma.passwordResetToken.findFirst({
       where: {
         token: hashedToken,
@@ -840,7 +922,7 @@ router.post("/api/auth/reset-password", rateLimit(15, 6e4), async (req, res) => 
     if (!resetRecord) {
       return res.status(400).json({ error: "Code invalide ou expir\xE9" });
     }
-    const hashedPassword = await import_bcryptjs.default.hash(newPassword, 12);
+    const hashedPassword = await import_bcryptjs.default.hash(validNewPassword, 12);
     await prisma.$transaction([
       prisma.user.update({
         where: { id: resetRecord.userId },
@@ -856,6 +938,53 @@ router.post("/api/auth/reset-password", rateLimit(15, 6e4), async (req, res) => 
   } catch (error) {
     logger_default.error({ err: error }, "Reset password error");
     res.status(500).json({ error: "Erreur lors de la r\xE9initialisation du mot de passe" });
+  }
+});
+router.post("/api/auth/refresh", rateLimit(30, 6e4), async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+    if (!refreshToken || typeof refreshToken !== "string") {
+      return res.status(400).json({ error: "Refresh token requis" });
+    }
+    const payload = await verifyRefreshToken(refreshToken);
+    if (!payload) {
+      return res.status(401).json({ error: "Refresh token invalide ou expir\xE9" });
+    }
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: { id: true, role: true }
+    });
+    if (!user) {
+      return res.status(401).json({ error: "Utilisateur non trouv\xE9" });
+    }
+    await revokeRefreshToken(refreshToken);
+    const newAccessToken = generateToken(user.id, user.role);
+    const newRefreshToken = await generateRefreshToken(user.id);
+    res.json({ token: newAccessToken, refreshToken: newRefreshToken });
+  } catch (error) {
+    logger_default.error({ err: error }, "Refresh token error");
+    res.status(500).json({ error: "Erreur lors du rafra\xEEchissement du token" });
+  }
+});
+router.post("/api/auth/logout", authenticateToken, async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+    if (refreshToken) {
+      await revokeRefreshToken(refreshToken);
+    }
+    await prisma.refreshToken.deleteMany({ where: { userId: req.userId } }).catch(() => {
+    });
+    await logAction({
+      userId: req.userId,
+      action: "LOGOUT",
+      entity: "User",
+      entityId: req.userId,
+      ipAddress: req.ip
+    });
+    res.json({ success: true, message: "D\xE9connexion r\xE9ussie" });
+  } catch (error) {
+    logger_default.error({ err: error }, "Logout error");
+    res.status(500).json({ error: "Erreur lors de la d\xE9connexion" });
   }
 });
 var auth_default = router;
@@ -877,9 +1006,10 @@ router2.post("/api/categories", authenticateToken, requireAdmin, async (req, res
   try {
     const { name, image, description } = req.body;
     if (!name) return res.status(400).json({ error: "Nom requis" });
-    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    const sanitizedName = sanitizeString(name);
+    const slug = sanitizedName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
     const category = await prisma.category.create({
-      data: { name, slug, image: image || null, description: description || null }
+      data: { name: sanitizedName, slug, image: sanitizeString(image) || null, description: sanitizeString(description) || null }
     });
     res.status(201).json(category);
   } catch {
@@ -891,11 +1021,12 @@ router2.put("/api/categories/:id", authenticateToken, requireAdmin, async (req, 
     const { name, image, description } = req.body;
     const data = {};
     if (name) {
-      data.name = name;
-      data.slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      const sanitizedName = sanitizeString(name);
+      data.name = sanitizedName;
+      data.slug = sanitizedName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
     }
-    if (image !== void 0) data.image = image;
-    if (description !== void 0) data.description = description;
+    if (image !== void 0) data.image = sanitizeString(image);
+    if (description !== void 0) data.description = sanitizeString(description);
     const category = await prisma.category.update({ where: { id: req.params.id }, data });
     res.json(category);
   } catch {
@@ -909,6 +1040,13 @@ router2.delete("/api/categories/:id", authenticateToken, requireAdmin, async (re
       return res.status(400).json({ error: `${productCount} produit(s) utilisent cette cat\xE9gorie. Supprimez-les d'abord.` });
     }
     await prisma.category.delete({ where: { id: req.params.id } });
+    await logAction({
+      userId: req.userId,
+      action: "CATEGORY_DELETE",
+      entity: "Category",
+      entityId: req.params.id,
+      ipAddress: req.ip
+    });
     res.json({ success: true });
   } catch {
     res.status(500).json({ error: "Erreur" });
@@ -960,20 +1098,6 @@ function formatCartItems(items) {
       name: i.product?.name || "Produit"
     }
   }));
-}
-
-// backend/lib/sanitize.ts
-var HTML_TAG = /<[^>]*>/g;
-var SCRIPT_TAG = /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi;
-var EVENT_HANDLER = /\s*on\w+\s*=\s*["'][^"']*["']/gi;
-var MAX_LENGTH = 5e3;
-function sanitizeString(input) {
-  if (typeof input !== "string") return "";
-  return input.replace(SCRIPT_TAG, "").replace(EVENT_HANDLER, "").replace(HTML_TAG, "").trim().slice(0, MAX_LENGTH);
-}
-function isValidPhone(phone) {
-  const cleaned = phone.replace(/\D/g, "");
-  return cleaned.length >= 8 && cleaned.length <= 15;
 }
 
 // backend/routes/products.ts
@@ -1103,6 +1227,14 @@ router3.post("/api/products", authenticateToken, requireAdmin, rateLimit(20, 6e4
         isPromo: Boolean(filtered.isPromo)
       }
     });
+    await logAction({
+      userId: req.userId,
+      action: "PRODUCT_CREATE",
+      entity: "Product",
+      entityId: product.id,
+      details: { name: product.name, price },
+      ipAddress: req.ip
+    });
     res.status(201).json({ ...product, images: safeJsonParse(product.images, []) });
   } catch (error) {
     logger_default.error({ err: error }, "Create product error");
@@ -1136,6 +1268,14 @@ router3.put("/api/products/:id", authenticateToken, requireAdmin, rateLimit(30, 
       updateData.inStock = s > 0;
     }
     const product = await prisma.product.update({ where: { id }, data: updateData });
+    await logAction({
+      userId: req.userId,
+      action: "PRODUCT_UPDATE",
+      entity: "Product",
+      entityId: id,
+      details: { name: product.name, changes: Object.keys(updateData) },
+      ipAddress: req.ip
+    });
     res.json({ ...product, images: safeJsonParse(product.images, []) });
   } catch {
     res.status(500).json({ error: "Erreur lors de la mise \xE0 jour" });
@@ -1149,6 +1289,13 @@ router3.delete("/api/products/:id", authenticateToken, requireAdmin, async (req,
       await tx.favorite.deleteMany({ where: { productId: id } });
       await tx.like.deleteMany({ where: { productId: id } });
       await tx.product.update({ where: { id }, data: { inStock: false, stockQuantity: 0 } });
+    });
+    await logAction({
+      userId: req.userId,
+      action: "PRODUCT_DELETE",
+      entity: "Product",
+      entityId: id,
+      ipAddress: req.ip
     });
     res.json({ success: true });
   } catch {
@@ -1343,7 +1490,6 @@ async function notifyNewOrder(orderId) {
     title,
     message: body,
     type: "ORDER",
-    channel: "PUSH",
     data: { orderId: order.id, orderNumber: order.orderNumber, status: "CONFIRMED" },
     orderId
   });
@@ -1367,7 +1513,6 @@ async function notifyGerantsNewOrder(order) {
       title,
       message,
       type: "ORDER",
-      channel: "PUSH",
       data: { orderId: order.id, orderNumber: order.orderNumber, type: "NEW_ORDER" },
       orderId: order.id
     });
@@ -1396,7 +1541,6 @@ async function notifyOrderStatusChange(orderId, status) {
     title,
     message: body,
     type: "ORDER",
-    channel: "PUSH",
     data: { orderId: order.id, orderNumber: order.orderNumber, status },
     orderId
   });
@@ -1430,7 +1574,6 @@ async function notifyCustomRequest(userId, requestId) {
     title: "Demande sur-mesure recue",
     message: `Votre demande ${requestId} a ete prise en compte. Notre equipe vous contactera sous 24h.`,
     type: "CUSTOM",
-    channel: "PUSH",
     data: { requestId, type: "custom" }
   });
   if (user?.phone) {
@@ -1461,7 +1604,6 @@ async function notifyGerantsNewCustom(userId, requestId) {
       title,
       message,
       type: "CUSTOM",
-      channel: "PUSH",
       data: { requestId, type: "new_custom" }
     });
     if (admin.phone) {
@@ -1479,7 +1621,6 @@ async function notifyRepairRequest(userId, requestId) {
     title: "Demande de reparation recue",
     message: `Votre demande ${requestId} a ete enregistree. Nous vous contacterons pour organiser le depot.`,
     type: "REPAIR",
-    channel: "PUSH",
     data: { requestId, type: "repair" }
   });
   if (user?.phone) {
@@ -1510,7 +1651,6 @@ async function notifyGerantsNewRepair(userId, requestId) {
       title,
       message,
       type: "REPAIR",
-      channel: "PUSH",
       data: { requestId, type: "new_repair" }
     });
     if (admin.phone) {
@@ -1539,7 +1679,6 @@ async function notifyRepairStatusChange(requestId, status) {
     title,
     message: body,
     type: "REPAIR",
-    channel: "PUSH",
     data: { requestId, status, type: "repair" }
   });
   if (request.user.phone) {
@@ -1567,7 +1706,6 @@ async function notifyCustomStatusChange(requestId, status) {
     title,
     message: body,
     type: "CUSTOM",
-    channel: "PUSH",
     data: { requestId, status, type: "custom" }
   });
   if (request.user.phone) {
@@ -1607,18 +1745,23 @@ router5.get("/api/orders", authenticateToken, async (req, res) => {
     res.status(500).json({ error: "Erreur lors du chargement des commandes" });
   }
 });
-router5.get("/api/orders/all", authenticateToken, requireAdmin, async (_req, res) => {
+router5.get("/api/orders/all", authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const orders = await prisma.order.findMany({
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
+    const skip = (page - 1) * limit;
+    const [orders, total] = await prisma.order.findManyAndCount({
       include: { items: true, user: { select: { name: true, identifier: true, phone: true } } },
-      orderBy: { createdAt: "desc" }
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: limit
     });
     const parsed = orders.map((o) => ({
       ...o,
       shippingAddress: safeJsonParse(o.shippingAddress, null),
       statusHistory: safeJsonParse(o.statusHistory, [])
     }));
-    res.json(parsed);
+    res.json({ data: parsed, total, page, totalPages: Math.ceil(total / limit) });
   } catch {
     res.status(500).json({ error: "Erreur" });
   }
@@ -1676,11 +1819,16 @@ router5.post("/api/orders", authenticateToken, async (req, res) => {
     const user = await prisma.user.findUnique({ where: { id: req.userId } });
     const order = await prisma.$transaction(async (tx) => {
       for (const item of itemsToOrder) {
-        const result = await tx.$executeRaw`
-          UPDATE "Product" SET "stockQuantity" = "stockQuantity" - ${item.quantity}
-          WHERE "id" = ${item.productId} AND "stockQuantity" >= ${item.quantity}
-        `;
-        if (result === 0) {
+        const result = await tx.product.updateMany({
+          where: {
+            id: item.productId,
+            stockQuantity: { gte: item.quantity }
+          },
+          data: {
+            stockQuantity: { decrement: item.quantity }
+          }
+        });
+        if (result.count === 0) {
           const product = await tx.product.findUnique({
             where: { id: item.productId },
             select: { name: true, stockQuantity: true }
@@ -1738,7 +1886,7 @@ router5.post("/api/orders", authenticateToken, async (req, res) => {
     if (error.message && error.message.includes("en stock")) {
       return res.status(400).json({ error: error.message });
     }
-    logger_default.error({ err: error }, "Create order error");
+    logger_default.error({ err: error, message: error?.message, stack: error?.stack }, "Create order error");
     res.status(500).json({ error: "Erreur lors de la commande" });
   }
 });
@@ -1791,6 +1939,14 @@ router5.put("/api/orders/:id/status", authenticateToken, requireAdmin, async (re
     notifyOrderStatusChange(order.id, status).catch(
       (err) => logger_default.error({ err, orderId: order.id }, "Failed to send status change notifications")
     );
+    await logAction({
+      userId: req.userId,
+      action: "ORDER_STATUS_UPDATE",
+      entity: "Order",
+      entityId: order.id,
+      details: { orderNumber: order.orderNumber, oldStatus: existingOrder.status, newStatus: status },
+      ipAddress: req.ip
+    });
     res.json({
       ...order,
       statusHistory: safeJsonParse(order.statusHistory, [])
@@ -1845,7 +2001,20 @@ var favorites_default = router6;
 
 // backend/routes/notifications.ts
 var import_express7 = require("express");
+var import_zod2 = require("zod");
 var router7 = (0, import_express7.Router)();
+var createNotificationSchema = import_zod2.z.object({
+  userId: import_zod2.z.string().min(1, "Utilisateur requis"),
+  title: import_zod2.z.string().trim().min(1, "Titre requis").max(200),
+  message: import_zod2.z.string().trim().min(1, "Message requis").max(2e3),
+  type: import_zod2.z.enum(["ORDER", "PROMO", "SYSTEM", "REPAIR", "CUSTOM"])
+});
+function validateNotification(schema, data) {
+  const result = schema.safeParse(data);
+  if (result.success) return { success: true, data: result.data };
+  const firstError = result.error.issues[0];
+  return { success: false, error: firstError?.message || "Donn\xE9es invalides" };
+}
 router7.get("/api/notifications", authenticateToken, async (req, res) => {
   try {
     const notifications = await prisma.notification.findMany({
@@ -1888,6 +2057,13 @@ router7.delete("/api/notifications/:id", authenticateToken, async (req, res) => 
     if (!notification) return res.status(404).json({ error: "Notification non trouv\xE9e" });
     if (notification.userId !== req.userId) return res.status(403).json({ error: "Acc\xE8s refus\xE9" });
     await prisma.notification.delete({ where: { id: req.params.id } });
+    await logAction({
+      userId: req.userId,
+      action: "NOTIFICATION_DELETE",
+      entity: "Notification",
+      entityId: req.params.id,
+      ipAddress: req.ip
+    });
     res.json({ success: true });
   } catch {
     res.status(500).json({ error: "Erreur" });
@@ -1895,16 +2071,17 @@ router7.delete("/api/notifications/:id", authenticateToken, async (req, res) => 
 });
 router7.post("/api/notifications", authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const { userId, title, message, type } = req.body;
-    if (!userId || !title || !message) {
-      return res.status(400).json({ error: "Utilisateur, titre et message requis" });
+    const validation = validateNotification(createNotificationSchema, req.body);
+    if (!validation.success) {
+      return res.status(400).json({ error: validation.error });
     }
+    const { userId, title, message, type } = validation.data;
     const notification = await prisma.notification.create({
       data: {
         userId,
-        title,
-        message,
-        type: type || "SYSTEM"
+        title: sanitizeString(title),
+        message: sanitizeString(message),
+        type
       }
     });
     res.status(201).json(notification);
@@ -1916,8 +2093,25 @@ var notifications_default = router7;
 
 // backend/routes/custom.ts
 var import_express8 = require("express");
+var import_zod3 = require("zod");
 var router8 = (0, import_express8.Router)();
-var VALID_CUSTOM_STATUSES = ["PENDING", "IN_PROGRESS", "QUOTE_SENT", "APPROVED", "COMPLETED", "CANCELLED"];
+var createCustomSchema = import_zod3.z.object({
+  jewelryType: import_zod3.z.string().trim().min(1, "Type de bijou requis").max(200),
+  material: import_zod3.z.string().trim().min(1, "Material requis").max(200),
+  description: import_zod3.z.string().trim().min(1, "Description requise").max(2e3),
+  budget: import_zod3.z.string().trim().min(1, "Budget requis").max(100),
+  phone: import_zod3.z.string().trim().min(8, "Num\xE9ro de t\xE9l\xE9phone valide requis").max(20),
+  referenceImageUrl: import_zod3.z.string().max(500).optional()
+});
+var customStatusSchema = import_zod3.z.object({
+  status: import_zod3.z.enum(["PENDING", "IN_PROGRESS", "QUOTE_SENT", "APPROVED", "COMPLETED", "CANCELLED"])
+});
+function validateCustom(schema, data) {
+  const result = schema.safeParse(data);
+  if (result.success) return { success: true, data: result.data };
+  const firstError = result.error.issues[0];
+  return { success: false, error: firstError?.message || "Donn\xE9es invalides" };
+}
 router8.get("/api/custom-requests", authenticateToken, async (req, res) => {
   try {
     const requests = await prisma.customRequest.findMany({
@@ -1954,19 +2148,20 @@ router8.get("/api/custom-requests/:id", authenticateToken, async (req, res) => {
 });
 router8.post("/api/custom-requests", authenticateToken, async (req, res) => {
   try {
-    const { jewelryType, material, description, budget, referenceImageUrl, phone } = req.body;
-    if (!jewelryType || !description || !phone) {
-      return res.status(400).json({ error: "Type de bijou, description et t\xE9l\xE9phone requis" });
+    const validation = validateCustom(createCustomSchema, req.body);
+    if (!validation.success) {
+      return res.status(400).json({ error: validation.error });
     }
+    const { jewelryType, material, description, budget, referenceImageUrl, phone } = validation.data;
     const request = await prisma.customRequest.create({
       data: {
         userId: req.userId,
-        jewelryType,
-        material,
-        description,
-        budget: budget ? String(budget) : null,
-        referenceImageUrl,
-        phone
+        jewelryType: sanitizeString(jewelryType),
+        material: sanitizeString(material || ""),
+        description: sanitizeString(description),
+        budget: budget ? sanitizeString(budget) : null,
+        referenceImageUrl: referenceImageUrl ? sanitizeString(referenceImageUrl) : null,
+        phone: sanitizeString(phone)
       }
     });
     await notifyCustomRequest(req.userId, request.id);
@@ -1977,10 +2172,11 @@ router8.post("/api/custom-requests", authenticateToken, async (req, res) => {
 });
 router8.put("/api/custom-requests/:id/status", authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const { status } = req.body;
-    if (!VALID_CUSTOM_STATUSES.includes(status)) {
-      return res.status(400).json({ error: "Statut invalide" });
+    const validation = validateCustom(customStatusSchema, req.body);
+    if (!validation.success) {
+      return res.status(400).json({ error: validation.error });
     }
+    const { status } = validation.data;
     const request = await prisma.customRequest.update({
       where: { id: req.params.id },
       data: { status }
@@ -2002,6 +2198,13 @@ router8.delete("/api/custom-requests/:id", authenticateToken, async (req, res) =
       return res.status(403).json({ error: "Acc\xE8s refus\xE9" });
     }
     await prisma.customRequest.delete({ where: { id: req.params.id } });
+    await logAction({
+      userId: req.userId,
+      action: "CUSTOM_REQUEST_DELETE",
+      entity: "CustomRequest",
+      entityId: req.params.id,
+      ipAddress: req.ip
+    });
     res.json({ success: true });
   } catch {
     res.status(500).json({ error: "Erreur" });
@@ -2011,8 +2214,24 @@ var custom_default = router8;
 
 // backend/routes/repairs.ts
 var import_express9 = require("express");
+var import_zod4 = require("zod");
 var router9 = (0, import_express9.Router)();
-var VALID_REPAIR_STATUSES = ["RECEIVED", "IN_PROGRESS", "WAITING_PARTS", "COMPLETED", "DELIVERED", "CANCELLED"];
+var createRepairSchema = import_zod4.z.object({
+  jewelryType: import_zod4.z.string().trim().min(1, "Type de bijou requis").max(200),
+  problemType: import_zod4.z.string().trim().min(1, "Type de probl\xE8me requis").max(200),
+  description: import_zod4.z.string().trim().min(1, "Description requise").max(2e3),
+  phone: import_zod4.z.string().trim().min(8, "Num\xE9ro de t\xE9l\xE9phone valide requis").max(20),
+  photos: import_zod4.z.array(import_zod4.z.string()).optional()
+});
+var repairStatusSchema = import_zod4.z.object({
+  status: import_zod4.z.enum(["RECEIVED", "IN_PROGRESS", "WAITING_PARTS", "COMPLETED", "DELIVERED", "CANCELLED"])
+});
+function validateRepair(schema, data) {
+  const result = schema.safeParse(data);
+  if (result.success) return { success: true, data: result.data };
+  const firstError = result.error.issues[0];
+  return { success: false, error: firstError?.message || "Donn\xE9es invalides" };
+}
 router9.get("/api/repairs", authenticateToken, async (req, res) => {
   try {
     const repairs = await prisma.repairRequest.findMany({
@@ -2057,18 +2276,19 @@ router9.get("/api/repairs/:id", authenticateToken, async (req, res) => {
 });
 router9.post("/api/repairs", authenticateToken, async (req, res) => {
   try {
-    const { jewelryType, problemType, description, photos, phone } = req.body;
-    if (!jewelryType || !problemType || !phone) {
-      return res.status(400).json({ error: "Type de bijou, probl\xE8me et t\xE9l\xE9phone requis" });
+    const validation = validateRepair(createRepairSchema, req.body);
+    if (!validation.success) {
+      return res.status(400).json({ error: validation.error });
     }
+    const { jewelryType, problemType, description, photos, phone } = validation.data;
     const repair = await prisma.repairRequest.create({
       data: {
         userId: req.userId,
-        jewelryType,
-        problemType,
-        description: description || "",
+        jewelryType: sanitizeString(jewelryType),
+        problemType: sanitizeString(problemType),
+        description: sanitizeString(description || ""),
         photos: photos ? JSON.stringify(photos) : null,
-        phone
+        phone: sanitizeString(phone)
       }
     });
     await notifyRepairRequest(req.userId, repair.id);
@@ -2079,10 +2299,11 @@ router9.post("/api/repairs", authenticateToken, async (req, res) => {
 });
 router9.put("/api/repairs/:id/status", authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const { status } = req.body;
-    if (!VALID_REPAIR_STATUSES.includes(status)) {
-      return res.status(400).json({ error: "Statut invalide" });
+    const validation = validateRepair(repairStatusSchema, req.body);
+    if (!validation.success) {
+      return res.status(400).json({ error: validation.error });
     }
+    const { status } = validation.data;
     const repair = await prisma.repairRequest.update({
       where: { id: req.params.id },
       data: { status }
@@ -2104,6 +2325,13 @@ router9.delete("/api/repairs/:id", authenticateToken, async (req, res) => {
       return res.status(403).json({ error: "Acc\xE8s refus\xE9" });
     }
     await prisma.repairRequest.delete({ where: { id: req.params.id } });
+    await logAction({
+      userId: req.userId,
+      action: "REPAIR_REQUEST_DELETE",
+      entity: "RepairRequest",
+      entityId: req.params.id,
+      ipAddress: req.ip
+    });
     res.json({ success: true });
   } catch {
     res.status(500).json({ error: "Erreur" });
@@ -2116,9 +2344,12 @@ var import_express10 = require("express");
 var import_bcryptjs2 = __toESM(require("bcryptjs"), 1);
 var router10 = (0, import_express10.Router)();
 var GERANT_IDENTIFIER2 = process.env.GERANT_IDENTIFIER || "gerantSatoubaBijouterie6002";
-router10.get("/api/customers", authenticateToken, requireAdmin, async (_req, res) => {
+router10.get("/api/customers", authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const customers = await prisma.user.findMany({
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
+    const skip = (page - 1) * limit;
+    const [customers, total] = await prisma.user.findManyAndCount({
       where: { role: "CUSTOMER" },
       select: {
         id: true,
@@ -2128,7 +2359,9 @@ router10.get("/api/customers", authenticateToken, requireAdmin, async (_req, res
         orders: {
           select: { totalAmount: true }
         }
-      }
+      },
+      skip,
+      take: limit
     });
     const result = customers.map((c) => ({
       id: c.id,
@@ -2138,14 +2371,17 @@ router10.get("/api/customers", authenticateToken, requireAdmin, async (_req, res
       totalSpent: c.orders.reduce((acc, o) => acc + o.totalAmount, 0),
       ordersCount: c.orders.length
     }));
-    res.json(result);
+    res.json({ data: result, total, page, totalPages: Math.ceil(total / limit) });
   } catch {
     res.status(500).json({ error: "Erreur" });
   }
 });
-router10.get("/api/users", authenticateToken, requireAdmin, async (_req, res) => {
+router10.get("/api/users", authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const users = await prisma.user.findMany({
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
+    const skip = (page - 1) * limit;
+    const [users, total] = await prisma.user.findManyAndCount({
       select: {
         id: true,
         name: true,
@@ -2157,7 +2393,9 @@ router10.get("/api/users", authenticateToken, requireAdmin, async (_req, res) =>
           select: { orders: true, favorites: true }
         }
       },
-      orderBy: { createdAt: "desc" }
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: limit
     });
     const result = users.map((u) => ({
       id: u.id,
@@ -2169,7 +2407,7 @@ router10.get("/api/users", authenticateToken, requireAdmin, async (_req, res) =>
       ordersCount: u._count.orders,
       favoritesCount: u._count.favorites
     }));
-    res.json(result);
+    res.json({ data: result, total, page, totalPages: Math.ceil(total / limit) });
   } catch {
     res.status(500).json({ error: "Erreur" });
   }
@@ -2215,6 +2453,14 @@ router10.post("/api/users", authenticateToken, requireAdmin, rateLimit(10, 6e4),
       select: { id: true, name: true, identifier: true, phone: true, role: true, createdAt: true }
     });
     await prisma.cart.create({ data: { userId: user.id } });
+    await logAction({
+      userId: req.userId,
+      action: "USER_CREATE",
+      entity: "User",
+      entityId: user.id,
+      details: { name: user.name, role: user.role },
+      ipAddress: req.ip
+    });
     res.status(201).json(user);
   } catch {
     res.status(500).json({ error: "Erreur lors de la cr\xE9ation" });
@@ -2229,10 +2475,27 @@ router10.put("/api/users/:id/role", authenticateToken, requireAdmin, async (req,
     if (req.params.id === req.userId) {
       return res.status(400).json({ error: "Vous ne pouvez pas modifier votre propre r\xF4le" });
     }
+    if (role !== "ADMIN") {
+      const targetUser = await prisma.user.findUnique({ where: { id: req.params.id }, select: { role: true } });
+      if (targetUser?.role === "ADMIN") {
+        const adminCount = await prisma.user.count({ where: { role: "ADMIN" } });
+        if (adminCount <= 1) {
+          return res.status(400).json({ error: "Impossible de r\xE9trograder le dernier administrateur" });
+        }
+      }
+    }
     const user = await prisma.user.update({
       where: { id: req.params.id },
       data: { role },
       select: { id: true, name: true, identifier: true, role: true }
+    });
+    await logAction({
+      userId: req.userId,
+      action: "USER_ROLE_UPDATE",
+      entity: "User",
+      entityId: user.id,
+      details: { name: user.name, newRole: role },
+      ipAddress: req.ip
     });
     res.json(user);
   } catch {
@@ -2267,6 +2530,14 @@ router10.delete("/api/users/:id", authenticateToken, requireAdmin, async (req, r
       await tx.cart.deleteMany({ where: { userId: req.params.id } });
       await tx.passwordResetToken.deleteMany({ where: { userId: req.params.id } });
       await tx.user.delete({ where: { id: req.params.id } });
+    });
+    await logAction({
+      userId: req.userId,
+      action: "USER_DELETE",
+      entity: "User",
+      entityId: req.params.id,
+      details: { targetUserId: req.params.id },
+      ipAddress: req.ip
     });
     res.json({ success: true });
   } catch {
@@ -2348,6 +2619,13 @@ router12.put("/api/store-settings", authenticateToken, requireAdmin, async (req,
     settings.forEach((s) => {
       if (!HIDDEN_KEYS.includes(s.key)) result[s.key] = s.value;
     });
+    await logAction({
+      userId: req.userId,
+      action: "SETTINGS_UPDATE",
+      entity: "StoreSettings",
+      details: { keys: Object.keys(updates) },
+      ipAddress: req.ip
+    });
     res.json(result);
   } catch {
     res.status(500).json({ error: "Erreur" });
@@ -2361,7 +2639,7 @@ var import_multer = __toESM(require("multer"), 1);
 var import_path = __toESM(require("path"), 1);
 var import_fs = __toESM(require("fs"), 1);
 var import_url = require("url");
-var import_crypto2 = __toESM(require("crypto"), 1);
+var import_crypto3 = __toESM(require("crypto"), 1);
 var import_client2 = require("@vercel/blob/client");
 var import_meta = {};
 var router13 = (0, import_express13.Router)();
@@ -2387,8 +2665,8 @@ router13.post("/api/upload/handle", authenticateToken, requireAdmin, async (req,
     });
     return res.json(jsonResponse);
   } catch (error) {
-    console.error("Blob handleUpload error:", error);
-    return res.status(500).json({ error: error.message || "Erreur g\xE9n\xE9ration token upload" });
+    logger_default.error({ err: error }, "Blob handleUpload error");
+    return res.status(500).json({ error: "Erreur lors de l'upload" });
   }
 });
 function getUploadsDir() {
@@ -2425,7 +2703,7 @@ function getUpload() {
     destination: dir,
     filename: (_req, file, cb) => {
       const ext = import_path.default.extname(file.originalname).toLowerCase();
-      cb(null, `${import_crypto2.default.randomUUID()}${ext}`);
+      cb(null, `${import_crypto3.default.randomUUID()}${ext}`);
     }
   });
   upload = (0, import_multer.default)({
@@ -2685,9 +2963,180 @@ router15.post("/api/sms/repair-reply", authenticateToken, requireAdmin, async (r
 });
 var sms_default = router15;
 
+// backend/routes/audit-logs.ts
+var import_express16 = require("express");
+var router16 = (0, import_express16.Router)();
+router16.get("/", authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { userId, action, entity, limit, offset } = req.query;
+    const result = await getAuditLogs({
+      userId,
+      action,
+      entity,
+      limit: limit ? parseInt(limit) : 50,
+      offset: offset ? parseInt(offset) : 0
+    });
+    res.json(result);
+  } catch (error) {
+    logger_default.error({ err: error }, "Error fetching audit logs");
+    res.status(500).json({ error: "Erreur lors de la r\xE9cup\xE9ration des journaux." });
+  }
+});
+var audit_logs_default = router16;
+
+// backend/routes/reviews.ts
+var import_express17 = require("express");
+var router17 = (0, import_express17.Router)();
+router17.get("/api/likes/:productId", async (req, res) => {
+  try {
+    const likes = await prisma.like.findMany({
+      where: { productId: req.params.productId },
+      include: { user: { select: { name: true, avatar: true } } },
+      orderBy: { createdAt: "desc" }
+    });
+    res.json(likes);
+  } catch {
+    res.status(500).json({ error: "Erreur" });
+  }
+});
+router17.post("/api/likes", authenticateToken, async (req, res) => {
+  try {
+    const { productId } = req.body;
+    if (!productId) {
+      return res.status(400).json({ error: "Produit requis" });
+    }
+    const result = await prisma.$transaction(async (tx) => {
+      const existingLike = await tx.like.findFirst({
+        where: { userId: req.userId, productId }
+      });
+      if (existingLike) {
+        await tx.like.delete({ where: { id: existingLike.id } });
+      } else {
+        await tx.like.create({ data: { productId, userId: req.userId } });
+      }
+      const likesCount = await tx.like.count({ where: { productId } });
+      await tx.product.update({ where: { id: productId }, data: { likesCount } });
+      return { liked: !existingLike, likesCount };
+    });
+    const status = result.liked ? 201 : 200;
+    res.status(status).json(result);
+  } catch {
+    res.status(500).json({ error: "Erreur lors du like" });
+  }
+});
+router17.get("/api/likes/all", authenticateToken, requireAdmin, async (_req, res) => {
+  try {
+    const likes = await prisma.like.findMany({
+      include: {
+        user: { select: { name: true } },
+        product: { select: { name: true } }
+      },
+      orderBy: { createdAt: "desc" }
+    });
+    res.json(likes);
+  } catch {
+    res.status(500).json({ error: "Erreur" });
+  }
+});
+var reviews_default = router17;
+
+// backend/routes/coupons.ts
+var import_express18 = require("express");
+var router18 = (0, import_express18.Router)();
+router18.get("/api/coupons", async (_req, res) => {
+  try {
+    const coupons = await prisma.coupon.findMany({
+      where: { isActive: true },
+      select: { id: true, code: true, description: true, discountPercent: true, expiryDate: true }
+    });
+    res.json(coupons);
+  } catch {
+    res.status(500).json({ error: "Erreur" });
+  }
+});
+router18.get("/api/coupons/all", authenticateToken, requireAdmin, async (_req, res) => {
+  try {
+    const coupons = await prisma.coupon.findMany({ orderBy: { createdAt: "desc" } });
+    res.json(coupons);
+  } catch {
+    res.status(500).json({ error: "Erreur" });
+  }
+});
+router18.post("/api/coupons", authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { code, discountPercent, description, expiryDate } = req.body;
+    if (!code || !discountPercent) {
+      return res.status(400).json({ error: "Code et pourcentage requis" });
+    }
+    const discount = Number(discountPercent);
+    if (isNaN(discount) || discount < 1 || discount > 100) {
+      return res.status(400).json({ error: "Le pourcentage doit \xEAtre entre 1 et 100" });
+    }
+    const existing = await prisma.coupon.findFirst({ where: { code: code.toUpperCase() } });
+    if (existing) {
+      return res.status(400).json({ error: "Ce code promo existe d\xE9j\xE0" });
+    }
+    const coupon = await prisma.coupon.create({
+      data: {
+        code: code.toUpperCase(),
+        discountPercent: discount,
+        description: sanitizeString(description) || "",
+        expiryDate: expiryDate ? new Date(expiryDate) : /* @__PURE__ */ new Date("2026-12-31")
+      }
+    });
+    res.status(201).json(coupon);
+  } catch {
+    res.status(500).json({ error: "Erreur" });
+  }
+});
+router18.put("/api/coupons/:id", authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { code, discountPercent, description, expiryDate, isActive } = req.body;
+    if (code) {
+      const existing = await prisma.coupon.findFirst({ where: { code: code.toUpperCase(), NOT: { id: req.params.id } } });
+      if (existing) return res.status(400).json({ error: "Ce code promo existe d\xE9j\xE0" });
+    }
+    if (discountPercent !== void 0) {
+      const d = Number(discountPercent);
+      if (isNaN(d) || d < 1 || d > 100) {
+        return res.status(400).json({ error: "Le pourcentage doit \xEAtre entre 1 et 100" });
+      }
+    }
+    const coupon = await prisma.coupon.update({
+      where: { id: req.params.id },
+      data: {
+        ...code !== void 0 && { code: code.toUpperCase() },
+        ...discountPercent !== void 0 && { discountPercent: Number(discountPercent) },
+        ...description !== void 0 && { description: sanitizeString(description) },
+        ...expiryDate !== void 0 && { expiryDate: new Date(expiryDate) },
+        ...isActive !== void 0 && { isActive }
+      }
+    });
+    res.json(coupon);
+  } catch {
+    res.status(500).json({ error: "Erreur" });
+  }
+});
+router18.delete("/api/coupons/:id", authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    await prisma.coupon.delete({ where: { id: req.params.id } });
+    await logAction({
+      userId: req.userId,
+      action: "COUPON_DELETE",
+      entity: "Coupon",
+      entityId: req.params.id,
+      ipAddress: req.ip
+    });
+    res.json({ success: true });
+  } catch {
+    res.status(500).json({ error: "Erreur" });
+  }
+});
+var coupons_default = router18;
+
 // backend/app.ts
 var import_meta2 = {};
-var app = (0, import_express16.default)();
+var app = (0, import_express19.default)();
 var __filename;
 var __dirname;
 try {
@@ -2730,8 +3179,8 @@ app.use((0, import_cors.default)({
   allowedHeaders: ["Content-Type", "Authorization"],
   maxAge: 86400
 }));
-app.use(import_express16.default.json({ limit: "1mb" }));
-app.use(import_express16.default.urlencoded({ extended: true, limit: "1mb" }));
+app.use(import_express19.default.json({ limit: "1mb" }));
+app.use(import_express19.default.urlencoded({ extended: true, limit: "1mb" }));
 function resolveUploadsDir() {
   if (process.env.UPLOADS_DIR) return process.env.UPLOADS_DIR;
   const cwdBackend = import_path2.default.join(process.cwd(), "backend", "uploads");
@@ -2745,7 +3194,7 @@ try {
   }
 } catch {
 }
-app.use("/uploads", import_express16.default.static(uploadsDir, {
+app.use("/uploads", import_express19.default.static(uploadsDir, {
   maxAge: "1y",
   etag: true
 }));
@@ -2764,6 +3213,9 @@ app.use(admin_default);
 app.use(public_default);
 app.use(settings_default);
 app.use(upload_default);
+app.use("/api/audit-logs", audit_logs_default);
+app.use(reviews_default);
+app.use(coupons_default);
 app.use((req, res, next) => {
   if (req.path.startsWith("/api/")) {
     return res.status(404).json({ error: "Route non trouv\xE9e" });
@@ -2781,7 +3233,7 @@ app.use((err, req, res, _next) => {
     return res.status(413).json({ error: "Payload trop volumineux" });
   }
   if (req.path.startsWith("/api/")) {
-    console.error("Unhandled error:", err);
+    logger_default.error({ err }, "Unhandled error:");
     const message = process.env.NODE_ENV === "production" ? "Erreur interne du serveur" : err.message || "Erreur interne du serveur";
     return res.status(err.status || 500).json({ error: message });
   }
