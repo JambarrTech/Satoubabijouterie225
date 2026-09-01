@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '../lib/prisma';
 import { authenticateToken, requireAdmin, rateLimit, AuthRequest } from '../middleware/auth';
 import { sanitizeString, isValidPhone } from '../lib/sanitize';
+import { logAction } from '../lib/audit';
 
 const router = Router();
 const GERANT_IDENTIFIER = process.env.GERANT_IDENTIFIER || 'gerantSatoubaBijouterie6002';
@@ -121,6 +122,15 @@ router.get('/api/users', authenticateToken, requireAdmin, async (_req: AuthReque
 
       await prisma.cart.create({ data: { userId: user.id } });
 
+      await logAction({
+        userId: req.userId!,
+        action: 'USER_CREATE',
+        entity: 'User',
+        entityId: user.id,
+        details: { name: user.name, role: user.role },
+        ipAddress: req.ip,
+      });
+
       res.status(201).json(user);
     } catch {
       res.status(500).json({ error: 'Erreur lors de la création' });
@@ -142,6 +152,16 @@ router.put('/api/users/:id/role', authenticateToken, requireAdmin, async (req: A
       data: { role },
       select: { id: true, name: true, identifier: true, role: true },
     });
+
+    await logAction({
+      userId: req.userId!,
+      action: 'USER_ROLE_UPDATE',
+      entity: 'User',
+      entityId: user.id,
+      details: { name: user.name, newRole: role },
+      ipAddress: req.ip,
+    });
+
     res.json(user);
   } catch {
     res.status(500).json({ error: 'Erreur' });
@@ -183,6 +203,16 @@ router.delete('/api/users/:id', authenticateToken, requireAdmin, async (req: Aut
       await tx.passwordResetToken.deleteMany({ where: { userId: req.params.id } });
       await tx.user.delete({ where: { id: req.params.id } });
     });
+
+    await logAction({
+      userId: req.userId!,
+      action: 'USER_DELETE',
+      entity: 'User',
+      entityId: req.params.id,
+      details: { targetUserId: req.params.id },
+      ipAddress: req.ip,
+    });
+
     res.json({ success: true });
   } catch {
     res.status(500).json({ error: 'Erreur' });

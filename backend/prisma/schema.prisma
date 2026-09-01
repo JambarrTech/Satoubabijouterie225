@@ -45,6 +45,7 @@ model User {
   repairRequests      RepairRequest[]
   cart                Cart?
   passwordResets      PasswordResetToken[]
+  auditLogs           AuditLog[]
 
   @@index([role])
 }
@@ -253,4 +254,21 @@ model PasswordResetToken {
 
   @@index([token])
   @@index([userId])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  entity     String?
+  entityId   String?
+  details    Json?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
 }

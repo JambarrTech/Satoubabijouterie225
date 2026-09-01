@@ -27,8 +27,10 @@ export default function App() {
     setUser(loggedInUser);
   };
 
-  const handleSwitchToClient = () => {
-    window.location.href = "/";
+  const handleLogout = () => {
+    localStorage.removeItem("satouba_gerant_token");
+    localStorage.removeItem("satouba_gerant_user");
+    setUser(null);
   };
 
   if (!user || user.role !== "ADMIN") {
@@ -41,7 +43,7 @@ export default function App() {
 
   return (
     <ToastProvider>
-      <GerantDashboard onSwitchToClient={handleSwitchToClient} />
+      <GerantDashboard onLogout={handleLogout} />
     </ToastProvider>
   );
 }

@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma';
 import { authenticateToken, requireAdmin, AuthRequest } from '../middleware/auth';
+import { logAction } from '../lib/audit';
 
 const router = Router();
 const HIDDEN_KEYS = ['email'];
@@ -36,6 +37,15 @@ router.put('/api/store-settings', authenticateToken, requireAdmin, async (req: A
     settings.forEach((s) => {
       if (!HIDDEN_KEYS.includes(s.key)) result[s.key] = s.value;
     });
+
+    await logAction({
+      userId: req.userId!,
+      action: 'SETTINGS_UPDATE',
+      entity: 'StoreSettings',
+      details: { keys: Object.keys(updates) },
+      ipAddress: req.ip,
+    });
+
     res.json(result);
   } catch {
     res.status(500).json({ error: 'Erreur' });

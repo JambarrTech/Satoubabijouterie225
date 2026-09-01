@@ -111,7 +111,7 @@ export function Footer({ onNavigate }: FooterProps) {
               <li className="flex items-center gap-2.5">
                 <Phone size={16} className="text-[#D9A441] shrink-0" />
                 <div className="flex flex-col">
-                  <span>{settings?.phone_main || '+225 07 47 13 52 01'}</span>
+                  <span>{settings?.phone_main || '+225 05 54 13 07 46'}</span>
                   {settings?.phone_secondary && <span>{settings.phone_secondary}</span>}
                   {settings?.phone_tertiary && <span>{settings.phone_tertiary}</span>}
                 </div>

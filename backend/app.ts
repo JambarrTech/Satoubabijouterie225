@@ -22,6 +22,7 @@ import settingsRoutes from "./routes/settings";
 import uploadRoutes from "./routes/upload";
 import healthRoutes from "./routes/health";
 import smsRoutes from "./routes/sms";
+import auditLogRoutes from "./routes/audit-logs";
 
 const app = express();
 // ESM + CJS compatible __dirname (esbuild cjs bundle leaves import.meta empty)
@@ -121,6 +122,7 @@ app.use(adminRoutes);
 app.use(publicRoutes);
 app.use(settingsRoutes);
 app.use(uploadRoutes);
+app.use('/api/audit-logs', auditLogRoutes);
 
 
 // 404 handler — only for API routes, pass through to Vite for everything else

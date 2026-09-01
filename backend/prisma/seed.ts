@@ -30,7 +30,7 @@ async function main() {
       name: 'Matar Mbow',
       identifier: 'gerantSatoubaBijouterie6002',
       password: adminPassword,
-      phone: '+225 07 47 13 52 01',
+      phone: '+225 05 54 13 07 46',
       role: 'ADMIN',
       address: 'Koumassi, feux de prodomo, juste à la rentrée de Sopim, Abidjan',
       city: 'Abidjan',

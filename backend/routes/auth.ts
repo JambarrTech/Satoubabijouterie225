@@ -6,6 +6,7 @@ import { prisma } from '../lib/prisma';
 import { generateToken, generateRefreshToken, verifyRefreshToken, revokeRefreshToken, authenticateToken, rateLimit, AuthRequest } from '../middleware/auth';
 import { sendOTPSMS } from '../lib/sms';
 import logger from '../lib/logger';
+import { logAction } from '../lib/audit';
 
 const router = Router();
 
@@ -151,6 +152,16 @@ router.post('/api/auth/login', rateLimit(30, 60_000), async (req, res) => {
     const { password: _, ...userWithoutPassword } = user;
 
     logger.info({ userId: user.id, identifier: user.identifier }, 'User logged in');
+
+    await logAction({
+      userId: user.id,
+      action: 'LOGIN',
+      entity: 'User',
+      entityId: user.id,
+      details: { role: user.role },
+      ipAddress: req.ip,
+    });
+
     res.json({ user: userWithoutPassword, token, refreshToken });
   } catch (error) {
     logger.error({ err: error }, 'Login error');
@@ -222,6 +233,16 @@ router.post('/api/auth/login-gerant', rateLimit(30, 60_000), async (req, res) =>
     const { password: _, ...userWithoutPassword } = user;
 
     logger.info({ userId: user.id }, 'Gerant logged in');
+
+    await logAction({
+      userId: user.id,
+      action: 'LOGIN_GERANT',
+      entity: 'User',
+      entityId: user.id,
+      details: { role: user.role },
+      ipAddress: req.ip,
+    });
+
     res.json({ user: userWithoutPassword, token, refreshToken });
   } catch (error) {
     logger.error({ err: error }, 'Gerant login error');
@@ -458,6 +479,15 @@ router.post('/api/auth/logout', authenticateToken, async (req: AuthRequest, res)
     }
     // Also revoke all refresh tokens for this user (full logout)
     await prisma.refreshToken.deleteMany({ where: { userId: req.userId! } }).catch(() => {});
+
+    await logAction({
+      userId: req.userId!,
+      action: 'LOGOUT',
+      entity: 'User',
+      entityId: req.userId!,
+      ipAddress: req.ip,
+    });
+
     res.json({ success: true, message: 'Déconnexion réussie' });
   } catch (error) {
     logger.error({ err: error }, 'Logout error');

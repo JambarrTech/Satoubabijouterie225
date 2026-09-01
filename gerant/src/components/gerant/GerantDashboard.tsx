@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { LayoutDashboard, Package, ShoppingBag, Sparkles, Users, UserCog, Settings, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingBag, Sparkles, Users, UserCog, Settings, LogOut, ClipboardList } from 'lucide-react';
 import { GerantOverview } from './GerantOverview';
 import { GerantProducts } from './GerantProducts';
 import { GerantOrders } from './GerantOrders';
@@ -7,13 +7,14 @@ import { GerantCustom } from './GerantCustom';
 import { GerantCustomers } from './GerantCustomers';
 import { GerantUsers } from './GerantUsers';
 import { GerantSettings } from './GerantSettings';
+import { GerantLogs } from './GerantLogs';
 
 interface GerantDashboardProps {
-  onSwitchToClient: () => void;
+  onLogout: () => void;
 }
 
-export function GerantDashboard({ onSwitchToClient }: GerantDashboardProps) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'orders' | 'custom' | 'customers' | 'users' | 'settings'>('overview');
+export function GerantDashboard({ onLogout }: GerantDashboardProps) {
+  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'orders' | 'custom' | 'customers' | 'users' | 'settings' | 'logs'>('overview');
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
@@ -102,17 +103,27 @@ export function GerantDashboard({ onSwitchToClient }: GerantDashboardProps) {
               <Settings size={18} />
               <span>Paramètres</span>
             </button>
+
+            <button
+              onClick={() => setActiveTab('logs')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                activeTab === 'logs' ? 'bg-white text-[#0B5D1E] shadow-md font-bold' : 'text-emerald-100 hover:bg-white/10'
+              }`}
+            >
+              <ClipboardList size={18} />
+              <span>Journalisation</span>
+            </button>
           </nav>
         </div>
 
-        {/* Switch back to client view */}
+        {/* Logout */}
         <div className="pt-6 border-t border-white/10 space-y-3">
           <button
-            onClick={onSwitchToClient}
-            className="w-full flex items-center justify-center gap-2 bg-[#D9A441] hover:bg-[#c49237] text-white py-3 px-4 rounded-xl font-semibold text-sm transition-colors shadow-sm"
+            onClick={onLogout}
+            className="w-full flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white py-3 px-4 rounded-xl font-semibold text-sm transition-colors shadow-sm"
           >
-            <ShieldCheck size={16} />
-            <span>Voir la Boutique Client</span>
+            <LogOut size={16} />
+            <span>Déconnexion</span>
           </button>
         </div>
       </aside>
@@ -127,6 +138,7 @@ export function GerantDashboard({ onSwitchToClient }: GerantDashboardProps) {
           {activeTab === 'customers' && <GerantCustomers />}
           {activeTab === 'users' && <GerantUsers />}
           {activeTab === 'settings' && <GerantSettings />}
+          {activeTab === 'logs' && <GerantLogs />}
         </div>
       </main>
     </div>

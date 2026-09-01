@@ -93,7 +93,7 @@ export function LegalView({ type }: LegalViewProps) {
             <h2 className="font-serif text-xl font-bold text-gray-900 mb-3">9. Contact</h2>
             <p className="text-sm text-gray-700 leading-relaxed">
               Pour toute question, contactez-nous :<br />
-              +225 07 47 13 52 01 / +225 05 54 13 07 46<br />
+              +225 05 54 13 07 46<br />
               Koumassi, feux de prodomo, Abidjan<br />
               @Satouba225_bijouterie
             </p>
@@ -161,7 +161,7 @@ export function LegalView({ type }: LegalViewProps) {
             <h2 className="font-serif text-xl font-bold text-gray-900 mb-3">7. Contact</h2>
             <p className="text-sm text-gray-700 leading-relaxed">
               Pour toute question relative a la protection de vos donnees :<br />
-              +225 07 47 13 52 01
+              +225 05 54 13 07 46
             </p>
           </section>
         </div>

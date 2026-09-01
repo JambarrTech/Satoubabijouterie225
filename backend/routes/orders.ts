@@ -5,6 +5,7 @@ import { safeJsonParse, calculateCartTotal } from '../lib/helpers';
 import { sanitizeString } from '../lib/sanitize';
 import logger from '../lib/logger';
 import { notifyNewOrder, notifyOrderStatusChange } from '../lib/notifications';
+import { logAction } from '../lib/audit';
 
 const router = Router();
 
@@ -274,6 +275,15 @@ router.put('/api/orders/:id/status', authenticateToken, requireAdmin, async (req
     notifyOrderStatusChange(order.id, status as any).catch((err) =>
       logger.error({ err, orderId: order.id }, 'Failed to send status change notifications')
     );
+
+    await logAction({
+      userId: req.userId!,
+      action: 'ORDER_STATUS_UPDATE',
+      entity: 'Order',
+      entityId: order.id,
+      details: { orderNumber: order.orderNumber, oldStatus: existingOrder.status, newStatus: status },
+      ipAddress: req.ip,
+    });
 
     res.json({
       ...order,

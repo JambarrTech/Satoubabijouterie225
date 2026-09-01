@@ -8,7 +8,7 @@ const AT_BASE_URL = AT_USERNAME === 'sandbox'
   ? 'https://api.sandbox.africastalking.com'
   : 'https://api.africastalking.com';
 const COUNTRY_CODE = process.env.COUNTRY_CODE || '225';
-const CONTACT_PHONE = process.env.CONTACT_PHONE || '+225 07 47 13 52 01';
+const CONTACT_PHONE = process.env.CONTACT_PHONE || '+225 05 54 13 07 46';
 
 interface SMSOptions {
   to: string;

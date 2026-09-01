@@ -4,6 +4,7 @@ import { authenticateToken, requireAdmin, rateLimit, AuthRequest } from '../midd
 import { safeJsonParse } from '../lib/helpers';
 import { sanitizeString } from '../lib/sanitize';
 import logger from '../lib/logger';
+import { logAction } from '../lib/audit';
 
 const router = Router();
 
@@ -149,6 +150,15 @@ router.post('/api/products', authenticateToken, requireAdmin, rateLimit(20, 60_0
       },
     });
 
+    await logAction({
+      userId: req.userId!,
+      action: 'PRODUCT_CREATE',
+      entity: 'Product',
+      entityId: product.id,
+      details: { name: product.name, price },
+      ipAddress: req.ip,
+    });
+
     res.status(201).json({ ...product, images: safeJsonParse(product.images, []) });
   } catch (error) {
     logger.error({ err: error }, 'Create product error');
@@ -187,6 +197,16 @@ router.put('/api/products/:id', authenticateToken, requireAdmin, rateLimit(30, 6
     }
 
     const product = await prisma.product.update({ where: { id }, data: updateData });
+
+    await logAction({
+      userId: req.userId!,
+      action: 'PRODUCT_UPDATE',
+      entity: 'Product',
+      entityId: id,
+      details: { name: product.name, changes: Object.keys(updateData) },
+      ipAddress: req.ip,
+    });
+
     res.json({ ...product, images: safeJsonParse(product.images, []) });
   } catch {
     res.status(500).json({ error: 'Erreur lors de la mise à jour' });
@@ -203,6 +223,15 @@ router.delete('/api/products/:id', authenticateToken, requireAdmin, async (req: 
       await tx.like.deleteMany({ where: { productId: id } });
       await tx.product.update({ where: { id }, data: { inStock: false, stockQuantity: 0 } });
     });
+
+    await logAction({
+      userId: req.userId!,
+      action: 'PRODUCT_DELETE',
+      entity: 'Product',
+      entityId: id,
+      ipAddress: req.ip,
+    });
+
     res.json({ success: true });
   } catch {
     res.status(500).json({ error: 'Erreur lors de la suppression' });
