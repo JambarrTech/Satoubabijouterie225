@@ -16,14 +16,11 @@ import {
 } from './sms';
 import logger from './logger';
 
-export type NotificationChannel = 'SMS' | 'PUSH' | 'BOTH';
-
 interface NotificationOptions {
   userId: string;
   title: string;
   message: string;
   type: 'ORDER' | 'PROMO' | 'SYSTEM' | 'REPAIR' | 'CUSTOM';
-  channel?: NotificationChannel;
   data?: Record<string, string>;
   orderId?: string;
 }
@@ -69,7 +66,6 @@ export async function notifyNewOrder(orderId: string) {
     title,
     message: body,
     type: 'ORDER',
-    channel: 'PUSH',
     data: { orderId: order.id, orderNumber: order.orderNumber, status: 'CONFIRMED' },
     orderId,
   });
@@ -108,7 +104,6 @@ async function notifyGerantsNewOrder(order: {
       title,
       message,
       type: 'ORDER',
-      channel: 'PUSH',
       data: { orderId: order.id, orderNumber: order.orderNumber, type: 'NEW_ORDER' },
       orderId: order.id,
     });
@@ -148,7 +143,6 @@ export async function notifyOrderStatusChange(
     title,
     message: body,
     type: 'ORDER',
-    channel: 'PUSH',
     data: { orderId: order.id, orderNumber: order.orderNumber, status },
     orderId,
   });
@@ -189,7 +183,6 @@ export async function notifyCustomRequest(userId: string, requestId: string) {
     title: 'Demande sur-mesure recue',
     message: `Votre demande ${requestId} a ete prise en compte. Notre equipe vous contactera sous 24h.`,
     type: 'CUSTOM',
-    channel: 'PUSH',
     data: { requestId, type: 'custom' },
   });
 
@@ -229,7 +222,6 @@ async function notifyGerantsNewCustom(userId: string, requestId: string) {
       title,
       message,
       type: 'CUSTOM',
-      channel: 'PUSH',
       data: { requestId, type: 'new_custom' },
     });
 
@@ -251,7 +243,6 @@ export async function notifyRepairRequest(userId: string, requestId: string) {
     title: 'Demande de reparation recue',
     message: `Votre demande ${requestId} a ete enregistree. Nous vous contacterons pour organiser le depot.`,
     type: 'REPAIR',
-    channel: 'PUSH',
     data: { requestId, type: 'repair' },
   });
 
@@ -291,7 +282,6 @@ async function notifyGerantsNewRepair(userId: string, requestId: string) {
       title,
       message,
       type: 'REPAIR',
-      channel: 'PUSH',
       data: { requestId, type: 'new_repair' },
     });
 
@@ -335,7 +325,6 @@ export async function notifyRepairStatusChange(
     title,
     message: body,
     type: 'REPAIR',
-    channel: 'PUSH',
     data: { requestId, status, type: 'repair' },
   });
 
@@ -374,7 +363,6 @@ export async function notifyCustomStatusChange(
     title,
     message: body,
     type: 'CUSTOM',
-    channel: 'PUSH',
     data: { requestId, status, type: 'custom' },
   });
 
@@ -395,7 +383,6 @@ export async function notifyPromo(userIds: string[], title: string, message: str
       title,
       message,
       type: 'PROMO',
-      channel: 'PUSH',
       data: { type: 'promo' },
     });
   }

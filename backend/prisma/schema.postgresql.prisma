@@ -35,8 +35,7 @@ model User {
   failedLoginAttempts Int      @default(0)
   lockedUntil         DateTime?
   lastLoginAt         DateTime?
-  createdAt DateTime @default(now())
-  pushTokens String   @default("[]") @db.Text
+  createdAt           DateTime             @default(now())
 
   orders          Order[]
   favorites       Favorite[]

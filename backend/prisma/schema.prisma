@@ -36,7 +36,6 @@ model User {
   lockedUntil         DateTime?
   lastLoginAt         DateTime?
   createdAt           DateTime             @default(now())
-  pushTokens          String               @default("[]") @db.Text
 
   orders              Order[]
   favorites           Favorite[]
