@@ -105,15 +105,9 @@ export function HomeView({
               <span>Joaillerie d'Exception · Abidjan</span>
             </div>
 
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.3 }}
-              className="font-serif text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-gray-900 leading-[1.15]"
-            >
-              L'élégance à <br className="hidden sm:inline" />
-              <span className="text-[#0B5D1E] animate-float">votre portée</span>
-            </motion.h1>
+            <h1 className="font-serif text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-gray-900 leading-[1.15] animate-float">
+              L'élégance à <br className="hidden sm:inline" /> <span className="text-[#0B5D1E]">votre portée</span>
+            </h1>
 
             <p className="text-base sm:text-lg text-gray-600 max-w-xl mx-auto lg:mx-0 leading-relaxed">
               Découvrez nos bijoux soigneusement sélectionnés pour accompagner vos moments les plus précieux. Or pur, diamants certifiés et créations intemporelles.
