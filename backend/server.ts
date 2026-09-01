@@ -18,25 +18,13 @@ const envLocal = path.join(ROOT, ".env.local");
 if (fs.existsSync(envLocal)) dotenv.config({ path: envLocal, override: true });
 
 import express from "express";
-import cors from "cors";
 import backendApp from "./app.ts";
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3002;
 const NODE_ENV = process.env.NODE_ENV || "development";
 
-// CORS — autoriser les 2 frontends en dev
-app.use(cors({
-  origin: [
-    "http://localhost:3000",
-    "http://localhost:3001",
-    "http://localhost:4173",
-    "http://localhost:4174",
-  ],
-  credentials: true,
-}));
-
-// API routes
+// CORS is handled inside app.ts — no duplicate needed here
 app.use(backendApp);
 
 const server = app.listen(PORT, "0.0.0.0", () => {

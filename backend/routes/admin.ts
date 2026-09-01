@@ -147,6 +147,18 @@ router.put('/api/users/:id/role', authenticateToken, requireAdmin, async (req: A
     if (req.params.id === req.userId) {
       return res.status(400).json({ error: 'Vous ne pouvez pas modifier votre propre rôle' });
     }
+
+    // Prevent demoting the last admin
+    if (role !== 'ADMIN') {
+      const targetUser = await prisma.user.findUnique({ where: { id: req.params.id }, select: { role: true } });
+      if (targetUser?.role === 'ADMIN') {
+        const adminCount = await prisma.user.count({ where: { role: 'ADMIN' } });
+        if (adminCount <= 1) {
+          return res.status(400).json({ error: 'Impossible de rétrograder le dernier administrateur' });
+        }
+      }
+    }
+
     const user = await prisma.user.update({
       where: { id: req.params.id },
       data: { role },

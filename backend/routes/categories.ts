@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma';
 import { authenticateToken, requireAdmin, AuthRequest } from '../middleware/auth';
+import { sanitizeString } from '../lib/sanitize';
 
 const router = Router();
 
@@ -21,9 +22,10 @@ router.post('/api/categories', authenticateToken, requireAdmin, async (req: Auth
   try {
     const { name, image, description } = req.body;
     if (!name) return res.status(400).json({ error: 'Nom requis' });
-    const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const sanitizedName = sanitizeString(name);
+    const slug = sanitizedName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     const category = await prisma.category.create({
-      data: { name, slug, image: image || null, description: description || null },
+      data: { name: sanitizedName, slug, image: sanitizeString(image) || null, description: sanitizeString(description) || null },
     });
     res.status(201).json(category);
   } catch {
@@ -36,9 +38,9 @@ router.put('/api/categories/:id', authenticateToken, requireAdmin, async (req: A
   try {
     const { name, image, description } = req.body;
     const data: any = {};
-    if (name) { data.name = name; data.slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); }
-    if (image !== undefined) data.image = image;
-    if (description !== undefined) data.description = description;
+    if (name) { const sanitizedName = sanitizeString(name); data.name = sanitizedName; data.slug = sanitizedName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); }
+    if (image !== undefined) data.image = sanitizeString(image);
+    if (description !== undefined) data.description = sanitizeString(description);
     const category = await prisma.category.update({ where: { id: req.params.id }, data });
     res.json(category);
   } catch {

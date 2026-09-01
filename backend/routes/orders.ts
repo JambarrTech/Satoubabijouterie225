@@ -138,11 +138,16 @@ router.post('/api/orders', authenticateToken, async (req: AuthRequest, res) => {
     const order = await prisma.$transaction(async (tx) => {
       // Atomic stock check + decrement (prevents overselling)
       for (const item of itemsToOrder) {
-        const result = await tx.$executeRaw`
-          UPDATE "Product" SET "stockQuantity" = "stockQuantity" - ${item.quantity}
-          WHERE "id" = ${item.productId} AND "stockQuantity" >= ${item.quantity}
-        `;
-        if (result === 0) {
+        const result = await tx.product.updateMany({
+          where: {
+            id: item.productId,
+            stockQuantity: { gte: item.quantity },
+          },
+          data: {
+            stockQuantity: { decrement: item.quantity },
+          },
+        });
+        if (result.count === 0) {
           const product = await tx.product.findUnique({
             where: { id: item.productId },
             select: { name: true, stockQuantity: true },

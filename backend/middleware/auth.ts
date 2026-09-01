@@ -83,19 +83,16 @@ export function generateToken(userId: string, role: string): string {
   return jwt.sign({ userId, role }, getJWTSecret(), { expiresIn: '15m' });
 }
 
-export function generateRefreshToken(userId: string): string {
+export async function generateRefreshToken(userId: string): Promise<string> {
   const token = crypto.randomBytes(40).toString('hex');
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
-  // Store in database (fire-and-forget, don't block response)
-  prisma.refreshToken.create({
+  await prisma.refreshToken.create({
     data: {
       token,
       userId,
       expiresAt,
     },
-  }).catch((err) => {
-    console.error('Failed to store refresh token:', err);
   });
 
   return token;

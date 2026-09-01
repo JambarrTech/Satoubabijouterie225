@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma';
 import { authenticateToken, requireAdmin, AuthRequest } from '../middleware/auth';
 import logger from '../lib/logger';
 import { notifyCustomRequest, notifyCustomStatusChange } from '../lib/notifications';
+import { sanitizeString } from '../lib/sanitize';
 
 const router = Router();
 
@@ -62,12 +63,12 @@ router.post('/api/custom-requests', authenticateToken, async (req: AuthRequest, 
     const request = await prisma.customRequest.create({
       data: {
         userId: req.userId!,
-        jewelryType,
-        material,
-        description,
-        budget: budget ? String(budget) : null,
-        referenceImageUrl,
-        phone,
+        jewelryType: sanitizeString(jewelryType),
+        material: sanitizeString(material),
+        description: sanitizeString(description),
+        budget: budget ? sanitizeString(String(budget)) : null,
+        referenceImageUrl: sanitizeString(referenceImageUrl),
+        phone: sanitizeString(phone),
       },
     });
 

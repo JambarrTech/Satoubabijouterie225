@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma';
 import { authenticateToken, requireAdmin, AuthRequest } from '../middleware/auth';
+import { sanitizeString } from '../lib/sanitize';
 
 const router = Router();
 
@@ -46,7 +47,7 @@ router.post('/api/coupons', authenticateToken, requireAdmin, async (req: AuthReq
       data: {
         code: code.toUpperCase(),
         discountPercent: discount,
-        description: description || '',
+        description: sanitizeString(description) || '',
         expiryDate: expiryDate ? new Date(expiryDate) : new Date('2026-12-31'),
       },
     });
@@ -75,7 +76,7 @@ router.put('/api/coupons/:id', authenticateToken, requireAdmin, async (req: Auth
       data: {
         ...(code !== undefined && { code: code.toUpperCase() }),
         ...(discountPercent !== undefined && { discountPercent: Number(discountPercent) }),
-        ...(description !== undefined && { description }),
+        ...(description !== undefined && { description: sanitizeString(description) }),
         ...(expiryDate !== undefined && { expiryDate: new Date(expiryDate) }),
         ...(isActive !== undefined && { isActive }),
       },

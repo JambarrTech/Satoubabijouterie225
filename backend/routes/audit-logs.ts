@@ -1,6 +1,7 @@
 import { Router, Response } from 'express';
 import { getAuditLogs } from '../lib/audit';
 import { authenticateToken, requireAdmin, AuthRequest } from '../middleware/auth';
+import logger from '../lib/logger';
 
 const router = Router();
 
@@ -17,7 +18,7 @@ router.get('/', authenticateToken, requireAdmin, async (req: AuthRequest, res: R
     });
     res.json(result);
   } catch (error) {
-    console.error('Error fetching audit logs:', error);
+    logger.error({ err: error }, 'Error fetching audit logs');
     res.status(500).json({ error: 'Erreur lors de la récupération des journaux.' });
   }
 });

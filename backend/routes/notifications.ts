@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma';
 import { authenticateToken, requireAdmin, AuthRequest } from '../middleware/auth';
+import { sanitizeString } from '../lib/sanitize';
 
 const router = Router();
 
@@ -72,9 +73,9 @@ router.post('/api/notifications', authenticateToken, requireAdmin, async (req: A
     const notification = await prisma.notification.create({
       data: {
         userId,
-        title,
-        message,
-        type: type || 'SYSTEM',
+        title: sanitizeString(title),
+        message: sanitizeString(message),
+        type: sanitizeString(type || 'SYSTEM'),
       },
     });
     res.status(201).json(notification);

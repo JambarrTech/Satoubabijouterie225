@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, ReactNode } from 'react';
+import { Component, ReactNode } from 'react';
 
 interface ErrorFallbackProps {
   error: Error;
@@ -40,37 +40,29 @@ interface ErrorBoundaryProps {
   fallback?: ReactNode;
 }
 
-export function ErrorBoundary({ children, fallback }: ErrorBoundaryProps) {
-  const [error, setError] = useState<Error | null>(null);
+interface ErrorBoundaryState {
+  error: Error | null;
+}
 
-  const handleRetry = useCallback(() => {
-    setError(null);
-    window.location.reload();
-  }, []);
+export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  state: ErrorBoundaryState = { error: null };
 
-  useEffect(() => {
-    const handleError = (event: ErrorEvent) => {
-      event.preventDefault();
-      setError(event.error || new Error('Erreur inconnue'));
-    };
-
-    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      event.preventDefault();
-      setError(new Error(String(event.reason)));
-    };
-
-    window.addEventListener('error', handleError);
-    window.addEventListener('unhandledrejection', handleUnhandledRejection);
-
-    return () => {
-      window.removeEventListener('error', handleError);
-      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
-    };
-  }, []);
-
-  if (error) {
-    return fallback || <ErrorFallback error={error} onRetry={handleRetry} />;
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { error };
   }
 
-  return <>{children}</>;
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('ErrorBoundary caught:', error, errorInfo);
+  }
+
+  handleRetry = () => {
+    this.setState({ error: null });
+  };
+
+  render() {
+    if (this.state.error) {
+      return this.props.fallback || <ErrorFallback error={this.state.error} onRetry={this.handleRetry} />;
+    }
+    return this.props.children;
+  }
 }

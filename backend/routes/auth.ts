@@ -7,6 +7,7 @@ import { generateToken, generateRefreshToken, verifyRefreshToken, revokeRefreshT
 import { sendOTPSMS } from '../lib/sms';
 import logger from '../lib/logger';
 import { logAction } from '../lib/audit';
+import { sanitizeString } from '../lib/sanitize';
 
 const router = Router();
 
@@ -75,7 +76,7 @@ router.post('/api/auth/register', rateLimit(15, 60_000), async (req, res) => {
     await prisma.cart.create({ data: { userId: user.id } });
 
     const token = generateToken(user.id, user.role);
-    const refreshToken = generateRefreshToken(user.id);
+    const refreshToken = await generateRefreshToken(user.id);
     const { password: _, ...userWithoutPassword } = user;
 
     logger.info({ userId: user.id, identifier: user.identifier }, 'User registered');
@@ -148,7 +149,7 @@ router.post('/api/auth/login', rateLimit(30, 60_000), async (req, res) => {
     });
 
     const token = generateToken(user.id, user.role);
-    const refreshToken = generateRefreshToken(user.id);
+    const refreshToken = await generateRefreshToken(user.id);
     const { password: _, ...userWithoutPassword } = user;
 
     logger.info({ userId: user.id, identifier: user.identifier }, 'User logged in');
@@ -229,7 +230,7 @@ router.post('/api/auth/login-gerant', rateLimit(30, 60_000), async (req, res) =>
     });
 
     const token = generateToken(user.id, user.role);
-    const refreshToken = generateRefreshToken(user.id);
+    const refreshToken = await generateRefreshToken(user.id);
     const { password: _, ...userWithoutPassword } = user;
 
     logger.info({ userId: user.id }, 'Gerant logged in');
@@ -274,7 +275,7 @@ router.put('/api/auth/me', authenticateToken, async (req: AuthRequest, res) => {
     const updateData: Record<string, any> = {};
     for (const key of ALLOWED_PROFILE_FIELDS) {
       if (req.body[key] !== undefined) {
-        updateData[key] = req.body[key];
+        updateData[key] = typeof req.body[key] === 'string' ? sanitizeString(req.body[key]) : req.body[key];
       }
     }
 
@@ -396,7 +397,7 @@ router.post('/api/auth/reset-password', rateLimit(15, 60_000), async (req, res) 
     // Find user by phone
     const user = await prisma.user.findFirst({ where: { phone: validPhone } });
     if (!user) {
-      return res.status(400).json({ error: 'Aucun compte trouvé avec ce numéro' });
+      return res.status(400).json({ error: 'Code invalide ou expiré' });
     }
 
     const hashedToken = crypto.createHash('sha256').update(validOtp).digest('hex');
@@ -461,7 +462,7 @@ router.post('/api/auth/refresh', rateLimit(30, 60_000), async (req, res) => {
     // Rotate: revoke old refresh token, issue new pair
     await revokeRefreshToken(refreshToken);
     const newAccessToken = generateToken(user.id, user.role);
-    const newRefreshToken = generateRefreshToken(user.id);
+    const newRefreshToken = await generateRefreshToken(user.id);
 
     res.json({ token: newAccessToken, refreshToken: newRefreshToken });
   } catch (error) {

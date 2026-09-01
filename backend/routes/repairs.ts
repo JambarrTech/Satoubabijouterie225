@@ -4,6 +4,7 @@ import { authenticateToken, requireAdmin, AuthRequest } from '../middleware/auth
 import { safeJsonParse } from '../lib/helpers';
 import logger from '../lib/logger';
 import { notifyRepairRequest, notifyRepairStatusChange } from '../lib/notifications';
+import { sanitizeString } from '../lib/sanitize';
 
 const router = Router();
 
@@ -75,11 +76,11 @@ router.post('/api/repairs', authenticateToken, async (req: AuthRequest, res) => 
     const repair = await prisma.repairRequest.create({
       data: {
         userId: req.userId!,
-        jewelryType,
-        problemType,
-        description: description || '',
+        jewelryType: sanitizeString(jewelryType),
+        problemType: sanitizeString(problemType),
+        description: sanitizeString(description || ''),
         photos: photos ? JSON.stringify(photos) : null,
-        phone,
+        phone: sanitizeString(phone),
       },
     });
 
