@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense, lazy } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Header } from './components/layout/Header';
 import { BottomNavigation } from './components/layout/BottomNavigation';
@@ -7,19 +7,20 @@ import { SearchModal } from './components/layout/SearchModal';
 import { NotificationsModal } from './components/layout/NotificationsModal';
 import { SplashView } from './components/auth/SplashView';
 import { AuthModal } from './components/auth/AuthModal';
-import { HomeView } from './components/views/HomeView';
-import { CatalogueView } from './components/views/CatalogueView';
-import { ProductDetailView } from './components/views/ProductDetailView';
-import { FavoritesView } from './components/views/FavoritesView';
-import { CartView } from './components/views/CartView';
-import { OrdersView } from './components/views/OrdersView';
-import { CustomView } from './components/views/CustomView';
-import { RepairView } from './components/views/RepairView';
-import { ProfileView } from './components/views/ProfileView';
-import { ChatView } from './components/views/ChatView';
-import { LegalView } from './components/views/LegalView';
 import { ToastProvider } from './components/ui/Toast';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
+
+const HomeView = lazy(() => import('./components/views/HomeView').then(m => ({ default: m.HomeView })));
+const CatalogueView = lazy(() => import('./components/views/CatalogueView').then(m => ({ default: m.CatalogueView })));
+const ProductDetailView = lazy(() => import('./components/views/ProductDetailView').then(m => ({ default: m.ProductDetailView })));
+const FavoritesView = lazy(() => import('./components/views/FavoritesView').then(m => ({ default: m.FavoritesView })));
+const CartView = lazy(() => import('./components/views/CartView').then(m => ({ default: m.CartView })));
+const OrdersView = lazy(() => import('./components/views/OrdersView').then(m => ({ default: m.OrdersView })));
+const CustomView = lazy(() => import('./components/views/CustomView').then(m => ({ default: m.CustomView })));
+const RepairView = lazy(() => import('./components/views/RepairView').then(m => ({ default: m.RepairView })));
+const ProfileView = lazy(() => import('./components/views/ProfileView').then(m => ({ default: m.ProfileView })));
+const ChatView = lazy(() => import('./components/views/ChatView').then(m => ({ default: m.ChatView })));
+const LegalView = lazy(() => import('./components/views/LegalView').then(m => ({ default: m.LegalView })));
 
 import { Product, Category, Cart, NotificationItem, User } from './types';
 import { fetchCategories } from './lib/api/categories';
@@ -197,6 +198,7 @@ export default function App() {
       />
 
       <main className="flex-1 pb-24 md:pb-12">
+        <Suspense fallback={<div className="flex items-center justify-center min-h-[300px]"><div className="w-6 h-6 border-2 border-[#0B5D1E] border-t-transparent rounded-full animate-spin" /></div>}>
         <AnimatePresence mode="wait">
           <motion.div
             key={currentTab}
@@ -290,6 +292,7 @@ export default function App() {
             )}
           </motion.div>
         </AnimatePresence>
+        </Suspense>
       </main>
 
       <Footer onNavigate={handleNavigate} />

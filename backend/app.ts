@@ -152,7 +152,7 @@ app.use((err: any, req: express.Request, res: express.Response, _next: express.N
     return res.status(413).json({ error: 'Payload trop volumineux' });
   }
   if (req.path.startsWith('/api/')) {
-    console.error('Unhandled error:', err);
+    logger.error({ err }, 'Unhandled error:');
     // Don't leak stack in production
     const message = process.env.NODE_ENV === 'production' ? 'Erreur interne du serveur' : err.message || 'Erreur interne du serveur';
     return res.status(err.status || 500).json({ error: message });

@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Search, Bell, ShoppingBag, User } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -11,7 +12,7 @@ interface HeaderProps {
   onSelectTab: (tab: string) => void;
 }
 
-export function Header({
+export const Header = memo(function Header({
   onOpenSearch,
   onOpenNotifications,
   onOpenCart,
@@ -131,4 +132,4 @@ export function Header({
       </div>
     </header>
   );
-}
+});

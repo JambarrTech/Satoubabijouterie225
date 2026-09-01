@@ -131,14 +131,14 @@ export function GerantDashboard({ onLogout }: GerantDashboardProps) {
       {/* Main Content Area */}
       <main className="flex-1 p-6 sm:p-10 overflow-y-auto">
         <div className="max-w-6xl mx-auto">
-          {activeTab === 'overview' && <GerantOverview />}
-          {activeTab === 'products' && <GerantProducts />}
-          {activeTab === 'orders' && <GerantOrders />}
-          {activeTab === 'custom' && <GerantCustom />}
-          {activeTab === 'customers' && <GerantCustomers />}
-          {activeTab === 'users' && <GerantUsers />}
-          {activeTab === 'settings' && <GerantSettings />}
-          {activeTab === 'logs' && <GerantLogs />}
+          <div style={{ display: activeTab === 'overview' ? 'block' : 'none' }}><GerantOverview /></div>
+          <div style={{ display: activeTab === 'products' ? 'block' : 'none' }}><GerantProducts /></div>
+          <div style={{ display: activeTab === 'orders' ? 'block' : 'none' }}><GerantOrders /></div>
+          <div style={{ display: activeTab === 'custom' ? 'block' : 'none' }}><GerantCustom /></div>
+          <div style={{ display: activeTab === 'customers' ? 'block' : 'none' }}><GerantCustomers /></div>
+          <div style={{ display: activeTab === 'users' ? 'block' : 'none' }}><GerantUsers /></div>
+          <div style={{ display: activeTab === 'settings' ? 'block' : 'none' }}><GerantSettings /></div>
+          <div style={{ display: activeTab === 'logs' ? 'block' : 'none' }}><GerantLogs /></div>
         </div>
       </main>
     </div>

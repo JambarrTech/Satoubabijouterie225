@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Sparkles, Wrench, Phone } from 'lucide-react';
 import { apiGet, apiPut } from '../../lib/apiClient';
+import { CustomRequest, RepairRequest } from '../../types';
 
 const CUSTOM_STATUSES = [
   { value: 'PENDING', label: 'En attente', color: 'bg-amber-100 text-amber-800' },
@@ -31,8 +32,8 @@ export function GerantCustom() {
       apiGet('/api/custom-requests/all'),
       apiGet('/api/repairs/all')
     ]).then(([customData, repairsData]) => {
-      setCustomRequests(customData as any[]);
-      setRepairs(repairsData as any[]);
+      setCustomRequests(customData as CustomRequest[]);
+      setRepairs(repairsData as RepairRequest[]);
       setLoading(false);
     }).catch(err => {
       console.error(err);

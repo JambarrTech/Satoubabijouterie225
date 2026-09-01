@@ -1,15 +1,21 @@
 import { useEffect, useState } from 'react';
 import { Users, Phone, ExternalLink } from 'lucide-react';
 import { apiGet } from '../../lib/apiClient';
+import { User } from '../../types';
+
+interface Customer extends User {
+  totalSpent: number;
+  ordersCount: number;
+}
 
 export function GerantCustomers() {
-  const [customers, setCustomers] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     apiGet('/api/customers')
       .then(data => {
-        setCustomers(data as any[]);
+        setCustomers(data as Customer[]);
         setLoading(false);
       })
       .catch(err => {

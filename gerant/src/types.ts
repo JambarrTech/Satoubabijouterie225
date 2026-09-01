@@ -135,3 +135,28 @@ export interface NotificationItem {
   read: boolean;
   createdAt: string;
 }
+
+export interface Stats {
+  totalRevenue: number;
+  totalOrders: number;
+  totalProducts: number;
+  totalCustomers: number;
+  pendingCustom: number;
+  pendingRepairs: number;
+}
+
+export interface AuditLog {
+  id: string;
+  userId: string | null;
+  action: string;
+  entity: string | null;
+  entityId: string | null;
+  details: Record<string, unknown> | null;
+  ipAddress: string | null;
+  createdAt: string;
+  user?: { name: string; identifier: string } | null;
+}
+
+export interface StoreSettings {
+  [key: string]: string;
+}

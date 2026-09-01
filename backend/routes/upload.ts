@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 import { authenticateToken, requireAdmin } from '../middleware/auth';
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
+import logger from '../lib/logger';
 
 const router = Router();
 
@@ -38,7 +39,7 @@ router.post('/api/upload/handle', authenticateToken, requireAdmin, async (req, r
     });
     return res.json(jsonResponse);
   } catch (error: any) {
-    console.error('Blob handleUpload error:', error);
+    logger.error({ err: error }, 'Blob handleUpload error');
     return res.status(500).json({ error: error.message || 'Erreur génération token upload' });
   }
 });

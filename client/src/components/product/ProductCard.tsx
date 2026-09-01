@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Heart, ShoppingBag, Check } from 'lucide-react';
 import { Product } from '../../types';
@@ -15,7 +15,7 @@ interface ProductCardProps {
   onAddToCart: (product: Product) => void;
 }
 
-export function ProductCard({
+export const ProductCard = memo(function ProductCard({
   product,
   onSelect,
   onToggleFavorite,
@@ -147,4 +147,4 @@ export function ProductCard({
       </div>
     </motion.div>
   );
-}
+});

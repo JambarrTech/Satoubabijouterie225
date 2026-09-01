@@ -4,13 +4,14 @@ import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Modal } from '../ui/Modal';
 import { apiGet, apiPost, apiPut, apiDelete, apiUpload } from '../../lib/apiClient';
+import { Product, Category } from '../../types';
 
 export function GerantProducts() {
-  const [products, setProducts] = useState<any[]>([]);
-  const [categories, setCategories] = useState<any[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [search, setSearch] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<any>(null);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
   // Form state
   const [name, setName] = useState('');
@@ -43,7 +44,7 @@ export function GerantProducts() {
 
   useEffect(() => {
     fetchProducts();
-    apiGet('/api/categories').then(data => setCategories(data as any[])).catch(() => {});
+    apiGet('/api/categories').then(data => setCategories(data as Category[])).catch(() => {});
   }, []);
 
   const handleOpenAdd = () => {
@@ -66,7 +67,7 @@ export function GerantProducts() {
     setIsModalOpen(true);
   };
 
-  const handleOpenEdit = (prod: any) => {
+  const handleOpenEdit = (prod: Product) => {
     setEditingProduct(prod);
     setName(prod.name);
     setPrice(prod.price);
@@ -104,8 +105,8 @@ export function GerantProducts() {
         newImages.push(result.url);
       }
       setImages(prev => [...prev, ...newImages]);
-    } catch (err: any) {
-      setError(err.message || "Erreur lors de l'upload");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erreur lors de l'upload");
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -149,8 +150,8 @@ export function GerantProducts() {
       }
       setIsModalOpen(false);
       fetchProducts();
-    } catch (err: any) {
-      setError(err.message || 'Erreur lors de la sauvegarde');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erreur lors de la sauvegarde');
     }
   };
 

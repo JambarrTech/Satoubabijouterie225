@@ -36,8 +36,8 @@ export function GerantSettings() {
       await apiPut('/api/store-settings', settingsForm);
       setEditingSettings(false);
       fetchStoreSettings().then(setSettings).catch(console.error);
-    } catch (err: any) {
-      setError(err.message || 'Erreur');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erreur');
     }
   };
 

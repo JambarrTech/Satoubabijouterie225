@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react';
 import { ShoppingBag, Phone, User, MapPin } from 'lucide-react';
 import { apiGet, apiPut } from '../../lib/apiClient';
+import { Order, OrderItem } from '../../types';
 
 export function GerantOrders() {
-  const [orders, setOrders] = useState<any[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchOrders = () => {
     apiGet('/api/orders/all')
       .then(data => {
-        setOrders(data as any[]);
+        setOrders(data as Order[]);
         setLoading(false);
       })
       .catch(err => {
@@ -26,8 +27,8 @@ export function GerantOrders() {
     try {
       await apiPut(`/api/orders/${orderId}/status`, { status: newStatus });
       fetchOrders();
-    } catch (err: any) {
-      const msg = err?.response?.data?.error || err?.message || 'Erreur lors de la mise a jour du statut';
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Erreur lors de la mise a jour du statut';
       alert(msg);
     }
   };
@@ -112,7 +113,7 @@ const ALLOWED_TRANSITIONS: Record<string, string[]> = {
 
             <div className="space-y-2">
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Articles commandés</p>
-              {order.items.map((item: any, idx: number) => (
+              {order.items.map((item: OrderItem, idx: number) => (
                 <div key={idx} className="flex justify-between items-center text-sm py-1 border-b border-gray-50">
                   <span className="font-medium text-gray-800">{item.productName} (x{item.quantity})</span>
                   <span className="font-bold text-gray-900">{(item.price * item.quantity).toLocaleString()} FCFA</span>

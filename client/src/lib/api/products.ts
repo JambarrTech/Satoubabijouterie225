@@ -32,7 +32,3 @@ export async function fetchProducts(params?: {
   const qs = query.toString();
   return apiGet<PaginatedResponse<Product>>(`/api/products${qs ? `?${qs}` : ''}`);
 }
-
-export async function fetchProductBySlug(slug: string): Promise<Product> {
-  return apiGet<Product>(`/api/products/${slug}`);
-}

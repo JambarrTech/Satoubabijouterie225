@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Home, Heart, ShoppingBag, MessageSquare, User as UserIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -8,7 +9,7 @@ interface BottomNavigationProps {
   favoritesCount: number;
 }
 
-export function BottomNavigation({
+export const BottomNavigation = memo(function BottomNavigation({
   currentTab,
   onSelectTab,
   cartCount,
@@ -74,4 +75,4 @@ export function BottomNavigation({
       </div>
     </div>
   );
-}
+});

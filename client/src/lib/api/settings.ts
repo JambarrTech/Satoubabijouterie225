@@ -16,10 +16,27 @@ export interface StoreSettings {
   free_shipping_threshold: number;
 }
 
+let cachedSettings: StoreSettings | null = null;
+let cacheExpiry = 0;
+const CACHE_TTL = 60_000; // 60 seconds
+
 export async function fetchStoreSettings(): Promise<StoreSettings> {
-  return apiGet<StoreSettings>('/api/store-settings');
+  if (cachedSettings && Date.now() < cacheExpiry) {
+    return cachedSettings;
+  }
+  const settings = await apiGet<StoreSettings>('/api/store-settings');
+  cachedSettings = settings;
+  cacheExpiry = Date.now() + CACHE_TTL;
+  return settings;
+}
+
+export function invalidateSettingsCache(): void {
+  cachedSettings = null;
+  cacheExpiry = 0;
 }
 
 export async function updateStoreSettings(settings: Record<string, string>): Promise<StoreSettings> {
-  return apiPut<StoreSettings>('/api/store-settings', settings);
+  const result = await apiPut<StoreSettings>('/api/store-settings', settings);
+  invalidateSettingsCache();
+  return result;
 }

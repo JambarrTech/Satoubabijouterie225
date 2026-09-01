@@ -184,14 +184,14 @@ export async function apiUploadMultiple(files: File[]): Promise<{ urls: string[]
   if (useBlob) {
     try {
       const { upload } = await import('@vercel/blob/client');
-      const urls: string[] = [];
-      for (const file of files) {
-        const blob = await upload(`products/${file.name}`, file, {
-          access: 'public',
-          handleUploadUrl: '/api/upload/handle',
-        });
-        urls.push(blob.url);
-      }
+      const urls = await Promise.all(
+        files.map(file =>
+          upload(`products/${file.name}`, file, {
+            access: 'public',
+            handleUploadUrl: '/api/upload/handle',
+          }).then(blob => blob.url)
+        )
+      );
       return { urls };
     } catch (err: any) {
       throw new Error(err.message || "Erreur lors de l'upload vers le stockage");

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { Phone, MapPin, ShieldCheck, Truck, Clock, Instagram, MessageSquare } from 'lucide-react';
 import { fetchStoreSettings, StoreSettings } from '../../lib/api/settings';
 
@@ -6,7 +6,7 @@ interface FooterProps {
   onNavigate?: (tab: string) => void;
 }
 
-export function Footer({ onNavigate }: FooterProps) {
+export const Footer = memo(function Footer({ onNavigate }: FooterProps) {
   const [settings, setSettings] = useState<StoreSettings | null>(null);
 
   useEffect(() => {
@@ -155,4 +155,4 @@ export function Footer({ onNavigate }: FooterProps) {
       </div>
     </footer>
   );
-}
+});

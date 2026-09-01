@@ -48,8 +48,8 @@ export function GerantLogin({ onLogin }: GerantLoginProps) {
       localStorage.setItem('satouba_gerant_user', JSON.stringify(result.user));
       toast('Bienvenue !', 'success');
       onLogin(result.user, result.token);
-    } catch (err: any) {
-      setError(err.message || 'Erreur de connexion');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erreur de connexion');
     } finally {
       setLoading(false);
     }

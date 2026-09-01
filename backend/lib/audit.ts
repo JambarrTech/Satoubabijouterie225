@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import logger from './logger';
 
 const prisma = new PrismaClient();
 
@@ -24,7 +25,7 @@ export async function logAction(data: LogAction): Promise<void> {
       },
     });
   } catch (error) {
-    console.error('Failed to write audit log:', error);
+    logger.error({ err: error }, 'Failed to write audit log');
   }
 }
 

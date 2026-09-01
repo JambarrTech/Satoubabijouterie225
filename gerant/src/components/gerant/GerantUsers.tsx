@@ -4,9 +4,15 @@ import { apiGet, apiPost, apiPut, apiDelete } from '../../lib/apiClient';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Modal } from '../ui/Modal';
+import { User } from '../../types';
+
+interface UserWithCounts extends User {
+  ordersCount: number;
+  favoritesCount: number;
+}
 
 export function GerantUsers() {
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<UserWithCounts[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [error, setError] = useState('');
@@ -20,7 +26,7 @@ export function GerantUsers() {
   const fetchUsers = () => {
     apiGet('/api/users')
       .then(data => {
-        setUsers(data as any[]);
+        setUsers(data as UserWithCounts[]);
         setLoading(false);
       })
       .catch(err => {
@@ -38,8 +44,8 @@ export function GerantUsers() {
       setError('');
       await apiPut(`/api/users/${userId}/role`, { role: newRole });
       fetchUsers();
-    } catch (err: any) {
-      setError(err.message || 'Erreur lors du changement de rôle');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erreur lors du changement de rôle');
     }
   };
 
@@ -49,8 +55,8 @@ export function GerantUsers() {
         setError('');
         await apiDelete(`/api/users/${userId}`);
         fetchUsers();
-      } catch (err: any) {
-        setError(err.message || 'Erreur lors de la suppression');
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : 'Erreur lors de la suppression');
       }
     }
   };
@@ -73,8 +79,8 @@ export function GerantUsers() {
       setNewPhone('');
       setNewRole('ARTISAN');
       fetchUsers();
-    } catch (err: any) {
-      setError(err.message || 'Erreur lors de la création');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erreur lors de la création');
     }
   };
 
