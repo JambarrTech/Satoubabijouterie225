@@ -39,7 +39,7 @@ export function SplashView({ onComplete }: SplashViewProps) {
             >
               <img
                 src="/logo.jpg"
-                alt="SaTouba"
+                alt="Satouba Bijouterie 255"
                 className="w-full h-full object-contain rounded-2xl"
               />
             </motion.div>
@@ -51,7 +51,7 @@ export function SplashView({ onComplete }: SplashViewProps) {
               className="text-center"
             >
               <h1 className="font-serif text-5xl font-bold text-white tracking-tight">
-                Sa<span className="text-[#D9A441]">Touba</span>
+                Satouba <span className="text-[#D9A441]">Bijouterie 255</span>
               </h1>
             </motion.div>
 

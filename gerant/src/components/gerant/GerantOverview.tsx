@@ -49,7 +49,7 @@ export function GerantOverview() {
         <div className="space-y-2">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-emerald-200 text-xs font-semibold">
             <Sparkles size={14} className="text-[#D9A441]" />
-            <span>Administration {settings?.brand_name || 'SaTouba Bijouterie'}</span>
+            <span>Administration {settings?.brand_name || 'Satouba Bijouterie 255'}</span>
           </div>
           <h1 className="font-serif text-2xl sm:text-3xl font-bold">Tableau de Bord Gerant</h1>
           <p className="text-sm text-emerald-100 max-w-xl">

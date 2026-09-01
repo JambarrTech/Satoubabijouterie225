@@ -43,7 +43,7 @@ export const Footer = memo(function Footer({ onNavigate }: FooterProps) {
               <Truck size={24} />
             </div>
             <div>
-              <h4 className="font-serif font-semibold text-sm">Coursier SaTouba (Abidjan & environs)</h4>
+              <h4 className="font-serif font-semibold text-sm">Coursier Satouba Bijouterie 255 (Abidjan & environs)</h4>
               <p className="text-xs text-emerald-200/80">Gratuit — Remise en main propre sous 24-48h avec certificat d’authenticité.</p>
             </div>
           </div>
@@ -65,10 +65,10 @@ export const Footer = memo(function Footer({ onNavigate }: FooterProps) {
           <div>
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-xl bg-white overflow-hidden border border-[#D9A441] p-0.5 flex items-center justify-center">
-                <img src="/logo.jpg" alt={settings?.brand_name || 'SaTouba'} className="w-full h-full object-contain" />
+                <img src="/logo.jpg" alt={settings?.brand_name || 'Satouba Bijouterie 255'} className="w-full h-full object-contain" />
               </div>
               <div>
-                <span className="font-serif text-lg font-bold text-white block">{settings?.brand_name || 'SaTouba Bijouterie'}</span>
+                <span className="font-serif text-lg font-bold text-white block">{settings?.brand_name || 'Satouba Bijouterie 255'}</span>
                 {settings?.tagline && <span className="text-xs text-[#D9A441] italic">{settings.tagline}</span>}
               </div>
             </div>
@@ -106,7 +106,7 @@ export const Footer = memo(function Footer({ onNavigate }: FooterProps) {
             <ul className="space-y-3 text-xs text-emerald-200/80">
               <li className="flex items-start gap-2.5">
                 <MapPin size={16} className="text-[#D9A441] shrink-0 mt-0.5" />
-                <span>{settings?.address || 'Koumassi, feux de prodomo, juste à la rentrée de Sopim, Abidjan — Coursier SaTouba (Abidjan & environs)'}</span>
+                <span>{settings?.address || 'Koumassi, feux de prodomo, juste à la rentrée de Sopim, Abidjan — Coursier Satouba Bijouterie 255 (Abidjan & environs)'}</span>
               </li>
               <li className="flex items-center gap-2.5">
                 <Phone size={16} className="text-[#D9A441] shrink-0" />
@@ -145,7 +145,7 @@ export const Footer = memo(function Footer({ onNavigate }: FooterProps) {
 
         {/* Bas de page */}
         <div className="pt-8 border-t border-emerald-900/50 flex flex-col sm:flex-row items-center justify-between text-xs text-emerald-300/60">
-          <p>&copy; 2026 {settings?.brand_name || 'SaTouba Bijouterie'}. Tous droits réservés.</p>
+          <p>&copy; 2026 {settings?.brand_name || 'Satouba Bijouterie 255'}. Tous droits réservés.</p>
           <div className="flex gap-6 mt-4 sm:mt-0">
             <button onClick={() => handleNav('cgv')} className="hover:text-white cursor-pointer transition-colors">Conditions Générales de Vente</button>
             <button onClick={() => handleNav('confidentialite')} className="hover:text-white cursor-pointer transition-colors">Politique de confidentialité</button>

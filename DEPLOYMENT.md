@@ -1,6 +1,6 @@
 # Déploiement — Vercel (frontend + backend serverless) + Neon (PostgreSQL)
 
-Ce guide décrit comment déployer la plateforme SaTouba en production : Vercel pour le
+Ce guide décrit comment déployer la plateforme Satouba Bijouterie 255 en production : Vercel pour le
 frontend React et le backend Express (serverless), Neon pour la base PostgreSQL, Vercel Blob
 pour les uploads d'images et Upstash Redis pour le rate limiting partagé.
 

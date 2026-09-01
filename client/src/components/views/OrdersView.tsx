@@ -133,7 +133,7 @@ export function OrdersView() {
               </div>
 
               <div className="space-y-4 pt-4 border-t border-gray-100">
-                <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wider mb-4">Suivi de l'atelier SaTouba</h4>
+                <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wider mb-4">Suivi de l'atelier Satouba Bijouterie 255</h4>
                 <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-gray-200">
                   {(selectedOrder.statusHistory || []).map((step, idx) => (
                     <div key={idx} className="relative flex items-start gap-4">

@@ -135,7 +135,7 @@ export function SearchModal({ isOpen, onClose, onSelectProduct }: SearchModalPro
                       onError={(e) => { (e.target as HTMLImageElement).src = '/placeholder.svg'; }}
                     />
                     <div className="flex-1">
-                      <span className="text-[10px] text-gray-400 uppercase font-semibold">{product.material || 'Bijou SaTouba'}</span>
+                      <span className="text-[10px] text-gray-400 uppercase font-semibold">{product.material || 'Bijou Satouba Bijouterie 255'}</span>
                       <h4 className="font-serif font-medium text-gray-900 text-sm group-hover:text-[#0B5D1E] transition-colors">
                         {product.name}
                       </h4>

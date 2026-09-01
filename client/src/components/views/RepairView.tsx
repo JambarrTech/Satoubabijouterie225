@@ -53,7 +53,7 @@ export function RepairView() {
       <div className="text-center space-y-3">
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#0B5D1E]/10 text-[#0B5D1E] text-xs font-semibold">
           <Wrench size={14} className="text-[#D9A441]" />
-          <span>Service Après-Vente & Restauration SaTouba</span>
+          <span>Service Après-Vente & Restauration Satouba Bijouterie 255</span>
         </div>
         <h1 className="font-serif text-3xl sm:text-4xl font-bold text-gray-900">Redonnez vie à vos bijoux</h1>
         <p className="text-sm text-gray-600 max-w-xl mx-auto leading-relaxed">

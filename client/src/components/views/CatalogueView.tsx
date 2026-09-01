@@ -71,7 +71,7 @@ export function CatalogueView({
       {/* Title & Search header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-gray-100">
         <div>
-          <span className="text-xs uppercase tracking-widest text-[#0B5D1E] font-semibold block mb-1">Catalogue SaTouba</span>
+          <span className="text-xs uppercase tracking-widest text-[#0B5D1E] font-semibold block mb-1">Catalogue Satouba Bijouterie 255</span>
           <h1 className="font-serif text-3xl font-bold text-gray-900">Nos Collections Exclusives</h1>
           <p className="text-sm text-gray-500 mt-1">{pagination.total} bijoux trouvés</p>
         </div>

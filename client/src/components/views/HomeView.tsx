@@ -157,7 +157,7 @@ export function HomeView({
             <div className="relative aspect-[4/5] rounded-3xl overflow-hidden shadow-2xl border-4 border-white">
               <img
                 src={featuredProduct?.images?.[0] || 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=900&q=80'}
-                alt={featuredProduct?.name || 'Bijou SaTouba'}
+                alt={featuredProduct?.name || 'Bijou Satouba Bijouterie 255'}
                 className="w-full h-full object-cover"
                 referrerPolicy="no-referrer"
               />
@@ -168,10 +168,10 @@ export function HomeView({
             </div>
             <div className="absolute -bottom-6 -left-6 bg-white p-4 rounded-2xl shadow-xl border border-gray-100 flex items-center gap-3">
               <div className="w-12 h-12 rounded-xl bg-white overflow-hidden border border-[#D9A441] p-0.5 shrink-0 flex items-center justify-center shadow-xs">
-                <img src="/logo.jpg" alt="SaTouba Logo" className="w-full h-full object-contain" />
+                <img src="/logo.jpg" alt="Satouba Bijouterie 255 Logo" className="w-full h-full object-contain" />
               </div>
               <div>
-                <p className="text-xs font-bold text-gray-900">{settings?.brand_name || 'SaTouba Bijouterie'}</p>
+                <p className="text-xs font-bold text-gray-900">{settings?.brand_name || 'Satouba Bijouterie 255'}</p>
                 <p className="text-[10px] text-[#0B5D1E] font-medium">Moderne & de la Joaillerie</p>
               </div>
             </div>
@@ -313,7 +313,7 @@ export function HomeView({
           className="bg-[#EAF7ED] rounded-3xl p-8 sm:p-12 border border-[#0B5D1E]/20 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center"
         >
           <div className="lg:col-span-8 space-y-4">
-            <span className="text-xs uppercase tracking-widest text-[#0B5D1E] font-bold">Atelier de Création {settings?.brand_name || 'SaTouba'}</span>
+            <span className="text-xs uppercase tracking-widest text-[#0B5D1E] font-bold">Atelier de Création {settings?.brand_name || 'Satouba Bijouterie 255'}</span>
             <h3 className="font-serif text-3xl font-bold text-gray-900">Créez le bijou de vos rêves sur-mesure</h3>
             <p className="text-gray-600 text-sm leading-relaxed max-w-2xl">
               Vous avez une idée précise ou un modèle unique en tête ? Nos maîtres joailliers façonnent à la main vos bagues, alliances et colliers selon vos désirs les plus précieux.

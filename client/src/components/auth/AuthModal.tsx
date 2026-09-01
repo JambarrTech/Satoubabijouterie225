@@ -200,7 +200,7 @@ export function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) {
                     transition={{ type: 'spring', stiffness: 300, damping: 20, delay: 0.1 }}
                     className="w-16 h-16 mx-auto rounded-2xl bg-[#0B5D1E] p-1 shadow-lg mb-3"
                   >
-                    <img src="/logo.jpg" alt="SaTouba" className="w-full h-full object-contain rounded-xl" />
+                    <img src="/logo.jpg" alt="Satouba Bijouterie 255" className="w-full h-full object-contain rounded-xl" />
                   </motion.div>
                   <h2 className="font-serif text-xl font-bold text-gray-900">
                     {view === 'login' && 'Connexion'}
@@ -209,8 +209,8 @@ export function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) {
                     {view === 'reset' && 'Nouveau mot de passe'}
                   </h2>
                   <p className="text-xs text-gray-500 mt-1">
-                    {view === 'login' && 'Accédez à votre espace SaTouba'}
-                    {view === 'register' && 'Rejoignez l\'univers SaTouba'}
+                    {view === 'login' && 'Accédez à votre espace Satouba Bijouterie 255'}
+                    {view === 'register' && 'Rejoignez l\'univers Satouba Bijouterie 255'}
                     {view === 'forgot' && 'Un code OTP sera envoyé par SMS'}
                     {view === 'reset' && 'Entrez le code reçu par SMS'}
                   </p>

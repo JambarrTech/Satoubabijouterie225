@@ -24,7 +24,7 @@ export function CustomView() {
     'Argent Massif': 2500,
   };
   const STONE_COST: Record<string, number> = {
-    'Diamant SaTouba': 500000,
+    'Diamant Satouba Bijouterie 255': 500000,
     'Rubis / Saphir': 300000,
     'Émeraude': 250000,
     'Zirconium éclat': 50000,
@@ -65,11 +65,11 @@ export function CustomView() {
       <div className="text-center space-y-3">
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#0B5D1E]/10 text-[#0B5D1E] text-xs font-semibold">
           <Sparkles size={14} className="text-[#D9A441]" />
-          <span>Atelier de Haute Joaillerie SaTouba</span>
+          <span>Atelier de Haute Joaillerie Satouba Bijouterie 255</span>
         </div>
         <h1 className="font-serif text-3xl sm:text-4xl font-bold text-gray-900">Simulateur & Création Sur-Mesure</h1>
         <p className="text-sm text-gray-600 max-w-xl mx-auto leading-relaxed">
-          Estimez instantanément le tarif de votre bijou sur-mesure grâce à notre simulateur interactif et confiez sa réalisation à nos maîtres artisans à Abidjan — Coursier SaTouba (Abidjan & environs).
+          Estimez instantanément le tarif de votre bijou sur-mesure grâce à notre simulateur interactif et confiez sa réalisation à nos maîtres artisans à Abidjan — Coursier Satouba Bijouterie 255 (Abidjan & environs).
         </p>
       </div>
 
@@ -150,7 +150,7 @@ export function CustomView() {
                 onChange={(e) => setStone(e.target.value)}
                 className="w-full rounded-xl border border-gray-200 bg-white p-3 text-sm focus:outline-none focus:border-[#0B5D1E]"
               >
-                <option value="Diamant SaTouba">Diamant Certifié SaTouba</option>
+                <option value="Diamant SaTouba">Diamant Certifié Satouba Bijouterie 255</option>
                 <option value="Rubis / Saphir">Rubis / Saphir Naturel</option>
                 <option value="Émeraude">Émeraude Précieuse</option>
                 <option value="Zirconium éclat">Zirconium Haute Brillance</option>
@@ -227,7 +227,7 @@ export function CustomView() {
             <div className="p-4 bg-white/10 rounded-2xl flex items-center gap-3">
               <ShieldCheck size={24} className="text-[#D9A441] shrink-0" />
               <p className="text-xs text-emerald-100 leading-relaxed">
-                Certificat d'authenticité et poinçon officiel SaTouba inclus pour chaque création sur-mesure.
+                Certificat d'authenticité et poinçon officiel Satouba Bijouterie 255 inclus pour chaque création sur-mesure.
               </p>
             </div>
           </div>

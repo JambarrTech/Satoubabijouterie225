@@ -22,7 +22,7 @@ export function LegalView({ type }: LegalViewProps) {
           <section className="mb-8">
             <h2 className="font-serif text-xl font-bold text-gray-900 mb-3">1. Objet</h2>
             <p className="text-sm text-gray-700 leading-relaxed">
-              Les presentes Conditions Generales de Vente (CGV) regissent les relations entre la societe SaTouba Bijouterie, 
+              Les presentes Conditions Generales de Vente (CGV) regissent les relations entre la societe Satouba Bijouterie 255, 
               dont le siege est situe a Koumassi, feux de prodomo, juste a la rentree de Sopim, Abidjan, Cote d'Ivoire, 
               et tout client effectuant un achat via le site internet saouba-bijouterie.com.
             </p>
@@ -41,7 +41,7 @@ export function LegalView({ type }: LegalViewProps) {
           <section className="mb-8">
             <h2 className="font-serif text-xl font-bold text-gray-900 mb-3">3. Prix</h2>
             <p className="text-sm text-gray-700 leading-relaxed">
-              Tous les prix sont indiques en FCFA (Franc CFA). SaTouba Bijouterie se reserve le droit de modifier 
+              Tous les prix sont indiques en FCFA (Franc CFA). Satouba Bijouterie 255 se reserve le droit de modifier 
               ses prix a tout moment, etant entendu que le prix applicable est celui en vigueur au moment de la validation 
               de la commande par le client.
             </p>

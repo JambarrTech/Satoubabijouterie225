@@ -46,7 +46,7 @@ export function GerantSettings() {
   return (
     <div className="space-y-8">
       <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
-        <h2 className="font-serif text-2xl font-bold text-gray-900">Administration & Paramètres SaTouba</h2>
+        <h2 className="font-serif text-2xl font-bold text-gray-900">Administration & Paramètres Satouba Bijouterie 255</h2>
         <p className="text-sm text-gray-500">Configurez les informations de la bijouterie.</p>
       </div>
 

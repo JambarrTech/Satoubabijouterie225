@@ -28,7 +28,7 @@ const NODE_ENV = process.env.NODE_ENV || "development";
 app.use(backendApp);
 
 const server = app.listen(PORT, "0.0.0.0", () => {
-  console.log(`SaTouba API [${NODE_ENV}] running on http://localhost:${PORT}`);
+  console.log(`Satouba Bijouterie 255 API [${NODE_ENV}] running on http://localhost:${PORT}`);
 });
 
 const shutdown = (signal: string) => {

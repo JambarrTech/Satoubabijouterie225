@@ -75,14 +75,14 @@ export function GerantLogin({ onLogin }: GerantLoginProps) {
             transition={{ type: 'spring', stiffness: 200, damping: 15, delay: 0.2 }}
             className="w-20 h-20 mx-auto rounded-2xl bg-white/10 backdrop-blur-sm p-1 shadow-2xl border border-white/20 mb-4"
           >
-            <img src="/logo.jpg" alt="SaTouba" className="w-full h-full object-contain rounded-xl" />
+            <img src="/logo.jpg" alt="Satouba Bijouterie 255" className="w-full h-full object-contain rounded-xl" />
           </motion.div>
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
             <div className="flex items-center justify-center gap-2 mb-2">
               <ShieldCheck size={20} className="text-[#D9A441]" />
               <h1 className="font-serif text-2xl font-bold text-white">Espace Gerant</h1>
             </div>
-            <p className="text-sm text-emerald-200/70">Administration SaTouba Bijouterie</p>
+            <p className="text-sm text-emerald-200/70">Administration Satouba Bijouterie 255</p>
           </motion.div>
         </motion.div>
 

@@ -32,11 +32,11 @@ export const Header = memo(function Header({
           className="flex items-center gap-2.5 cursor-pointer group"
         >
           <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center shadow-xs overflow-hidden border border-[#D9A441]/50 p-0.5 group-hover:border-[#0B5D1E] group-hover:shadow-md transition-all duration-300">
-            <img src="/logo.jpg" alt="SaTouba Bijouterie" className="w-full h-full object-contain" />
+            <img src="/logo.jpg" alt="Satouba Bijouterie 255" className="w-full h-full object-contain" />
           </div>
           <div className="hidden sm:block">
             <span className="font-serif text-lg font-bold tracking-tight text-[#0B5D1E] block leading-none">
-              SaTouba
+              Satouba Bijouterie
             </span>
             <span className="text-[10px] tracking-widest uppercase text-gray-500 font-medium">
               Bijouterie

@@ -1,7 +1,7 @@
 {
-  "name": "SaTouba - Espace Gérant",
-  "short_name": "SaTouba Admin",
-  "description": "Panneau d'administration SaTouba Bijouterie",
+  "name": "Satouba Bijouterie 255 - Espace Gérant",
+  "short_name": "Satouba 255 Admin",
+  "description": "Panneau d'administration Satouba Bijouterie 255",
   "start_url": "/gerant/",
   "display": "standalone",
   "background_color": "#F8F9F8",

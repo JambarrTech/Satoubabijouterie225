@@ -94,7 +94,7 @@ export function ProfileView({ onNavigate, onLogout, onProfileUpdate }: ProfileVi
         </div>
         <div className="text-center sm:text-left space-y-1 flex-1">
           <span className="px-3 py-1 rounded-full bg-[#D9A441] text-white text-[10px] font-bold uppercase tracking-widest">
-            Client VIP SaTouba
+            Client VIP Satouba Bijouterie 255
           </span>
           <h1 className="font-serif text-2xl sm:text-3xl font-bold">{user?.name}</h1>
           <p className="text-xs text-emerald-200">@{user?.identifier}</p>

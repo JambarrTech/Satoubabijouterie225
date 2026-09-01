@@ -28,7 +28,7 @@ export function GerantCustomers() {
     <div className="space-y-6">
       <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="font-serif text-2xl font-bold text-gray-900">Base Clients & CRM SaTouba</h2>
+          <h2 className="font-serif text-2xl font-bold text-gray-900">Base Clients & CRM Satouba Bijouterie 255</h2>
           <p className="text-sm text-gray-500">Liste des clients enregistrés et historique de leurs achats.</p>
         </div>
         <div className="bg-[#EAF7ED] px-4 py-2 rounded-2xl text-[#0B5D1E] font-semibold text-xs">

@@ -55,7 +55,7 @@ const ALLOWED_TRANSITIONS: Record<string, string[]> = {
       <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="font-serif text-2xl font-bold text-gray-900">Gestion des Commandes Clients</h2>
-          <p className="text-sm text-gray-500">Suivez et pilotez l'avancement des commandes dans l'atelier SaTouba.</p>
+          <p className="text-sm text-gray-500">Suivez et pilotez l'avancement des commandes dans l'atelier Satouba Bijouterie 255.</p>
         </div>
         <div className="bg-[#EAF7ED] px-4 py-2 rounded-2xl text-[#0B5D1E] font-semibold text-xs">
           {orders.length} Commandes totales
