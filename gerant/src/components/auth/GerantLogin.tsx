@@ -44,6 +44,7 @@ export function GerantLogin({ onLogin }: GerantLoginProps) {
         return;
       }
       localStorage.setItem('satouba_gerant_token', result.token);
+      localStorage.setItem('satouba_gerant_refresh_token', result.refreshToken);
       localStorage.setItem('satouba_gerant_user', JSON.stringify(result.user));
       toast('Bienvenue !', 'success');
       onLogin(result.user, result.token);

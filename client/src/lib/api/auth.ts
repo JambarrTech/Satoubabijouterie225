@@ -11,13 +11,13 @@ export async function updateCurrentUser(data: Partial<User>): Promise<User> {
   return res;
 }
 
-export async function login(identifier: string, password: string): Promise<{ user: User; token: string }> {
-  const res = await apiPost<{ user: User; token: string }>('/api/auth/login', { identifier, password });
+export async function login(identifier: string, password: string): Promise<{ user: User; token: string; refreshToken: string }> {
+  const res = await apiPost<{ user: User; token: string; refreshToken: string }>('/api/auth/login', { identifier, password });
   return res;
 }
 
-export async function register(data: { name: string; identifier: string; password: string; phone?: string }): Promise<{ user: User; token: string }> {
-  const res = await apiPost<{ user: User; token: string }>('/api/auth/register', data);
+export async function register(data: { name: string; identifier: string; password: string; phone?: string }): Promise<{ user: User; token: string; refreshToken: string }> {
+  const res = await apiPost<{ user: User; token: string; refreshToken: string }>('/api/auth/register', data);
   return res;
 }
 

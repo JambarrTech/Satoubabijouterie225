@@ -46,6 +46,7 @@ model User {
   repairRequests  RepairRequest[]
   cart            Cart?
   passwordResets  PasswordResetToken[]
+  refreshTokens   RefreshToken[]
 
   @@index([role])
 }
@@ -254,4 +255,18 @@ model PasswordResetToken {
 
   @@index([token])
   @@index([userId])
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@index([expiresAt])
 }

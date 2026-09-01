@@ -1,8 +1,9 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
+import { z } from 'zod';
 import { prisma } from '../lib/prisma';
-import { generateToken, authenticateToken, rateLimit, AuthRequest } from '../middleware/auth';
+import { generateToken, generateRefreshToken, verifyRefreshToken, revokeRefreshToken, authenticateToken, rateLimit, AuthRequest } from '../middleware/auth';
 import { sendOTPSMS } from '../lib/sms';
 import logger from '../lib/logger';
 
@@ -14,17 +15,39 @@ const LOCKOUT_DURATION_MS = 10 * 60 * 1000; // 10 minutes
 const PASSWORD_RESET_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes (OTP par SMS)
 const GERANT_IDENTIFIER = process.env.GERANT_IDENTIFIER || 'gerantSatoubaBijouterie6002';
 
-function isValidIdentifier(id: string): boolean {
-  return typeof id === 'string' && id.trim().length >= 3 && /^[a-zA-Z0-9_-]+$/.test(id);
-}
+// --- Zod schemas ---
+const registerSchema = z.object({
+  name: z.string().trim().min(2, 'Le nom doit contenir au moins 2 caractères').max(100),
+  identifier: z.string().trim().min(3, "L'identifiant doit contenir au moins 3 caractères").max(50).regex(/^[a-zA-Z0-9_-]+$/, "L'identifiant ne peut contenir que des lettres, chiffres, tirets ou underscores"),
+  password: z.string().min(8, 'Le mot de passe doit contenir au moins 8 caractères').regex(/[A-Z]/, 'Le mot de passe doit contenir au moins une majuscule').regex(/[a-z]/, 'Le mot de passe doit contenir au moins une minuscule').regex(/[0-9]/, 'Le mot de passe doit contenir au moins un chiffre'),
+  phone: z.string().trim().optional(),
+});
 
-function isStrongPassword(password: string): { valid: boolean; error?: string } {
-  if (typeof password !== 'string') return { valid: false, error: 'Mot de passe invalide' };
-  if (password.length < 8) return { valid: false, error: 'Le mot de passe doit contenir au moins 8 caractères' };
-  if (!/[A-Z]/.test(password)) return { valid: false, error: 'Le mot de passe doit contenir au moins une majuscule' };
-  if (!/[a-z]/.test(password)) return { valid: false, error: 'Le mot de passe doit contenir au moins une minuscule' };
-  if (!/[0-9]/.test(password)) return { valid: false, error: 'Le mot de passe doit contenir au moins un chiffre' };
-  return { valid: true };
+const loginSchema = z.object({
+  identifier: z.string().trim().min(1, 'Identifiant requis'),
+  password: z.string().min(1, 'Mot de passe requis'),
+});
+
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, 'Mot de passe actuel requis'),
+  newPassword: z.string().min(8, 'Le mot de passe doit contenir au moins 8 caractères').regex(/[A-Z]/, 'Le mot de passe doit contenir au moins une majuscule').regex(/[a-z]/, 'Le mot de passe doit contenir au moins une minuscule').regex(/[0-9]/, 'Le mot de passe doit contenir au moins un chiffre'),
+});
+
+const forgotPasswordSchema = z.object({
+  phone: z.string().trim().min(8, 'Numéro de téléphone valide requis').max(20),
+});
+
+const resetPasswordSchema = z.object({
+  phone: z.string().trim().min(8, 'Numéro de téléphone valide requis').max(20),
+  otp: z.string().length(6, 'Le code OTP doit contenir 6 chiffres').regex(/^\d{6}$/, 'Le code OTP doit contenir uniquement des chiffres'),
+  newPassword: z.string().min(8, 'Le mot de passe doit contenir au moins 8 caractères').regex(/[A-Z]/, 'Le mot de passe doit contenir au moins une majuscule').regex(/[a-z]/, 'Le mot de passe doit contenir au moins une minuscule').regex(/[0-9]/, 'Le mot de passe doit contenir au moins un chiffre'),
+});
+
+function validate<T extends z.ZodTypeAny>(schema: T, data: unknown): { success: true; data: z.infer<T> } | { success: false; error: string } {
+  const result = schema.safeParse(data);
+  if (result.success) return { success: true, data: result.data };
+  const firstError = result.error.issues[0];
+  return { success: false, error: firstError?.message || 'Données invalides' };
 }
 
 // Register (rate limited: 5 per minute)
@@ -32,37 +55,30 @@ router.post('/api/auth/register', rateLimit(15, 60_000), async (req, res) => {
   try {
     const { name, identifier, password, phone } = req.body;
 
-    if (!name || !identifier || !password) {
-      return res.status(400).json({ error: 'Nom, identifiant et mot de passe requis' });
+    const validation = validate(registerSchema, { name, identifier, password, phone });
+    if (!validation.success) {
+      return res.status(400).json({ error: validation.error });
     }
-    if (typeof name !== 'string' || name.trim().length < 2) {
-      return res.status(400).json({ error: 'Le nom doit contenir au moins 2 caractères' });
-    }
-    if (!isValidIdentifier(identifier)) {
-      return res.status(400).json({ error: 'L\'identifiant doit contenir au moins 3 caractères (lettres, chiffres, tirets ou underscores)' });
-    }
-    const pwdCheck = isStrongPassword(password);
-    if (!pwdCheck.valid) {
-      return res.status(400).json({ error: pwdCheck.error });
-    }
+    const { name: validName, identifier: validIdentifier, password: validPassword } = validation.data;
 
-    const existing = await prisma.user.findUnique({ where: { identifier: identifier.toLowerCase() } });
+    const existing = await prisma.user.findUnique({ where: { identifier: validIdentifier.toLowerCase() } });
     if (existing) {
       return res.status(400).json({ error: 'Un compte existe déjà avec cet identifiant' });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 12);
+    const hashedPassword = await bcrypt.hash(validPassword, 12);
     const user = await prisma.user.create({
-      data: { name: name.trim(), identifier: identifier.toLowerCase(), password: hashedPassword, phone: phone || null },
+      data: { name: validName, identifier: validIdentifier.toLowerCase(), password: hashedPassword, phone: validation.data.phone || null },
     });
 
     await prisma.cart.create({ data: { userId: user.id } });
 
     const token = generateToken(user.id, user.role);
+    const refreshToken = generateRefreshToken(user.id);
     const { password: _, ...userWithoutPassword } = user;
 
     logger.info({ userId: user.id, identifier: user.identifier }, 'User registered');
-    res.status(201).json({ user: userWithoutPassword, token });
+    res.status(201).json({ user: userWithoutPassword, token, refreshToken });
   } catch (error) {
     logger.error({ err: error }, 'Register error');
     res.status(500).json({ error: 'Erreur lors de l\'inscription' });
@@ -74,11 +90,13 @@ router.post('/api/auth/login', rateLimit(30, 60_000), async (req, res) => {
   try {
     const { identifier, password } = req.body;
 
-    if (!identifier || !password) {
-      return res.status(400).json({ error: 'Identifiant et mot de passe requis' });
+    const validation = validate(loginSchema, { identifier, password });
+    if (!validation.success) {
+      return res.status(400).json({ error: validation.error });
     }
+    const { identifier: validIdentifier, password: validPassword } = validation.data;
 
-    const user = await prisma.user.findUnique({ where: { identifier: identifier.toLowerCase() } });
+    const user = await prisma.user.findUnique({ where: { identifier: validIdentifier.toLowerCase() } });
     if (!user) {
       return res.status(401).json({ error: 'Identifiant ou mot de passe incorrect' });
     }
@@ -100,8 +118,8 @@ router.post('/api/auth/login', rateLimit(30, 60_000), async (req, res) => {
       });
     }
 
-    const validPassword = await bcrypt.compare(password, user.password);
-    if (!validPassword) {
+    const passwordMatch = await bcrypt.compare(validPassword, user.password);
+    if (!passwordMatch) {
       const newFailedCount = user.failedLoginAttempts + 1;
       const updateData: any = { failedLoginAttempts: newFailedCount };
 
@@ -129,10 +147,11 @@ router.post('/api/auth/login', rateLimit(30, 60_000), async (req, res) => {
     });
 
     const token = generateToken(user.id, user.role);
+    const refreshToken = generateRefreshToken(user.id);
     const { password: _, ...userWithoutPassword } = user;
 
     logger.info({ userId: user.id, identifier: user.identifier }, 'User logged in');
-    res.json({ user: userWithoutPassword, token });
+    res.json({ user: userWithoutPassword, token, refreshToken });
   } catch (error) {
     logger.error({ err: error }, 'Login error');
     res.status(500).json({ error: 'Erreur lors de la connexion' });
@@ -143,13 +162,14 @@ router.post('/api/auth/login', rateLimit(30, 60_000), async (req, res) => {
 router.post('/api/auth/login-gerant', rateLimit(30, 60_000), async (req, res) => {
   try {
     const { identifier, password } = req.body;
-    const loginId = identifier || GERANT_IDENTIFIER;
 
-    if (!password) {
-      return res.status(400).json({ error: 'Mot de passe requis' });
+    const validation = validate(loginSchema, { identifier: identifier || GERANT_IDENTIFIER, password });
+    if (!validation.success) {
+      return res.status(400).json({ error: validation.error });
     }
+    const { identifier: loginId, password: validPassword } = validation.data;
 
-    const user = await prisma.user.findUnique({ where: { identifier: loginId } });
+    const user = await prisma.user.findUnique({ where: { identifier: loginId.toLowerCase() } });
     if (!user || user.role !== 'ADMIN') {
       return res.status(401).json({ error: 'Identifiant ou mot de passe incorrect' });
     }
@@ -170,8 +190,8 @@ router.post('/api/auth/login-gerant', rateLimit(30, 60_000), async (req, res) =>
       });
     }
 
-    const validPassword = await bcrypt.compare(password, user.password);
-    if (!validPassword) {
+    const passwordMatch = await bcrypt.compare(validPassword, user.password);
+    if (!passwordMatch) {
       const newFailedCount = user.failedLoginAttempts + 1;
       const updateData: any = { failedLoginAttempts: newFailedCount };
 
@@ -198,10 +218,11 @@ router.post('/api/auth/login-gerant', rateLimit(30, 60_000), async (req, res) =>
     });
 
     const token = generateToken(user.id, user.role);
+    const refreshToken = generateRefreshToken(user.id);
     const { password: _, ...userWithoutPassword } = user;
 
     logger.info({ userId: user.id }, 'Gerant logged in');
-    res.json({ user: userWithoutPassword, token });
+    res.json({ user: userWithoutPassword, token, refreshToken });
   } catch (error) {
     logger.error({ err: error }, 'Gerant login error');
     res.status(500).json({ error: 'Erreur lors de la connexion' });
@@ -257,30 +278,27 @@ router.post('/api/auth/change-password', authenticateToken, async (req: AuthRequ
   try {
     const { currentPassword, newPassword } = req.body;
 
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({ error: 'Mot de passe actuel et nouveau mot de passe requis' });
+    const validation = validate(changePasswordSchema, { currentPassword, newPassword });
+    if (!validation.success) {
+      return res.status(400).json({ error: validation.error });
     }
-
-    const pwdCheck = isStrongPassword(newPassword);
-    if (!pwdCheck.valid) {
-      return res.status(400).json({ error: pwdCheck.error });
-    }
+    const { currentPassword: validCurrentPassword, newPassword: validNewPassword } = validation.data;
 
     const user = await prisma.user.findUnique({ where: { id: req.userId! } });
     if (!user) {
       return res.status(404).json({ error: 'Utilisateur non trouvé' });
     }
 
-    const validPassword = await bcrypt.compare(currentPassword, user.password);
-    if (!validPassword) {
+    const passwordMatch = await bcrypt.compare(validCurrentPassword, user.password);
+    if (!passwordMatch) {
       return res.status(401).json({ error: 'Mot de passe actuel incorrect' });
     }
 
-    if (currentPassword === newPassword) {
+    if (validCurrentPassword === validNewPassword) {
       return res.status(400).json({ error: 'Le nouveau mot de passe doit être différent de l\'actuel' });
     }
 
-    const hashedPassword = await bcrypt.hash(newPassword, 12);
+    const hashedPassword = await bcrypt.hash(validNewPassword, 12);
     await prisma.user.update({
       where: { id: req.userId! },
       data: { password: hashedPassword },
@@ -299,11 +317,13 @@ router.post('/api/auth/forgot-password', rateLimit(10, 60_000), async (req, res)
   try {
     const { phone } = req.body;
 
-    if (!phone || typeof phone !== 'string' || phone.trim().length < 8) {
-      return res.status(400).json({ error: 'Numéro de téléphone valide requis' });
+    const validation = validate(forgotPasswordSchema, { phone });
+    if (!validation.success) {
+      return res.status(400).json({ error: validation.error });
     }
+    const { phone: validPhone } = validation.data;
 
-    const user = await prisma.user.findFirst({ where: { phone: phone.trim() } });
+    const user = await prisma.user.findFirst({ where: { phone: validPhone } });
 
     // Always return success to prevent phone enumeration
     if (!user) {
@@ -346,22 +366,19 @@ router.post('/api/auth/reset-password', rateLimit(15, 60_000), async (req, res) 
   try {
     const { phone, otp, newPassword } = req.body;
 
-    if (!phone || !otp || !newPassword) {
-      return res.status(400).json({ error: 'Téléphone, code OTP et nouveau mot de passe requis' });
+    const validation = validate(resetPasswordSchema, { phone, otp, newPassword });
+    if (!validation.success) {
+      return res.status(400).json({ error: validation.error });
     }
-
-    const pwdCheck = isStrongPassword(newPassword);
-    if (!pwdCheck.valid) {
-      return res.status(400).json({ error: pwdCheck.error });
-    }
+    const { phone: validPhone, otp: validOtp, newPassword: validNewPassword } = validation.data;
 
     // Find user by phone
-    const user = await prisma.user.findFirst({ where: { phone: phone.trim() } });
+    const user = await prisma.user.findFirst({ where: { phone: validPhone } });
     if (!user) {
       return res.status(400).json({ error: 'Aucun compte trouvé avec ce numéro' });
     }
 
-    const hashedToken = crypto.createHash('sha256').update(otp.toString()).digest('hex');
+    const hashedToken = crypto.createHash('sha256').update(validOtp).digest('hex');
 
     const resetRecord = await prisma.passwordResetToken.findFirst({
       where: {
@@ -376,7 +393,7 @@ router.post('/api/auth/reset-password', rateLimit(15, 60_000), async (req, res) 
       return res.status(400).json({ error: 'Code invalide ou expiré' });
     }
 
-    const hashedPassword = await bcrypt.hash(newPassword, 12);
+    const hashedPassword = await bcrypt.hash(validNewPassword, 12);
 
     await prisma.$transaction([
       prisma.user.update({
@@ -394,6 +411,57 @@ router.post('/api/auth/reset-password', rateLimit(15, 60_000), async (req, res) 
   } catch (error) {
     logger.error({ err: error }, 'Reset password error');
     res.status(500).json({ error: 'Erreur lors de la réinitialisation du mot de passe' });
+  }
+});
+
+// Refresh access token using refresh token
+router.post('/api/auth/refresh', rateLimit(30, 60_000), async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken || typeof refreshToken !== 'string') {
+      return res.status(400).json({ error: 'Refresh token requis' });
+    }
+
+    const payload = await verifyRefreshToken(refreshToken);
+    if (!payload) {
+      return res.status(401).json({ error: 'Refresh token invalide ou expiré' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      select: { id: true, role: true },
+    });
+
+    if (!user) {
+      return res.status(401).json({ error: 'Utilisateur non trouvé' });
+    }
+
+    // Rotate: revoke old refresh token, issue new pair
+    await revokeRefreshToken(refreshToken);
+    const newAccessToken = generateToken(user.id, user.role);
+    const newRefreshToken = generateRefreshToken(user.id);
+
+    res.json({ token: newAccessToken, refreshToken: newRefreshToken });
+  } catch (error) {
+    logger.error({ err: error }, 'Refresh token error');
+    res.status(500).json({ error: 'Erreur lors du rafraîchissement du token' });
+  }
+});
+
+// Logout — revoke refresh token
+router.post('/api/auth/logout', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const { refreshToken } = req.body;
+    if (refreshToken) {
+      await revokeRefreshToken(refreshToken);
+    }
+    // Also revoke all refresh tokens for this user (full logout)
+    await prisma.refreshToken.deleteMany({ where: { userId: req.userId! } }).catch(() => {});
+    res.json({ success: true, message: 'Déconnexion réussie' });
+  } catch (error) {
+    logger.error({ err: error }, 'Logout error');
+    res.status(500).json({ error: 'Erreur lors de la déconnexion' });
   }
 });
 

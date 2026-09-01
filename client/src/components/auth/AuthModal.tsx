@@ -64,6 +64,7 @@ export function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) {
     try {
       const result = await login(loginIdentifier, loginPassword);
       localStorage.setItem('satouba_token', result.token);
+      localStorage.setItem('satouba_refresh_token', result.refreshToken);
       localStorage.setItem('satouba_user', JSON.stringify(result.user));
       onLogin(result.user, result.token);
       toast('Connexion réussie !', 'success');
@@ -93,6 +94,7 @@ export function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) {
     try {
       const result = await register({ name: regName, identifier: regIdentifier, password: regPassword, phone: regPhone || undefined });
       localStorage.setItem('satouba_token', result.token);
+      localStorage.setItem('satouba_refresh_token', result.refreshToken);
       localStorage.setItem('satouba_user', JSON.stringify(result.user));
       onLogin(result.user, result.token);
       toast('Compte créé avec succès !', 'success');

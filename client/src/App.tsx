@@ -79,7 +79,7 @@ export default function App() {
   }, [user]);
 
 
-  const handleLogin = (loggedInUser: User, _token: string) => {
+  const handleLogin = (loggedInUser: User, _token: string, _refreshToken?: string) => {
     setUser(loggedInUser);
   };
 
@@ -91,7 +91,25 @@ export default function App() {
   };
 
   const handleLogout = async () => {
-localStorage.removeItem('satouba_token');
+    // Revoke refresh token on server
+    const token = localStorage.getItem('satouba_token');
+    const refreshToken = localStorage.getItem('satouba_refresh_token');
+    if (token && refreshToken) {
+      try {
+        await fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ refreshToken }),
+        });
+      } catch {
+        // Ignore errors on logout
+      }
+    }
+    localStorage.removeItem('satouba_token');
+    localStorage.removeItem('satouba_refresh_token');
     localStorage.removeItem('satouba_user');
     setUser(null);
     setCurrentTab('home');

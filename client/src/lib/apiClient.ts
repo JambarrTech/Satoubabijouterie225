@@ -8,6 +8,42 @@ function getToken(): string | null {
   return localStorage.getItem('satouba_token');
 }
 
+function getRefreshToken(): string | null {
+  return localStorage.getItem('satouba_refresh_token');
+}
+
+function setTokens(token: string, refreshToken: string): void {
+  localStorage.setItem('satouba_token', token);
+  localStorage.setItem('satouba_refresh_token', refreshToken);
+}
+
+function clearTokens(): void {
+  localStorage.removeItem('satouba_token');
+  localStorage.removeItem('satouba_refresh_token');
+  localStorage.removeItem('satouba_user');
+}
+
+async function tryRefreshToken(): Promise<boolean> {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return false;
+
+  try {
+    const res = await fetch(`${API_BASE}/api/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    });
+
+    if (!res.ok) return false;
+
+    const data = await res.json();
+    setTokens(data.token, data.refreshToken);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function apiFetch(url: string, options: FetchOptions = {}) {
   const token = options.token || getToken();
   const headers: Record<string, string> = {
@@ -25,12 +61,29 @@ export async function apiFetch(url: string, options: FetchOptions = {}) {
   });
 
   if (res.status === 401) {
-    // Only force logout + reload if user was previously authenticated
-    // (token expired). Don't reload on login/register failures.
-    const isAuthEndpoint = url.includes('/api/auth/login') || url.includes('/api/auth/register');
+    // Only try refresh for authenticated requests (not login/register)
+    const isAuthEndpoint = url.includes('/api/auth/login') || url.includes('/api/auth/register') || url.includes('/api/auth/refresh');
     if (!isAuthEndpoint && token) {
-      localStorage.removeItem('satouba_token');
-      localStorage.removeItem('satouba_user');
+      // Try to refresh the token
+      const refreshed = await tryRefreshToken();
+      if (refreshed) {
+        // Retry the request with the new token
+        const newToken = getToken();
+        const retryHeaders: Record<string, string> = {
+          'Content-Type': 'application/json',
+          ...(options.headers as Record<string, string> || {}),
+        };
+        if (newToken) {
+          retryHeaders['Authorization'] = `Bearer ${newToken}`;
+        }
+        const retryRes = await fetch(`${API_BASE}${url}`, {
+          ...options,
+          headers: retryHeaders,
+        });
+        return retryRes;
+      }
+      // Refresh failed — force logout
+      clearTokens();
       window.location.reload();
     }
     throw new Error('Non autorisé');

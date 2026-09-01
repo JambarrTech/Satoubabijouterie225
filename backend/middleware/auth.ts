@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { prisma } from '../lib/prisma';
 
 function getJWTSecret(): string {
@@ -79,7 +80,44 @@ export function requireAdmin(req: AuthRequest, res: Response, next: NextFunction
 }
 
 export function generateToken(userId: string, role: string): string {
-  return jwt.sign({ userId, role }, getJWTSecret(), { expiresIn: '7d' });
+  return jwt.sign({ userId, role }, getJWTSecret(), { expiresIn: '15m' });
+}
+
+export function generateRefreshToken(userId: string): string {
+  const token = crypto.randomBytes(40).toString('hex');
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+  // Store in database (fire-and-forget, don't block response)
+  prisma.refreshToken.create({
+    data: {
+      token,
+      userId,
+      expiresAt,
+    },
+  }).catch((err) => {
+    console.error('Failed to store refresh token:', err);
+  });
+
+  return token;
+}
+
+export async function verifyRefreshToken(token: string): Promise<{ userId: string } | null> {
+  const refreshToken = await prisma.refreshToken.findUnique({
+    where: { token },
+  });
+
+  if (!refreshToken) return null;
+  if (refreshToken.expiresAt < new Date()) {
+    // Delete expired token
+    await prisma.refreshToken.delete({ where: { id: refreshToken.id } }).catch(() => {});
+    return null;
+  }
+
+  return { userId: refreshToken.userId };
+}
+
+export async function revokeRefreshToken(token: string): Promise<void> {
+  await prisma.refreshToken.deleteMany({ where: { token } }).catch(() => {});
 }
 
 export { rateLimit } from '../lib/rateLimit';

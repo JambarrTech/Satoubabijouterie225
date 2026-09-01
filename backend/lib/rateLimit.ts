@@ -63,9 +63,9 @@ export function rateLimit(maxRequests: number, windowMs: number) {
         }
         return next();
       } catch (err) {
-        // Fail-open sur erreur Redis (ne bloque jamais le trafic pour une panne de rate limiting)
+        // Fail-closed sur erreur Redis — rejeter le trafic pour éviter l'absence de protection
         console.error('Rate limit Redis error:', err);
-        return next();
+        return res.status(503).json({ error: 'Service temporairement indisponible. Réessayez dans quelques instants.' });
       }
     }
 
