@@ -214,8 +214,8 @@ router.post('/api/orders', authenticateToken, async (req: AuthRequest, res) => {
     if (error.message && error.message.includes('en stock')) {
       return res.status(400).json({ error: error.message });
     }
-    logger.error({ err: error }, 'Create order error');
-    res.status(500).json({ error: 'Erreur lors de la commande' });
+    logger.error({ err: error, message: error?.message, stack: error?.stack }, 'Create order error');
+    res.status(500).json({ error: error?.message || 'Erreur lors de la commande' });
   }
 });
 
