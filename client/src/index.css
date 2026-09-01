@@ -44,3 +44,9 @@
   50% { transform: translateY(-10px); }
 }
 
+@layer base {
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+}
+

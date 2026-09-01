@@ -36,10 +36,20 @@ export function HomeView({
   const [isLoadingStats, setIsLoadingStats] = useState(true);
 
   useEffect(() => {
-    apiGet<any>('/api/stats/public').then((data) => {
-      setStats({ totalCustomers: data.totalCustomers || 0, totalProducts: data.totalProducts || 0 });
-    }).catch(() => {}).finally(() => setIsLoadingStats(false));
-    fetchStoreSettings().then(setSettings).catch(() => {});
+    const controller = new AbortController();
+    apiGet<any>('/api/stats/public', { signal: controller })
+      .then((data) => {
+        setStats({ totalCustomers: data.totalCustomers || 0, totalProducts: data.totalProducts || 0 });
+      })
+      .catch((err) => {
+        if (err.name !== 'AbortError') console.error(err);
+      });
+    fetchStoreSettings({ signal: controller })
+      .then(setSettings)
+      .catch((err) => {
+        if (err.name !== 'AbortError') console.error(err);
+      });
+    return () => controller.abort();
   }, []);
 
   const featuredProduct = bestSellers[0] || products[0];
@@ -102,7 +112,7 @@ export function HomeView({
               className="font-serif text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-gray-900 leading-[1.15]"
             >
               L'élégance à <br className="hidden sm:inline" />
-              <span className="text-[#0B5D1E]" style={{ animation: 'float 3s ease-in-out infinite' }}>votre portée</span>
+              <span className="text-[#0B5D1E] animate-float">votre portée</span>
             </motion.h1>
 
             <p className="text-base sm:text-lg text-gray-600 max-w-xl mx-auto lg:mx-0 leading-relaxed">
