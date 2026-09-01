@@ -15,6 +15,7 @@ export function RepairView() {
   const [photos, setPhotos] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -37,6 +38,7 @@ export function RepairView() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setIsLoading(true);
     try {
       await createRepairRequest({ jewelryType, problemType, description, phone, photos });
       setSuccess(true);
@@ -44,12 +46,17 @@ export function RepairView() {
       toast(err.message || 'Erreur lors de la soumission', 'error');
     } finally {
       setIsSubmitting(false);
+      setIsLoading(false);
     }
   };
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
       
+      {isLoading ? (
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#0B5D1E] self-center mt-8">
+        </div>
+      ) : (
       <div className="text-center space-y-3">
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#0B5D1E]/10 text-[#0B5D1E] text-xs font-semibold">
           <Wrench size={14} className="text-[#D9A441]" />
