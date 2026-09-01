@@ -1,6 +1,6 @@
 import { cpSync, rmSync, mkdirSync, existsSync } from 'fs';
 
-// Assemble les builds client + gérant dans ./dist (format Vercel)
+// Assemble les builds client + gérant + API dans ./dist (format Vercel)
 rmSync('dist', { recursive: true, force: true });
 mkdirSync('dist', { recursive: true });
 
@@ -14,6 +14,22 @@ if (!existsSync('gerant/dist/index.html')) {
 cpSync('client/dist', 'dist', { recursive: true });
 mkdirSync('dist/gerant', { recursive: true });
 cpSync('gerant/dist', 'dist/gerant', { recursive: true });
+
+// Copy backend API dist for Vercel serverless function compatibility
+const backendDistSrc = 'backend/dist/server.cjs';
+if (existsSync(backendDistSrc)) {
+  mkdirSync('dist/backend', { recursive: true });
+  cpSync(backendDistSrc, 'dist/backend/server.cjs');
+  console.log('  dist/backend/server.cjs (API backend)');
+}
+
+// Copy API routes (esbuild bundle) for Vercel
+const apiSrc = 'api/index.js';
+if (existsSync(apiSrc)) {
+  mkdirSync('dist/api', { recursive: true });
+  cpSync(apiSrc, 'dist/api/index.js');
+  console.log('  dist/api/index.js (API routes)');
+}
 
 // Copy product/category images so /uploads/products/* URLs work in production
 const uploadsSrc = 'backend/uploads';
