@@ -5,8 +5,6 @@ import { fetchFavorites } from '../../lib/api/favorites';
 import { ProductCard } from '../product/ProductCard';
 import { Button } from '../ui/Button';
 import { Skeleton } from '../ui/Skeleton';
-import { AbortController } from 'abort-controller';
-
 interface FavoritesViewProps {
   onSelectProduct: (product: Product) => void;
   onToggleFavorite: (productId: string) => void;

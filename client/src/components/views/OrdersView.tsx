@@ -6,7 +6,6 @@ import { fetchOrders } from '../../lib/api/orders';
 import { Skeleton } from '../ui/Skeleton';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
-import { AbortController } from 'abort-controller';
 
 export function OrdersView() {
   const [orders, setOrders] = useState<Order[]>([]);
