@@ -57,6 +57,9 @@ export const ProductCard = memo(function ProductCard({
       whileHover={{ y: -6 }}
       transition={{ duration: 0.25, ease: 'easeOut' }}
       onClick={() => onSelect(product)}
+      role="button"
+      tabIndex={0}
+      aria-label={`Voir les détails du produit: ${product.name}`}
       className="group bg-white rounded-2xl border border-gray-100 shadow-xs hover:shadow-xl transition-all duration-300 overflow-hidden cursor-pointer flex flex-col"
     >
       <div className="relative aspect-square bg-gray-50 overflow-hidden">

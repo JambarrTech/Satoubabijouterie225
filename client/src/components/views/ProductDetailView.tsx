@@ -7,6 +7,7 @@ import { Price } from '../ui/Price';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { useToast } from '../ui/Toast';
+import { useRef } from 'react';
 
 interface ProductDetailViewProps {
   product: Product;
@@ -30,6 +31,7 @@ export function ProductDetailView({
   const [selectedSize, setSelectedSize] = useState('');
   const [settings, setSettings] = useState<StoreSettings | null>(null);
   const [justAdded, setJustAdded] = useState(false);
+  const justAddedTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     fetchStoreSettings().then(setSettings).catch(console.error);
