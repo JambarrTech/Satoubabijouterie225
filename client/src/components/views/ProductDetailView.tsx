@@ -57,9 +57,9 @@ export function ProductDetailView({
   const handleAddToCart = useCallback(() => {
     onAddToCart(product, quantity, selectedSize);
     setJustAdded(true);
-    toast('Ajoute au panier', 'success');
-    setTimeout(() => setJustAdded(false), 2000);
-  }, [onAddToCart, product, quantity, selectedSize, toast]);
+    if (justAddedTimeoutRef.current) clearTimeout(justAddedTimeoutRef.current);
+    justAddedTimeoutRef.current = setTimeout(() => setJustAdded(false), 2000);
+  }, [onAddToCart, product, quantity, selectedSize]);
 
   return (
     <motion.div

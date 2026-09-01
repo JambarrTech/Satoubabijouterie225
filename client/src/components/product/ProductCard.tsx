@@ -26,6 +26,7 @@ export const ProductCard = memo(function ProductCard({
   const [imgError, setImgError] = useState(false);
   const [justAdded, setJustAdded] = useState(false);
   const { toast } = useToast();
+  const justAddedTimeoutRef = useRef<number | null>(null);
 
   const handleFavoriteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -37,8 +38,15 @@ export const ProductCard = memo(function ProductCard({
     e.stopPropagation();
     onAddToCart(product);
     setJustAdded(true);
-    setTimeout(() => setJustAdded(false), 1500);
+    if (justAddedTimeoutRef.current) clearTimeout(justAddedTimeoutRef.current);
+    justAddedTimeoutRef.current = setTimeout(() => setJustAdded(false), 1500);
   };
+
+  useEffect(() => {
+    return () => {
+      if (justAddedTimeoutRef.current) clearTimeout(justAddedTimeoutRef.current);
+    };
+  }, []);
 
   const discount = product.compareAtPrice
     ? Math.round((1 - product.price / product.compareAtPrice) * 100)
