@@ -90,6 +90,9 @@ model Product {
 
   @@index([categoryId])
   @@index([isBestSeller])
+  @@index([createdAt])
+  @@index([isPromo])
+  @@index([categoryId, inStock])
 }
 
 model Cart {
@@ -134,6 +137,7 @@ model Order {
   @@index([userId])
   @@index([status])
   @@index([createdAt])
+  @@index([userId, status])
 }
 
 model OrderItem {
@@ -202,6 +206,7 @@ model Notification {
 
   @@index([userId])
   @@index([read])
+  @@index([userId, read])
 }
 
 model CustomRequest {

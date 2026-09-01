@@ -1,7 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from './prisma';
 import logger from './logger';
-
-const prisma = new PrismaClient();
 
 export interface LogAction {
   userId?: string;

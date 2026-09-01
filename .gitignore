@@ -5,10 +5,11 @@ coverage/
 .DS_Store
 *.log
 .env
+.env.*
 .env.local
 .env*.local
 
-# Firebase & secrets — NEVER commit
+# Firebase & secrets ï¿½ NEVER commit
 *-firebase-adminsdk-*.json
 **/*firebase-adminsdk*.json
 .service-account*.json
@@ -16,7 +17,7 @@ coverage/
 # Uploads (local storage)
 backend/uploads/*
 !backend/uploads/.gitkeep
-# Seed images (committed for Vercel static serving — multer uploads go to backend/uploads/ directly)
+# Seed images (committed for Vercel static serving ï¿½ multer uploads go to backend/uploads/ directly)
 !backend/uploads/products/
 uploads/*
 !uploads/.gitkeep

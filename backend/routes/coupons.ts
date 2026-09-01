@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../lib/prisma';
 import { authenticateToken, requireAdmin, AuthRequest } from '../middleware/auth';
 import { sanitizeString } from '../lib/sanitize';
+import { logAction } from '../lib/audit';
 
 const router = Router();
 
@@ -91,6 +92,15 @@ router.put('/api/coupons/:id', authenticateToken, requireAdmin, async (req: Auth
 router.delete('/api/coupons/:id', authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
   try {
     await prisma.coupon.delete({ where: { id: req.params.id } });
+
+    await logAction({
+      userId: req.userId!,
+      action: 'COUPON_DELETE',
+      entity: 'Coupon',
+      entityId: req.params.id,
+      ipAddress: req.ip,
+    });
+
     res.json({ success: true });
   } catch {
     res.status(500).json({ error: 'Erreur' });

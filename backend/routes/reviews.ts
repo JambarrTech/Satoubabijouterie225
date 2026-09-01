@@ -18,7 +18,7 @@ router.get('/api/likes/:productId', async (req, res) => {
   }
 });
 
-// Toggle like (create if not exists, delete if exists)
+// Toggle like (create if not exists, delete if exists) — atomic via transaction
 router.post('/api/likes', authenticateToken, async (req: AuthRequest, res) => {
   try {
     const { productId } = req.body;
@@ -27,23 +27,25 @@ router.post('/api/likes', authenticateToken, async (req: AuthRequest, res) => {
       return res.status(400).json({ error: 'Produit requis' });
     }
 
-    const existingLike = await prisma.like.findFirst({
-      where: { userId: req.userId!, productId },
+    const result = await prisma.$transaction(async (tx) => {
+      const existingLike = await tx.like.findFirst({
+        where: { userId: req.userId!, productId },
+      });
+
+      if (existingLike) {
+        await tx.like.delete({ where: { id: existingLike.id } });
+      } else {
+        await tx.like.create({ data: { productId, userId: req.userId! } });
+      }
+
+      const likesCount = await tx.like.count({ where: { productId } });
+      await tx.product.update({ where: { id: productId }, data: { likesCount } });
+
+      return { liked: !existingLike, likesCount };
     });
 
-    if (existingLike) {
-      // Unlike
-      await prisma.like.delete({ where: { id: existingLike.id } });
-      const likesCount = await prisma.like.count({ where: { productId } });
-      await prisma.product.update({ where: { id: productId }, data: { likesCount } });
-      return res.json({ liked: false, likesCount });
-    }
-
-    // Like
-    await prisma.like.create({ data: { productId, userId: req.userId! } });
-    const likesCount = await prisma.like.count({ where: { productId } });
-    await prisma.product.update({ where: { id: productId }, data: { likesCount } });
-    return res.status(201).json({ liked: true, likesCount });
+    const status = result.liked ? 201 : 200;
+    res.status(status).json(result);
   } catch {
     res.status(500).json({ error: 'Erreur lors du like' });
   }

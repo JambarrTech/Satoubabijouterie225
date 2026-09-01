@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../lib/prisma';
 import { authenticateToken, requireAdmin, AuthRequest } from '../middleware/auth';
 import { sanitizeString } from '../lib/sanitize';
+import { logAction } from '../lib/audit';
 
 const router = Router();
 
@@ -56,6 +57,15 @@ router.delete('/api/categories/:id', authenticateToken, requireAdmin, async (req
       return res.status(400).json({ error: `${productCount} produit(s) utilisent cette catégorie. Supprimez-les d'abord.` });
     }
     await prisma.category.delete({ where: { id: req.params.id } });
+
+    await logAction({
+      userId: req.userId!,
+      action: 'CATEGORY_DELETE',
+      entity: 'Category',
+      entityId: req.params.id,
+      ipAddress: req.ip,
+    });
+
     res.json({ success: true });
   } catch {
     res.status(500).json({ error: 'Erreur' });

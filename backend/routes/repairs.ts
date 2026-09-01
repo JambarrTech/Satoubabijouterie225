@@ -1,14 +1,33 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { authenticateToken, requireAdmin, AuthRequest } from '../middleware/auth';
 import { safeJsonParse } from '../lib/helpers';
 import logger from '../lib/logger';
 import { notifyRepairRequest, notifyRepairStatusChange } from '../lib/notifications';
 import { sanitizeString } from '../lib/sanitize';
+import { logAction } from '../lib/audit';
 
 const router = Router();
 
-const VALID_REPAIR_STATUSES = ['RECEIVED', 'IN_PROGRESS', 'WAITING_PARTS', 'COMPLETED', 'DELIVERED', 'CANCELLED'];
+const createRepairSchema = z.object({
+  jewelryType: z.string().trim().min(1, 'Type de bijou requis').max(200),
+  problemType: z.string().trim().min(1, 'Type de problème requis').max(200),
+  description: z.string().trim().max(2000).optional(),
+  phone: z.string().trim().min(8, 'Numéro de téléphone valide requis').max(20),
+  photos: z.array(z.string()).optional(),
+});
+
+const repairStatusSchema = z.object({
+  status: z.enum(['RECEIVED', 'IN_PROGRESS', 'WAITING_PARTS', 'COMPLETED', 'DELIVERED', 'CANCELLED'] as const),
+});
+
+function validateRepair<T extends z.ZodTypeAny>(schema: T, data: unknown): { success: true; data: z.infer<T> } | { success: false; error: string } {
+  const result = schema.safeParse(data);
+  if (result.success) return { success: true, data: result.data };
+  const firstError = result.error.issues[0];
+  return { success: false, error: firstError?.message || 'Données invalides' };
+}
 
 // Get user's repair requests
 router.get('/api/repairs', authenticateToken, async (req: AuthRequest, res) => {
@@ -69,10 +88,12 @@ router.get('/api/repairs/:id', authenticateToken, async (req: AuthRequest, res) 
 // Create repair request
 router.post('/api/repairs', authenticateToken, async (req: AuthRequest, res) => {
   try {
-    const { jewelryType, problemType, description, photos, phone } = req.body;
-    if (!jewelryType || !problemType || !phone) {
-      return res.status(400).json({ error: 'Type de bijou, problème et téléphone requis' });
+    const validation = validateRepair(createRepairSchema, req.body);
+    if (!validation.success) {
+      return res.status(400).json({ error: validation.error });
     }
+    const { jewelryType, problemType, description, photos, phone } = validation.data;
+
     const repair = await prisma.repairRequest.create({
       data: {
         userId: req.userId!,
@@ -96,10 +117,12 @@ router.post('/api/repairs', authenticateToken, async (req: AuthRequest, res) => 
 // Admin: update repair status (+ notify client)
 router.put('/api/repairs/:id/status', authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
   try {
-    const { status } = req.body;
-    if (!VALID_REPAIR_STATUSES.includes(status)) {
-      return res.status(400).json({ error: 'Statut invalide' });
+    const validation = validateRepair(repairStatusSchema, req.body);
+    if (!validation.success) {
+      return res.status(400).json({ error: validation.error });
     }
+    const { status } = validation.data;
+
     const repair = await prisma.repairRequest.update({
       where: { id: req.params.id },
       data: { status },
@@ -129,6 +152,15 @@ router.delete('/api/repairs/:id', authenticateToken, async (req: AuthRequest, re
     }
 
     await prisma.repairRequest.delete({ where: { id: req.params.id } });
+
+    await logAction({
+      userId: req.userId!,
+      action: 'REPAIR_REQUEST_DELETE',
+      entity: 'RepairRequest',
+      entityId: req.params.id,
+      ipAddress: req.ip,
+    });
+
     res.json({ success: true });
   } catch {
     res.status(500).json({ error: 'Erreur' });

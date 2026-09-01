@@ -87,6 +87,70 @@ router.post('/api/auth/register', rateLimit(15, 60_000), async (req, res) => {
   }
 });
 
+// Shared authentication helper
+async function authenticateUser(
+  identifier: string,
+  password: string,
+  options?: { requireAdmin?: boolean }
+): Promise<{ user: any; token: string; refreshToken: string }> {
+  const user = await prisma.user.findUnique({ where: { identifier: identifier.toLowerCase() } });
+  if (!user || (options?.requireAdmin && user.role !== 'ADMIN')) {
+    throw Object.assign(new Error('Identifiant ou mot de passe incorrect'), { status: 401 });
+  }
+
+  // Check account lockout
+  if (user.lockedUntil && user.lockedUntil > new Date()) {
+    const remainingMin = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 60_000);
+    const err = Object.assign(new Error(`Compte temporairement verrouillé. Réessayez dans ${remainingMin} minute${remainingMin > 1 ? 's' : ''}.`), {
+      status: 423,
+      details: { lockedUntil: user.lockedUntil.toISOString() },
+    });
+    throw err;
+  }
+
+  // If lockout expired, reset counters
+  if (user.lockedUntil && user.lockedUntil <= new Date()) {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { failedLoginAttempts: 0, lockedUntil: null },
+    });
+  }
+
+  const passwordMatch = await bcrypt.compare(password, user.password);
+  if (!passwordMatch) {
+    const newFailedCount = user.failedLoginAttempts + 1;
+    const updateData: any = { failedLoginAttempts: newFailedCount };
+
+    if (newFailedCount >= MAX_FAILED_ATTEMPTS) {
+      updateData.lockedUntil = new Date(Date.now() + LOCKOUT_DURATION_MS);
+      logger.warn({ userId: user.id, identifier: user.identifier }, 'Account locked after failed attempts');
+    }
+
+    await prisma.user.update({ where: { id: user.id }, data: updateData });
+
+    const remaining = MAX_FAILED_ATTEMPTS - newFailedCount;
+    if (remaining > 0) {
+      throw Object.assign(new Error(`Identifiant ou mot de passe incorrect. ${remaining} tentative${remaining > 1 ? 's' : ''} restante${remaining > 1 ? 's' : ''}.`), { status: 401 });
+    }
+    throw Object.assign(new Error('Compte temporairement verrouillé après 8 tentatives échouées. Réessayez dans 10 minutes.'), {
+      status: 423,
+      details: { lockedUntil: updateData.lockedUntil.toISOString() },
+    });
+  }
+
+  // Success — reset failed attempts and update lastLoginAt
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { failedLoginAttempts: 0, lockedUntil: null, lastLoginAt: new Date() },
+  });
+
+  const token = generateToken(user.id, user.role);
+  const refreshToken = await generateRefreshToken(user.id);
+  const { password: _, ...userWithoutPassword } = user;
+
+  return { user: userWithoutPassword, token, refreshToken };
+}
+
 // Login (rate limited: 10 per minute, with account lockout)
 router.post('/api/auth/login', rateLimit(30, 60_000), async (req, res) => {
   try {
@@ -98,73 +162,26 @@ router.post('/api/auth/login', rateLimit(30, 60_000), async (req, res) => {
     }
     const { identifier: validIdentifier, password: validPassword } = validation.data;
 
-    const user = await prisma.user.findUnique({ where: { identifier: validIdentifier.toLowerCase() } });
-    if (!user) {
-      return res.status(401).json({ error: 'Identifiant ou mot de passe incorrect' });
-    }
+    const result = await authenticateUser(validIdentifier, validPassword);
 
-    // Check account lockout
-    if (user.lockedUntil && user.lockedUntil > new Date()) {
-      const remainingMin = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 60_000);
-      return res.status(423).json({
-        error: `Compte temporairement verrouillé. Réessayez dans ${remainingMin} minute${remainingMin > 1 ? 's' : ''}.`,
-        lockedUntil: user.lockedUntil.toISOString(),
-      });
-    }
-
-    // If lockout expired, reset counters
-    if (user.lockedUntil && user.lockedUntil <= new Date()) {
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { failedLoginAttempts: 0, lockedUntil: null },
-      });
-    }
-
-    const passwordMatch = await bcrypt.compare(validPassword, user.password);
-    if (!passwordMatch) {
-      const newFailedCount = user.failedLoginAttempts + 1;
-      const updateData: any = { failedLoginAttempts: newFailedCount };
-
-      if (newFailedCount >= MAX_FAILED_ATTEMPTS) {
-        updateData.lockedUntil = new Date(Date.now() + LOCKOUT_DURATION_MS);
-        logger.warn({ userId: user.id, identifier: user.identifier }, 'Account locked after failed attempts');
-      }
-
-      await prisma.user.update({ where: { id: user.id }, data: updateData });
-
-      const remaining = MAX_FAILED_ATTEMPTS - newFailedCount;
-      if (remaining > 0) {
-        return res.status(401).json({ error: `Identifiant ou mot de passe incorrect. ${remaining} tentative${remaining > 1 ? 's' : ''} restante${remaining > 1 ? 's' : ''}.` });
-      }
-      return res.status(423).json({
-        error: 'Compte temporairement verrouillé après 8 tentatives échouées. Réessayez dans 10 minutes.',
-        lockedUntil: updateData.lockedUntil.toISOString(),
-      });
-    }
-
-    // Success — reset failed attempts and update lastLoginAt
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { failedLoginAttempts: 0, lockedUntil: null, lastLoginAt: new Date() },
-    });
-
-    const token = generateToken(user.id, user.role);
-    const refreshToken = await generateRefreshToken(user.id);
-    const { password: _, ...userWithoutPassword } = user;
-
-    logger.info({ userId: user.id, identifier: user.identifier }, 'User logged in');
+    logger.info({ userId: result.user.id, identifier: result.user.identifier }, 'User logged in');
 
     await logAction({
-      userId: user.id,
+      userId: result.user.id,
       action: 'LOGIN',
       entity: 'User',
-      entityId: user.id,
-      details: { role: user.role },
+      entityId: result.user.id,
+      details: { role: result.user.role },
       ipAddress: req.ip,
     });
 
-    res.json({ user: userWithoutPassword, token, refreshToken });
-  } catch (error) {
+    res.json(result);
+  } catch (error: any) {
+    if (error.status) {
+      const body: any = { error: error.message };
+      if (error.details) Object.assign(body, error.details);
+      return res.status(error.status).json(body);
+    }
     logger.error({ err: error }, 'Login error');
     res.status(500).json({ error: 'Erreur lors de la connexion' });
   }
@@ -181,71 +198,26 @@ router.post('/api/auth/login-gerant', rateLimit(30, 60_000), async (req, res) =>
     }
     const { identifier: loginId, password: validPassword } = validation.data;
 
-    const user = await prisma.user.findUnique({ where: { identifier: loginId.toLowerCase() } });
-    if (!user || user.role !== 'ADMIN') {
-      return res.status(401).json({ error: 'Identifiant ou mot de passe incorrect' });
-    }
+    const result = await authenticateUser(loginId, validPassword, { requireAdmin: true });
 
-    // Check account lockout
-    if (user.lockedUntil && user.lockedUntil > new Date()) {
-      const remainingMin = Math.ceil((user.lockedUntil.getTime() - Date.now()) / 60_000);
-      return res.status(423).json({
-        error: `Compte temporairement verrouillé. Réessayez dans ${remainingMin} minute${remainingMin > 1 ? 's' : ''}.`,
-        lockedUntil: user.lockedUntil.toISOString(),
-      });
-    }
-
-    if (user.lockedUntil && user.lockedUntil <= new Date()) {
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { failedLoginAttempts: 0, lockedUntil: null },
-      });
-    }
-
-    const passwordMatch = await bcrypt.compare(validPassword, user.password);
-    if (!passwordMatch) {
-      const newFailedCount = user.failedLoginAttempts + 1;
-      const updateData: any = { failedLoginAttempts: newFailedCount };
-
-      if (newFailedCount >= MAX_FAILED_ATTEMPTS) {
-        updateData.lockedUntil = new Date(Date.now() + LOCKOUT_DURATION_MS);
-        logger.warn({ userId: user.id }, 'Gerant account locked after failed attempts');
-      }
-
-      await prisma.user.update({ where: { id: user.id }, data: updateData });
-
-      const remaining = MAX_FAILED_ATTEMPTS - newFailedCount;
-      if (remaining > 0) {
-        return res.status(401).json({ error: `Identifiant ou mot de passe incorrect. ${remaining} tentative${remaining > 1 ? 's' : ''} restante${remaining > 1 ? 's' : ''}.` });
-      }
-      return res.status(423).json({
-        error: 'Compte temporairement verrouillé après 8 tentatives échouées. Réessayez dans 10 minutes.',
-        lockedUntil: updateData.lockedUntil.toISOString(),
-      });
-    }
-
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { failedLoginAttempts: 0, lockedUntil: null, lastLoginAt: new Date() },
-    });
-
-    const token = generateToken(user.id, user.role);
-    const refreshToken = await generateRefreshToken(user.id);
-    const { password: _, ...userWithoutPassword } = user;
-
-    logger.info({ userId: user.id }, 'Gerant logged in');
+    logger.info({ userId: result.user.id }, 'Gerant logged in');
 
     await logAction({
-      userId: user.id,
+      userId: result.user.id,
       action: 'LOGIN_GERANT',
       entity: 'User',
-      entityId: user.id,
-      details: { role: user.role },
+      entityId: result.user.id,
+      details: { role: result.user.role },
       ipAddress: req.ip,
     });
 
-    res.json({ user: userWithoutPassword, token, refreshToken });
-  } catch (error) {
+    res.json(result);
+  } catch (error: any) {
+    if (error.status) {
+      const body: any = { error: error.message };
+      if (error.details) Object.assign(body, error.details);
+      return res.status(error.status).json(body);
+    }
     logger.error({ err: error }, 'Gerant login error');
     res.status(500).json({ error: 'Erreur lors de la connexion' });
   }

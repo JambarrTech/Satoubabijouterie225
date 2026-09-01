@@ -46,11 +46,17 @@ router.get('/api/orders', authenticateToken, async (req: AuthRequest, res) => {
 });
 
 // Admin: get all orders
-router.get('/api/orders/all', authenticateToken, requireAdmin, async (_req: AuthRequest, res) => {
+router.get('/api/orders/all', authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
   try {
-    const orders = await prisma.order.findMany({
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 50));
+    const skip = (page - 1) * limit;
+
+    const [orders, total] = await prisma.order.findManyAndCount({
       include: { items: true, user: { select: { name: true, identifier: true, phone: true } } },
       orderBy: { createdAt: 'desc' },
+      skip,
+      take: limit,
     });
 
     const parsed = orders.map((o) => ({
@@ -59,7 +65,7 @@ router.get('/api/orders/all', authenticateToken, requireAdmin, async (_req: Auth
       statusHistory: safeJsonParse(o.statusHistory as string, []),
     }));
 
-    res.json(parsed);
+    res.json({ data: parsed, total, page, totalPages: Math.ceil(total / limit) });
   } catch {
     res.status(500).json({ error: 'Erreur' });
   }
@@ -215,7 +221,7 @@ router.post('/api/orders', authenticateToken, async (req: AuthRequest, res) => {
       return res.status(400).json({ error: error.message });
     }
     logger.error({ err: error, message: error?.message, stack: error?.stack }, 'Create order error');
-    res.status(500).json({ error: error?.message || 'Erreur lors de la commande' });
+    res.status(500).json({ error: 'Erreur lors de la commande' });
   }
 });
 

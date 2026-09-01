@@ -40,7 +40,7 @@ router.post('/api/upload/handle', authenticateToken, requireAdmin, async (req, r
     return res.json(jsonResponse);
   } catch (error: any) {
     logger.error({ err: error }, 'Blob handleUpload error');
-    return res.status(500).json({ error: error.message || 'Erreur génération token upload' });
+    return res.status(500).json({ error: 'Erreur lors de l\'upload' });
   }
 });
 

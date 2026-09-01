@@ -9,9 +9,13 @@ const router = Router();
 const GERANT_IDENTIFIER = process.env.GERANT_IDENTIFIER || 'gerantSatoubaBijouterie6002';
 
 // Admin: get customers with stats
-router.get('/api/customers', authenticateToken, requireAdmin, async (_req: AuthRequest, res) => {
+router.get('/api/customers', authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
   try {
-    const customers = await prisma.user.findMany({
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 50));
+    const skip = (page - 1) * limit;
+
+    const [customers, total] = await prisma.user.findManyAndCount({
       where: { role: 'CUSTOMER' },
       select: {
         id: true,
@@ -22,6 +26,8 @@ router.get('/api/customers', authenticateToken, requireAdmin, async (_req: AuthR
           select: { totalAmount: true },
         },
       },
+      skip,
+      take: limit,
     });
 
     const result = customers.map((c) => ({
@@ -33,16 +39,20 @@ router.get('/api/customers', authenticateToken, requireAdmin, async (_req: AuthR
       ordersCount: c.orders.length,
     }));
 
-    res.json(result);
+    res.json({ data: result, total, page, totalPages: Math.ceil(total / limit) });
   } catch {
     res.status(500).json({ error: 'Erreur' });
   }
 });
 
 // Admin: get all users
-router.get('/api/users', authenticateToken, requireAdmin, async (_req: AuthRequest, res) => {
+router.get('/api/users', authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
   try {
-    const users = await prisma.user.findMany({
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 50));
+    const skip = (page - 1) * limit;
+
+    const [users, total] = await prisma.user.findManyAndCount({
       select: {
         id: true,
         name: true,
@@ -55,6 +65,8 @@ router.get('/api/users', authenticateToken, requireAdmin, async (_req: AuthReque
         },
       },
       orderBy: { createdAt: 'desc' },
+      skip,
+      take: limit,
     });
 
     const result = users.map((u) => ({
@@ -68,7 +80,7 @@ router.get('/api/users', authenticateToken, requireAdmin, async (_req: AuthReque
       favoritesCount: u._count.favorites,
     }));
 
-    res.json(result);
+    res.json({ data: result, total, page, totalPages: Math.ceil(total / limit) });
   } catch {
     res.status(500).json({ error: 'Erreur' });
   }

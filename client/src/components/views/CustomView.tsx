@@ -150,7 +150,7 @@ export function CustomView() {
                 onChange={(e) => setStone(e.target.value)}
                 className="w-full rounded-xl border border-gray-200 bg-white p-3 text-sm focus:outline-none focus:border-[#0B5D1E]"
               >
-                <option value="Diamant SaTouba">Diamant Certifié Satouba Bijouterie 255</option>
+                <option value="Diamant Satouba Bijouterie 255">Diamant Certifié Satouba Bijouterie 255</option>
                 <option value="Rubis / Saphir">Rubis / Saphir Naturel</option>
                 <option value="Émeraude">Émeraude Précieuse</option>
                 <option value="Zirconium éclat">Zirconium Haute Brillance</option>

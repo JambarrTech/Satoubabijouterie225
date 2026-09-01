@@ -1,13 +1,33 @@
 import { Router } from 'express';
+import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { authenticateToken, requireAdmin, AuthRequest } from '../middleware/auth';
 import logger from '../lib/logger';
 import { notifyCustomRequest, notifyCustomStatusChange } from '../lib/notifications';
 import { sanitizeString } from '../lib/sanitize';
+import { logAction } from '../lib/audit';
 
 const router = Router();
 
-const VALID_CUSTOM_STATUSES = ['PENDING', 'IN_PROGRESS', 'QUOTE_SENT', 'APPROVED', 'COMPLETED', 'CANCELLED'];
+const createCustomSchema = z.object({
+  jewelryType: z.string().trim().min(1, 'Type de bijou requis').max(200),
+  material: z.string().trim().max(200).optional(),
+  description: z.string().trim().min(1, 'Description requise').max(2000),
+  budget: z.string().trim().max(100).optional(),
+  phone: z.string().trim().min(8, 'Numéro de téléphone valide requis').max(20),
+  referenceImageUrl: z.string().max(500).optional(),
+});
+
+const customStatusSchema = z.object({
+  status: z.enum(['PENDING', 'IN_PROGRESS', 'QUOTE_SENT', 'APPROVED', 'COMPLETED', 'CANCELLED'] as const),
+});
+
+function validateCustom<T extends z.ZodTypeAny>(schema: T, data: unknown): { success: true; data: z.infer<T> } | { success: false; error: string } {
+  const result = schema.safeParse(data);
+  if (result.success) return { success: true, data: result.data };
+  const firstError = result.error.issues[0];
+  return { success: false, error: firstError?.message || 'Données invalides' };
+}
 
 // Get user's custom requests
 router.get('/api/custom-requests', authenticateToken, async (req: AuthRequest, res) => {
@@ -56,18 +76,20 @@ router.get('/api/custom-requests/:id', authenticateToken, async (req: AuthReques
 // Create custom request
 router.post('/api/custom-requests', authenticateToken, async (req: AuthRequest, res) => {
   try {
-    const { jewelryType, material, description, budget, referenceImageUrl, phone } = req.body;
-    if (!jewelryType || !description || !phone) {
-      return res.status(400).json({ error: 'Type de bijou, description et téléphone requis' });
+    const validation = validateCustom(createCustomSchema, req.body);
+    if (!validation.success) {
+      return res.status(400).json({ error: validation.error });
     }
+    const { jewelryType, material, description, budget, referenceImageUrl, phone } = validation.data;
+
     const request = await prisma.customRequest.create({
       data: {
         userId: req.userId!,
         jewelryType: sanitizeString(jewelryType),
-        material: sanitizeString(material),
+        material: material ? sanitizeString(material) : null,
         description: sanitizeString(description),
-        budget: budget ? sanitizeString(String(budget)) : null,
-        referenceImageUrl: sanitizeString(referenceImageUrl),
+        budget: budget ? sanitizeString(budget) : null,
+        referenceImageUrl: referenceImageUrl ? sanitizeString(referenceImageUrl) as string : null,
         phone: sanitizeString(phone),
       },
     });
@@ -84,10 +106,12 @@ router.post('/api/custom-requests', authenticateToken, async (req: AuthRequest, 
 // Admin: update custom request status (+ notify client)
 router.put('/api/custom-requests/:id/status', authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
   try {
-    const { status } = req.body;
-    if (!VALID_CUSTOM_STATUSES.includes(status)) {
-      return res.status(400).json({ error: 'Statut invalide' });
+    const validation = validateCustom(customStatusSchema, req.body);
+    if (!validation.success) {
+      return res.status(400).json({ error: validation.error });
     }
+    const { status } = validation.data;
+
     const request = await prisma.customRequest.update({
       where: { id: req.params.id },
       data: { status },
@@ -117,6 +141,15 @@ router.delete('/api/custom-requests/:id', authenticateToken, async (req: AuthReq
     }
 
     await prisma.customRequest.delete({ where: { id: req.params.id } });
+
+    await logAction({
+      userId: req.userId!,
+      action: 'CUSTOM_REQUEST_DELETE',
+      entity: 'CustomRequest',
+      entityId: req.params.id,
+      ipAddress: req.ip,
+    });
+
     res.json({ success: true });
   } catch {
     res.status(500).json({ error: 'Erreur' });
