@@ -5,6 +5,7 @@ import { fetchFavorites } from '../../lib/api/favorites';
 import { ProductCard } from '../product/ProductCard';
 import { Button } from '../ui/Button';
 import { Skeleton } from '../ui/Skeleton';
+import { AbortController } from 'abort-controller';
 
 interface FavoritesViewProps {
   onSelectProduct: (product: Product) => void;
@@ -25,10 +26,13 @@ export function FavoritesView({
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    fetchFavorites()
+    const controller = new AbortController();
+    fetchFavorites({ signal: controller })
       .then(setFavProducts)
-      .catch(console.error)
-      .finally(() => setIsLoading(false));
+      .catch((err) => {
+        if (err.name !== 'AbortError') console.error(err);
+      });
+    return () => controller.abort();
   }, [favorites]);
 
   return (

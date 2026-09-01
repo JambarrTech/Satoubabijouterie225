@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma';
 import { authenticateToken, requireAdmin, rateLimit, AuthRequest } from '../middleware/auth';
-import { safeJsonParse } from '../lib/helpers';
 import { sanitizeString } from '../lib/sanitize';
 import logger from '../lib/logger';
 import { logAction } from '../lib/audit';
@@ -65,7 +64,7 @@ router.get('/api/products', async (req, res) => {
 
     const parsed = products.map((p) => ({
       ...p,
-      images: safeJsonParse(p.images, []),
+      images: p.images,
     }));
 
     res.json({
@@ -94,7 +93,7 @@ router.get('/api/products/:id', async (req, res) => {
 
     if (!product) return res.status(404).json({ error: 'Produit non trouvé' });
 
-    res.json({ ...product, images: safeJsonParse(product.images, []) });
+    res.json({ ...product, images: product.images });
   } catch {
     res.status(500).json({ error: 'Erreur' });
   }
@@ -159,7 +158,7 @@ router.post('/api/products', authenticateToken, requireAdmin, rateLimit(20, 60_0
       ipAddress: req.ip,
     });
 
-    res.status(201).json({ ...product, images: safeJsonParse(product.images, []) });
+    res.status(201).json({ ...product, images: product.images });
   } catch (error) {
     logger.error({ err: error }, 'Create product error');
     res.status(500).json({ error: 'Erreur lors de la création du produit' });
@@ -183,8 +182,8 @@ router.put('/api/products/:id', authenticateToken, requireAdmin, rateLimit(30, 6
     if (updateData.description) updateData.description = sanitizeString(updateData.description);
     if (updateData.material) updateData.material = sanitizeString(updateData.material);
     if (updateData.collection) updateData.collection = sanitizeString(updateData.collection);
-    if (data.images && Array.isArray(data.images)) {
-      updateData.images = JSON.stringify(data.images);
+    if (data.images !== undefined) {
+      updateData.images = data.images;
     }
     if (updateData.price !== undefined) {
       const p = Number(updateData.price);
@@ -207,7 +206,7 @@ router.put('/api/products/:id', authenticateToken, requireAdmin, rateLimit(30, 6
       ipAddress: req.ip,
     });
 
-    res.json({ ...product, images: safeJsonParse(product.images, []) });
+    res.json({ ...product, images: product.images });
   } catch {
     res.status(500).json({ error: 'Erreur lors de la mise à jour' });
   }

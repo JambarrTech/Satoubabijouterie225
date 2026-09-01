@@ -1056,51 +1056,6 @@ var categories_default = router2;
 
 // backend/routes/products.ts
 var import_express3 = require("express");
-
-// backend/lib/helpers.ts
-function safeJsonParse(value, fallback = null) {
-  if (value === null || value === void 0) return fallback;
-  if (typeof value === "object") return value;
-  if (typeof value !== "string") return fallback;
-  if (!value) return fallback;
-  try {
-    return JSON.parse(value);
-  } catch {
-    return fallback;
-  }
-}
-async function calculateCartTotal(_cart, cartItems) {
-  let subtotal = 0;
-  for (const item of cartItems) {
-    const price = Number(item.product.price) || 0;
-    const qty = Number(item.quantity) || 0;
-    subtotal += price * qty;
-  }
-  const settings = await prisma.storeSettings.findMany({
-    where: { key: { in: ["shipping_fee", "free_shipping_threshold"] } }
-  });
-  const settingsMap = new Map(settings.map((s) => [s.key, s.value]));
-  const shippingFeeValue = parseInt(settingsMap.get("shipping_fee") || "0") || 0;
-  const freeThreshold = parseInt(settingsMap.get("free_shipping_threshold") || "0") || 0;
-  const shippingFee = subtotal > freeThreshold ? 0 : subtotal > 0 ? shippingFeeValue : 0;
-  const total = subtotal + shippingFee;
-  return { subtotal, discount: 0, shippingFee, total };
-}
-function formatCartItems(items) {
-  if (!Array.isArray(items)) return [];
-  return items.map((i) => ({
-    ...i,
-    product: {
-      ...i.product,
-      images: safeJsonParse(i.product?.images, []),
-      price: Number(i.product?.price) || 0,
-      stockQuantity: Number(i.product?.stockQuantity) || 0,
-      name: i.product?.name || "Produit"
-    }
-  }));
-}
-
-// backend/routes/products.ts
 var router3 = (0, import_express3.Router)();
 router3.get("/api/products", async (req, res) => {
   try {
@@ -1156,7 +1111,7 @@ router3.get("/api/products", async (req, res) => {
     ]);
     const parsed = products.map((p) => ({
       ...p,
-      images: safeJsonParse(p.images, [])
+      images: p.images
     }));
     res.json({
       data: parsed,
@@ -1180,7 +1135,7 @@ router3.get("/api/products/:id", async (req, res) => {
       include: { category: true }
     });
     if (!product) return res.status(404).json({ error: "Produit non trouv\xE9" });
-    res.json({ ...product, images: safeJsonParse(product.images, []) });
+    res.json({ ...product, images: product.images });
   } catch {
     res.status(500).json({ error: "Erreur" });
   }
@@ -1235,7 +1190,7 @@ router3.post("/api/products", authenticateToken, requireAdmin, rateLimit(20, 6e4
       details: { name: product.name, price },
       ipAddress: req.ip
     });
-    res.status(201).json({ ...product, images: safeJsonParse(product.images, []) });
+    res.status(201).json({ ...product, images: product.images });
   } catch (error) {
     logger_default.error({ err: error }, "Create product error");
     res.status(500).json({ error: "Erreur lors de la cr\xE9ation du produit" });
@@ -1255,8 +1210,8 @@ router3.put("/api/products/:id", authenticateToken, requireAdmin, rateLimit(30, 
     if (updateData.description) updateData.description = sanitizeString(updateData.description);
     if (updateData.material) updateData.material = sanitizeString(updateData.material);
     if (updateData.collection) updateData.collection = sanitizeString(updateData.collection);
-    if (data.images && Array.isArray(data.images)) {
-      updateData.images = JSON.stringify(data.images);
+    if (data.images !== void 0) {
+      updateData.images = data.images;
     }
     if (updateData.price !== void 0) {
       const p = Number(updateData.price);
@@ -1276,7 +1231,7 @@ router3.put("/api/products/:id", authenticateToken, requireAdmin, rateLimit(30, 
       details: { name: product.name, changes: Object.keys(updateData) },
       ipAddress: req.ip
     });
-    res.json({ ...product, images: safeJsonParse(product.images, []) });
+    res.json({ ...product, images: product.images });
   } catch {
     res.status(500).json({ error: "Erreur lors de la mise \xE0 jour" });
   }
@@ -1306,6 +1261,51 @@ var products_default = router3;
 
 // backend/routes/cart.ts
 var import_express4 = require("express");
+
+// backend/lib/helpers.ts
+function safeJsonParse(value, fallback = null) {
+  if (value === null || value === void 0) return fallback;
+  if (typeof value === "object") return value;
+  if (typeof value !== "string") return fallback;
+  if (!value) return fallback;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return fallback;
+  }
+}
+async function calculateCartTotal(_cart, cartItems) {
+  let subtotal = 0;
+  for (const item of cartItems) {
+    const price = Number(item.product.price) || 0;
+    const qty = Number(item.quantity) || 0;
+    subtotal += price * qty;
+  }
+  const settings = await prisma.storeSettings.findMany({
+    where: { key: { in: ["shipping_fee", "free_shipping_threshold"] } }
+  });
+  const settingsMap = new Map(settings.map((s) => [s.key, s.value]));
+  const shippingFeeValue = parseInt(settingsMap.get("shipping_fee") || "0") || 0;
+  const freeThreshold = parseInt(settingsMap.get("free_shipping_threshold") || "0") || 0;
+  const shippingFee = subtotal > freeThreshold ? 0 : subtotal > 0 ? shippingFeeValue : 0;
+  const total = subtotal + shippingFee;
+  return { subtotal, discount: 0, shippingFee, total };
+}
+function formatCartItems(items) {
+  if (!Array.isArray(items)) return [];
+  return items.map((i) => ({
+    ...i,
+    product: {
+      ...i.product,
+      images: safeJsonParse(i.product?.images, []),
+      price: Number(i.product?.price) || 0,
+      stockQuantity: Number(i.product?.stockQuantity) || 0,
+      name: i.product?.name || "Produit"
+    }
+  }));
+}
+
+// backend/routes/cart.ts
 var router4 = (0, import_express4.Router)();
 router4.get("/api/cart", authenticateToken, async (req, res) => {
   try {
@@ -1750,12 +1750,15 @@ router5.get("/api/orders/all", authenticateToken, requireAdmin, async (req, res)
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
     const skip = (page - 1) * limit;
-    const [orders, total] = await prisma.order.findManyAndCount({
-      include: { items: true, user: { select: { name: true, identifier: true, phone: true } } },
-      orderBy: { createdAt: "desc" },
-      skip,
-      take: limit
-    });
+    const [orders, total] = await Promise.all([
+      prisma.order.findMany({
+        include: { items: true, user: { select: { name: true, identifier: true, phone: true } } },
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: limit
+      }),
+      prisma.order.count({ where: {} })
+    ]);
     const parsed = orders.map((o) => ({
       ...o,
       shippingAddress: safeJsonParse(o.shippingAddress, null),
@@ -1852,7 +1855,7 @@ router5.post("/api/orders", authenticateToken, async (req, res) => {
             create: itemsToOrder.map((item) => ({
               productId: item.productId,
               productName: item.product.name,
-              productImage: safeJsonParse(item.product.images, [])[0] || "",
+              productImage: item.product.images?.[0] || "",
               price: item.product.price,
               quantity: item.quantity,
               selectedSize: item.selectedSize,
@@ -1968,7 +1971,7 @@ router6.get("/api/favorites", authenticateToken, async (req, res) => {
     });
     const products = favorites.map((f) => ({
       ...f.product,
-      images: safeJsonParse(f.product.images, [])
+      images: f.product.images
     }));
     res.json(products);
   } catch {
@@ -2349,20 +2352,23 @@ router10.get("/api/customers", authenticateToken, requireAdmin, async (req, res)
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
     const skip = (page - 1) * limit;
-    const [customers, total] = await prisma.user.findManyAndCount({
-      where: { role: "CUSTOMER" },
-      select: {
-        id: true,
-        name: true,
-        identifier: true,
-        phone: true,
-        orders: {
-          select: { totalAmount: true }
-        }
-      },
-      skip,
-      take: limit
-    });
+    const [customers, total] = await Promise.all([
+      prisma.user.findMany({
+        where: { role: "CUSTOMER" },
+        select: {
+          id: true,
+          name: true,
+          identifier: true,
+          phone: true,
+          orders: {
+            select: { totalAmount: true }
+          }
+        },
+        skip,
+        take: limit
+      }),
+      prisma.user.count({ where: { role: "CUSTOMER" } })
+    ]);
     const result = customers.map((c) => ({
       id: c.id,
       name: c.name,
@@ -2381,7 +2387,8 @@ router10.get("/api/users", authenticateToken, requireAdmin, async (req, res) => 
     const page = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
     const skip = (page - 1) * limit;
-    const [users, total] = await prisma.user.findManyAndCount({
+    const [users, total] = await prisma.user.findMany({
+      where: { role: "ADMIN" },
       select: {
         id: true,
         name: true,

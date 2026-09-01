@@ -15,7 +15,8 @@ router.get('/api/customers', authenticateToken, requireAdmin, async (req: AuthRe
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 50));
     const skip = (page - 1) * limit;
 
-    const [customers, total] = await prisma.user.findManyAndCount({
+    const [customers, total] = await Promise.all([
+    prisma.user.findMany({
       where: { role: 'CUSTOMER' },
       select: {
         id: true,
@@ -28,7 +29,9 @@ router.get('/api/customers', authenticateToken, requireAdmin, async (req: AuthRe
       },
       skip,
       take: limit,
-    });
+    }),
+    prisma.user.count({ where: { role: 'CUSTOMER' } }),
+  ]);
 
     const result = customers.map((c) => ({
       id: c.id,
@@ -52,7 +55,8 @@ router.get('/api/users', authenticateToken, requireAdmin, async (req: AuthReques
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 50));
     const skip = (page - 1) * limit;
 
-    const [users, total] = await prisma.user.findManyAndCount({
+    const [users, total] = await prisma.user.findMany({
+      where: { role: 'ADMIN' },
       select: {
         id: true,
         name: true,
@@ -69,7 +73,7 @@ router.get('/api/users', authenticateToken, requireAdmin, async (req: AuthReques
       take: limit,
     });
 
-    const result = users.map((u) => ({
+    const result = users.map((u: any) => ({
       id: u.id,
       name: u.name,
       identifier: u.identifier,

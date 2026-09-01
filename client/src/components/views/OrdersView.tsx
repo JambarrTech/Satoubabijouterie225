@@ -6,6 +6,7 @@ import { fetchOrders } from '../../lib/api/orders';
 import { Skeleton } from '../ui/Skeleton';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
+import { AbortController } from 'abort-controller';
 
 export function OrdersView() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -28,7 +29,16 @@ export function OrdersView() {
   };
 
   useEffect(() => {
-    loadOrders();
+    const controller = new AbortController();
+    fetchOrders({ signal: controller })
+      .then((data) => {
+        setOrders(data);
+        if (data.length > 0) setSelectedOrder(data[0]);
+      })
+      .catch((err) => {
+        if (err.name !== 'AbortError') setError('Erreur lors du chargement des commandes');
+      });
+    return () => controller.abort();
   }, []);
 
   const openOrder = (order: Order) => {

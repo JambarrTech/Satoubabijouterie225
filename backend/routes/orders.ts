@@ -52,12 +52,15 @@ router.get('/api/orders/all', authenticateToken, requireAdmin, async (req: AuthR
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 50));
     const skip = (page - 1) * limit;
 
-    const [orders, total] = await prisma.order.findManyAndCount({
+    const [orders, total] = await Promise.all([
+    prisma.order.findMany({
       include: { items: true, user: { select: { name: true, identifier: true, phone: true } } },
       orderBy: { createdAt: 'desc' },
       skip,
       take: limit,
-    });
+    }),
+    prisma.order.count({ where: {} }),
+  ]);
 
     const parsed = orders.map((o) => ({
       ...o,
@@ -178,7 +181,7 @@ router.post('/api/orders', authenticateToken, async (req: AuthRequest, res) => {
             create: itemsToOrder.map((item) => ({
               productId: item.productId,
               productName: item.product.name,
-              productImage: safeJsonParse(item.product.images, [])[0] || '',
+              productImage: item.product.images?.[0] || '',
               price: item.product.price,
               quantity: item.quantity,
               selectedSize: item.selectedSize,

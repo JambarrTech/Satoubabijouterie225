@@ -70,7 +70,7 @@ model Product {
   description    String
   price          Int
   compareAtPrice Int?
-  images         String   @default("[]")
+  images         Json     @default("[]")
   likesCount     Int      @default(0)
   inStock        Boolean  @default(true)
   stockQuantity  Int      @default(0)

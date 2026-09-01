@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
-import { safeJsonParse } from '../lib/helpers';
 
 const router = Router();
 
@@ -15,7 +14,7 @@ router.get('/api/favorites', authenticateToken, async (req: AuthRequest, res) =>
 
     const products = favorites.map((f) => ({
       ...f.product,
-      images: safeJsonParse(f.product.images, []),
+      images: f.product.images,
     }));
 
     res.json(products);
