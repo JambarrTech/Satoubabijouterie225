@@ -6,6 +6,7 @@ import { ProductCard } from '../product/ProductCard';
 import { Button } from '../ui/Button';
 import { apiGet } from '../../lib/apiClient';
 import { fetchStoreSettings, StoreSettings } from '../../lib/api/settings';
+import { AbortController } from 'abort-controller';
 
 interface HomeViewProps {
   categories: Category[];

@@ -66,9 +66,11 @@ export async function apiFetch(url: string, options: FetchOptions = {}) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
+  const controller = options.signal;
   const res = await fetch(`${API_BASE}${url}`, {
     ...options,
     headers,
+    signal: controller,
   });
 
   if (res.status === 401) {
