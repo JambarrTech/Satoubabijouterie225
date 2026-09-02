@@ -3168,7 +3168,15 @@ if (process.env.NODE_ENV !== "test") {
     }
   }));
 }
-var rawOrigins = process.env.CORS_ORIGIN || process.env.APP_URL || "http://localhost:5173";
+var rawOrigins = process.env.CORS_ORIGIN || process.env.APP_URL;
+if (!rawOrigins) {
+  const vercelUrl = process.env.VERCEL_URL;
+  if (vercelUrl) {
+    rawOrigins = `https://${vercelUrl}`;
+  } else {
+    rawOrigins = "http://localhost:5173";
+  }
+}
 var allowedOrigins = rawOrigins.split(",").map((s) => s.trim()).filter(Boolean);
 app.use((0, import_cors.default)({
   origin: (origin, callback) => {
