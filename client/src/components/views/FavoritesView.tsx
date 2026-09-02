@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Heart, ArrowRight } from 'lucide-react';
+import { Heart, ArrowRight  } from '../../ui/Icons';;
 import { Product } from '../../types';
 import { fetchFavorites } from '../../lib/api/favorites';
 import { ProductCard } from '../product/ProductCard';
@@ -81,3 +81,4 @@ export function FavoritesView({
     </div>
   );
 }
+

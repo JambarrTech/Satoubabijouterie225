@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ShoppingBag, Phone, User, MapPin } from 'lucide-react';
+import { ShoppingBag, Phone, User, MapPin  } from '../../ui/Icons';;
 import { apiGet, apiPut } from '../../lib/apiClient';
 import { Order, OrderItem } from '../../types';
 
@@ -126,3 +126,4 @@ const ALLOWED_TRANSITIONS: Record<string, string[]> = {
     </div>
   );
 }
+

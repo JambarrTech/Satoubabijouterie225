@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Sparkles, ArrowRight } from 'lucide-react';
+import { Sparkles, ArrowRight } from '../ui/Icons';
 import { Product, Category } from '../../types';
 import { ProductCard } from '../product/ProductCard';
 import { Button } from '../ui/Button';

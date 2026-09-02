@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { User as UserIcon, Package, Heart, Wrench, Sparkles, LogOut, Check, Loader2 } from 'lucide-react';
+import { User as UserIcon, Package, Heart, Wrench, Sparkles, LogOut, Check, Loader2  } from '../../ui/Icons';;
 import { User } from '../../types';
 import { fetchCurrentUser, updateCurrentUser } from '../../lib/api/auth';
 import { useToast } from '../ui/Toast';
@@ -219,3 +219,4 @@ export function ProfileView({ onNavigate, onLogout, onProfileUpdate }: ProfileVi
     </div>
   );
 }
+

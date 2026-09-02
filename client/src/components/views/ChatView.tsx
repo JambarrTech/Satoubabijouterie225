@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { MessageSquare, Phone, MapPin, Sparkles } from 'lucide-react';
+import { MessageSquare, Phone, MapPin, Sparkles  } from '../../ui/Icons';;
 import { Button } from '../ui/Button';
 import { fetchStoreSettings, StoreSettings } from '../../lib/api/settings';
 
@@ -80,3 +80,4 @@ export function ChatView() {
     </div>
   );
 }
+

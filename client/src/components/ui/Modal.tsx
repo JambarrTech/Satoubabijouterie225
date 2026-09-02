@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X } from 'lucide-react';
+import { X  } from '../../ui/Icons';;
 
 interface ModalProps {
   isOpen: boolean;
@@ -107,3 +107,4 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
     </AnimatePresence>
   );
 }
+

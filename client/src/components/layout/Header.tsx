@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Search, Bell, ShoppingBag, User } from 'lucide-react';
+import { Search, Bell, ShoppingBag, User  } from '../../ui/Icons';;
 import { motion } from 'motion/react';
 
 interface HeaderProps {
@@ -133,3 +133,4 @@ export const Header = memo(function Header({
     </header>
   );
 });
+

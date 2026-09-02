@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { LayoutDashboard, Package, ShoppingBag, Sparkles, Users, UserCog, Settings, LogOut, ClipboardList } from 'lucide-react';
+import { LayoutDashboard, Package, ShoppingBag, Sparkles, Users, UserCog, Settings, LogOut, ClipboardList  } from '../../ui/Icons';;
 import { GerantOverview } from './GerantOverview';
 import { GerantProducts } from './GerantProducts';
 import { GerantOrders } from './GerantOrders';
@@ -144,3 +144,4 @@ export function GerantDashboard({ onLogout }: GerantDashboardProps) {
     </div>
   );
 }
+

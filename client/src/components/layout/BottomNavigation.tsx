@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Home, Heart, ShoppingBag, MessageSquare, User as UserIcon } from 'lucide-react';
+import { Home, Heart, ShoppingBag, MessageSquare, User as UserIcon  } from '../../ui/Icons';;
 import { motion } from 'motion/react';
 
 interface BottomNavigationProps {
@@ -76,3 +76,4 @@ export const BottomNavigation = memo(function BottomNavigation({
     </div>
   );
 });
+

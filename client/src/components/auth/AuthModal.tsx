@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Eye, EyeOff, User as UserIcon, Phone, Lock, KeyRound, AlertCircle, Loader2, ShieldCheck, MessageSquare } from 'lucide-react';
+import { X, Eye, EyeOff, User as UserIcon, Phone, Lock, KeyRound, AlertCircle, Loader2, ShieldCheck, MessageSquare  } from '../../ui/Icons';;
 import { login, register, requestPasswordReset, resetPassword } from '../../lib/api/auth';
 import { useToast } from '../ui/Toast';
 import { User } from '../../types';
@@ -555,3 +555,4 @@ function InputField({
     </div>
   );
 }
+

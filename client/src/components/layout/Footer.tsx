@@ -1,5 +1,5 @@
 import { useState, useEffect, memo } from 'react';
-import { Phone, MapPin, ShieldCheck, Truck, Clock, Instagram, MessageSquare } from 'lucide-react';
+import { Phone, MapPin, ShieldCheck, Truck, Clock, Instagram, MessageSquare  } from '../../ui/Icons';;
 import { fetchStoreSettings, StoreSettings } from '../../lib/api/settings';
 
 interface FooterProps {
@@ -156,3 +156,4 @@ export const Footer = memo(function Footer({ onNavigate }: FooterProps) {
     </footer>
   );
 });
+

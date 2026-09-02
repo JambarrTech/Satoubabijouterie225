@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Search, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, RefreshCw, ChevronLeft, ChevronRight  } from '../../ui/Icons';;
 import { Product, Category } from '../../types';
 import { fetchProducts } from '../../lib/api/products';
 import { ProductCard } from '../product/ProductCard';
@@ -208,3 +208,4 @@ export function CatalogueView({
     </div>
   );
 }
+

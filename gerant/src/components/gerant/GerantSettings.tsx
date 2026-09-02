@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Store, Edit, Check } from 'lucide-react';
+import { Store, Edit, Check  } from '../../ui/Icons';;
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { apiPut } from '../../lib/apiClient';
@@ -128,3 +128,4 @@ export function GerantSettings() {
     </div>
   );
 }
+

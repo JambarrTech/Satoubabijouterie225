@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Eye, EyeOff, Lock, User as UserIcon, ShieldCheck, AlertCircle, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Lock, User as UserIcon, ShieldCheck, AlertCircle, Loader2  } from '../../ui/Icons';;
 import { loginGerant } from '../../lib/api/auth';
 import { useToast } from '../ui/Toast';
 import { User } from '../../types';
@@ -176,3 +176,4 @@ export function GerantLogin({ onLogin }: GerantLoginProps) {
     </div>
   );
 }
+

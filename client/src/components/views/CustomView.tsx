@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Sparkles, Send, CheckCircle2, ShieldCheck, Calculator, Gem } from 'lucide-react';
+import { Sparkles, Send, CheckCircle2, ShieldCheck, Calculator, Gem  } from '../../ui/Icons';;
 import { createCustomRequest } from '../../lib/api/custom';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
@@ -238,3 +238,4 @@ export function CustomView() {
     </div>
   );
 }
+

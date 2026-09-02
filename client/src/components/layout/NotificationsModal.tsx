@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Bell, Package, Tag, Info, X } from 'lucide-react';
+import { Bell, Package, Tag, Info, X  } from '../../ui/Icons';;
 import { motion, AnimatePresence } from 'motion/react';
 import { NotificationItem } from '../../types';
 
@@ -93,3 +93,4 @@ export function NotificationsModal({ isOpen, onClose, notifications, onMarkAsRea
     </AnimatePresence>
   );
 }
+

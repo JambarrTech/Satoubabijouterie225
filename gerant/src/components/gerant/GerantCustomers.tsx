@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Users, Phone, ExternalLink } from 'lucide-react';
+import { Users, Phone, ExternalLink  } from '../../ui/Icons';;
 import { apiGet } from '../../lib/apiClient';
 import { User } from '../../types';
 
@@ -95,3 +95,4 @@ export function GerantCustomers() {
     </div>
   );
 }
+

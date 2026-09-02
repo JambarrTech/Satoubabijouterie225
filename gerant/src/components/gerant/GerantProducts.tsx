@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Plus, Edit, Trash2, Search, Upload, X } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Upload, X  } from '../../ui/Icons';;
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Modal } from '../ui/Modal';
@@ -350,3 +350,4 @@ export function GerantProducts() {
     </div>
   );
 }
+

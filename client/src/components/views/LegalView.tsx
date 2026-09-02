@@ -1,4 +1,4 @@
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft  } from '../../ui/Icons';;
 
 interface LegalViewProps {
   type: 'cgv' | 'confidentialite';
@@ -169,3 +169,4 @@ export function LegalView({ type }: LegalViewProps) {
     </div>
   );
 }
+

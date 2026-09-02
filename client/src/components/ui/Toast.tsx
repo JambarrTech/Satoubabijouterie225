@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { CheckCircle, AlertCircle, X, Info } from 'lucide-react';
+import { CheckCircle, AlertCircle, X, Info  } from '../../ui/Icons';;
 
 type ToastType = 'success' | 'error' | 'info';
 
@@ -89,3 +89,4 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     </ToastContext.Provider>
   );
 }
+

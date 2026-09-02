@@ -1,0 +1,138 @@
+import React from 'react';
+
+// Human-friendly emoji icons with custom styling
+export const Icons = {
+  // Sparkles for special/premium items
+  Sparkles: (props: React.SVGProps<SVGSVGElement>) => (
+    <span className="inline-flex items-center justify-center" {...props as any}>✨</span>
+  ),
+  
+  // Arrow for navigation
+  ArrowRight: (props: React.SVGProps<SVGSVGElement>) => (
+    <span className="inline-flex items-center justify-center" {...props as any}>→</span>
+  ),
+  
+  // Shopping cart
+  ShoppingCart: (props: React.SVGProps<SVGSVGElement>) => (
+    <span className="inline-flex items-center justify-center" {...props as any}>🛍️</span>
+  ),
+  
+  // Heart for favorites
+  Heart: (props: React.SVGProps<SVGSVGElement>) => (
+    <span className="inline-flex items-center justify-center" {...props as any}>❤️</span>
+  ),
+  
+  // Search icon
+  Search: (props: React.SVGProps<SVGSVGElement>) => (
+    <span className="inline-flex items-center justify-center" {...props as any}>🔍</span>
+  ),
+  
+  // Menu icon
+  Menu: (props: React.SVGProps<SVGSVGElement>) => (
+    <span className="inline-flex items-center justify-center" {...props as any}>☰</span>
+  ),
+  
+  // Close icon
+  X: (props: React.SVGProps<SVGSVGElement>) => (
+    <span className="inline-flex items-center justify-center" {...props as any}>✕</span>
+  ),
+  
+  // Check mark
+  Check: (props: React.SVGProps<SVGSVGElement>) => (
+    <span className="inline-flex items-center justify-center" {...props as any}>✓</span>
+  ),
+  
+  // Chat/Message
+  MessageCircle: (props: React.SVGProps<SVGSVGElement>) => (
+    <span className="inline-flex items-center justify-center" {...props as any}>💬</span>
+  ),
+  
+  // User profile
+  User: (props: React.SVGProps<SVGSVGElement>) => (
+    <span className="inline-flex items-center justify-center" {...props as any}>👤</span>
+  ),
+  
+  // Home
+  Home: (props: React.SVGProps<SVGSVGElement>) => (
+    <span className="inline-flex items-center justify-center" {...props as any}>🏠</span>
+  ),
+  
+  // Settings
+  Settings: (props: React.SVGProps<SVGSVGElement>) => (
+    <span className="inline-flex items-center justify-center" {...props as any}>⚙️</span>
+  ),
+  
+  // Bell for notifications
+  Bell: (props: React.SVGProps<SVGSVGElement>) => (
+    <span className="inline-flex items-center justify-center" {...props as any}>🔔</span>
+  ),
+  
+  // Star for ratings
+  Star: (props: React.SVGProps<SVGSVGElement>) => (
+    <span className="inline-flex items-center justify-center" {...props as any}>⭐</span>
+  ),
+  
+  // Truck for delivery
+  Truck: (props: React.SVGProps<SVGSVGElement>) => (
+    <span className="inline-flex items-center justify-center" {...props as any}>🚚</span>
+  ),
+  
+  // Package
+  Package: (props: React.SVGProps<SVGSVGElement>) => (
+    <span className="inline-flex items-center justify-center" {...props as any}>📦</span>
+  ),
+  
+  // Edit/Pencil
+  Edit: (props: React.SVGProps<SVGSVGElement>) => (
+    <span className="inline-flex items-center justify-center" {...props as any}>✏️</span>
+  ),
+  
+  // Trash/Delete
+  Trash: (props: React.SVGProps<SVGSVGElement>) => (
+    <span className="inline-flex items-center justify-center" {...props as any}>🗑️</span>
+  ),
+  
+  // Filter
+  Filter: (props: React.SVGProps<SVGSVGElement>) => (
+    <span className="inline-flex items-center justify-center" {...props as any}>🔽</span>
+  ),
+  
+  // Eye for visibility
+  Eye: (props: React.SVGProps<SVGSVGElement>) => (
+    <span className="inline-flex items-center justify-center" {...props as any}>👁️</span>
+  ),
+  
+  // Briefcase/Business
+  Briefcase: (props: React.SVGProps<SVGSVGElement>) => (
+    <span className="inline-flex items-center justify-center" {...props as any}>💼</span>
+  ),
+  
+  // Clock/Time
+  Clock: (props: React.SVGProps<SVGSVGElement>) => (
+    <span className="inline-flex items-center justify-center" {...props as any}>🕐</span>
+  ),
+};
+
+// Export individual components for convenience
+export const Sparkles = (props: React.SVGProps<SVGSVGElement>) => Icons.Sparkles(props);
+export const ArrowRight = (props: React.SVGProps<SVGSVGElement>) => Icons.ArrowRight(props);
+export const ShoppingCart = (props: React.SVGProps<SVGSVGElement>) => Icons.ShoppingCart(props);
+export const Heart = (props: React.SVGProps<SVGSVGElement>) => Icons.Heart(props);
+export const Search = (props: React.SVGProps<SVGSVGElement>) => Icons.Search(props);
+export const Menu = (props: React.SVGProps<SVGSVGElement>) => Icons.Menu(props);
+export const X = (props: React.SVGProps<SVGSVGElement>) => Icons.X(props);
+export const Check = (props: React.SVGProps<SVGSVGElement>) => Icons.Check(props);
+export const MessageCircle = (props: React.SVGProps<SVGSVGElement>) => Icons.MessageCircle(props);
+export const User = (props: React.SVGProps<SVGSVGElement>) => Icons.User(props);
+export const Home = (props: React.SVGProps<SVGSVGElement>) => Icons.Home(props);
+export const Settings = (props: React.SVGProps<SVGSVGElement>) => Icons.Settings(props);
+export const Bell = (props: React.SVGProps<SVGSVGElement>) => Icons.Bell(props);
+export const Star = (props: React.SVGProps<SVGSVGElement>) => Icons.Star(props);
+export const Truck = (props: React.SVGProps<SVGSVGElement>) => Icons.Truck(props);
+export const Package = (props: React.SVGProps<SVGSVGElement>) => Icons.Package(props);
+export const Edit = (props: React.SVGProps<SVGSVGElement>) => Icons.Edit(props);
+export const Trash = (props: React.SVGProps<SVGSVGElement>) => Icons.Trash(props);
+export const Filter = (props: React.SVGProps<SVGSVGElement>) => Icons.Filter(props);
+export const Eye = (props: React.SVGProps<SVGSVGElement>) => Icons.Eye(props);
+export const Briefcase = (props: React.SVGProps<SVGSVGElement>) => Icons.Briefcase(props);
+export const Clock = (props: React.SVGProps<SVGSVGElement>) => Icons.Clock(props);

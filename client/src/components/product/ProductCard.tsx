@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, memo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Heart, ShoppingBag, Check } from 'lucide-react';
+import { Heart, ShoppingBag, Check  } from '../../ui/Icons';;
 import { Product } from '../../types';
 import { Price } from '../ui/Price';
 import { Badge } from '../ui/Badge';
@@ -159,3 +159,4 @@ export const ProductCard = memo(function ProductCard({
     </motion.div>
   );
 });
+

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Sparkles, Wrench, Phone } from 'lucide-react';
+import { Sparkles, Wrench, Phone  } from '../../ui/Icons';;
 import { apiGet, apiPut } from '../../lib/apiClient';
 import { CustomRequest, RepairRequest } from '../../types';
 
@@ -165,3 +165,4 @@ export function GerantCustom() {
     </div>
   );
 }
+

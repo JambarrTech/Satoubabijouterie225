@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { DollarSign, ShoppingBag, Package, Users, Sparkles, TrendingUp, Clock, CheckCircle } from 'lucide-react';
+import { DollarSign, ShoppingBag, Package, Users, Sparkles, TrendingUp, Clock, CheckCircle  } from '../../ui/Icons';;
 import { apiGet } from '../../lib/apiClient';
 import { fetchStoreSettings, StoreSettings } from '../../lib/api/settings';
 import { Stats, Order } from '../../types';
@@ -164,3 +164,4 @@ export function GerantOverview() {
     </div>
   );
 }
+

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, X, Sparkles, ArrowRight } from 'lucide-react';
+import { Search, X, Sparkles, ArrowRight  } from '../../ui/Icons';;
 import { motion, AnimatePresence } from 'motion/react';
 import { Product } from '../../types';
 import { fetchProducts } from '../../lib/api/products';
@@ -152,3 +152,4 @@ export function SearchModal({ isOpen, onClose, onSelectProduct }: SearchModalPro
     </AnimatePresence>
   );
 }
+

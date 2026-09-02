@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Package, RefreshCw } from 'lucide-react';
+import { Package, RefreshCw  } from '../../ui/Icons';;
 import { Order } from '../../types';
 import { fetchOrders } from '../../lib/api/orders';
 import { Skeleton } from '../ui/Skeleton';

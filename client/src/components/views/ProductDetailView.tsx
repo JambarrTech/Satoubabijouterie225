@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ArrowLeft, Heart, Share2, ShieldCheck, Truck, MessageSquare, Check, ShoppingBag } from 'lucide-react';
+import { ArrowLeft, Heart, Share2, ShieldCheck, Truck, MessageSquare, Check, ShoppingBag  } from '../../ui/Icons';;
 import { Product } from '../../types';
 import { fetchStoreSettings, StoreSettings } from '../../lib/api/settings';
 import { Price } from '../ui/Price';
@@ -264,6 +264,7 @@ export function ProductDetailView({
     </motion.div>
   );
 }
+
 
 
 
