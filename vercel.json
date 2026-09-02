@@ -3,7 +3,7 @@
   "buildCommand": "prisma generate --schema backend/prisma/schema.postgresql.prisma && npm run build:api && npm run build:client && npm run build:gerant && node assemble-vercel.mjs",
   "outputDirectory": "dist",
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/index.js" },
+    { "source": "/api/(.*)", "destination": "/api" },
     { "source": "/gerant/((?!assets/|icons/|.*\\.(?:png|jpg|jpeg|gif|svg|webp|avif|js|css|json|ico|txt)$).*)", "destination": "/gerant/index.html" },
     { "source": "/((?!api/|gerant/|assets/|icons/|.*\\.(?:png|jpg|jpeg|gif|svg|webp|avif|js|css|json|ico|woff2?|ttf|eot|mp4|webm|txt)$).*)", "destination": "/index.html" }
   ]

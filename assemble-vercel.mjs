@@ -23,14 +23,6 @@ if (existsSync(backendDistSrc)) {
   console.log('  dist/backend/server.cjs (API backend)');
 }
 
-// Copy API routes (esbuild bundle) for Vercel
-const apiSrc = 'api/index.js';
-if (existsSync(apiSrc)) {
-  mkdirSync('dist/api', { recursive: true });
-  cpSync(apiSrc, 'dist/api/index.js');
-  console.log('  dist/api/index.js (API routes)');
-}
-
 // Copy product/category images so /uploads/products/* URLs work in production
 const uploadsSrc = 'backend/uploads';
 if (existsSync(uploadsSrc)) {
