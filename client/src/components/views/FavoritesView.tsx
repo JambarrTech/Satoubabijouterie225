@@ -25,12 +25,24 @@ export function FavoritesView({
 
   useEffect(() => {
     const controller = new AbortController();
-    fetchFavorites({ signal: controller })
-      .then(setFavProducts)
+    let isActive = true;
+
+    setIsLoading(true);
+    fetchFavorites({ signal: controller.signal })
+      .then((products) => {
+        if (isActive) setFavProducts(products);
+      })
       .catch((err) => {
         if (err.name !== 'AbortError') console.error(err);
+      })
+      .finally(() => {
+        if (isActive) setIsLoading(false);
       });
-    return () => controller.abort();
+
+    return () => {
+      isActive = false;
+      controller.abort();
+    };
   }, [favorites]);
 
   return (
@@ -81,4 +93,3 @@ export function FavoritesView({
     </div>
   );
 }
-

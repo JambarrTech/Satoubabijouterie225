@@ -105,8 +105,8 @@ export async function apiFetch(url: string, options: FetchOptions = {}) {
   return res;
 }
 
-export async function apiGet<T>(url: string): Promise<T> {
-  const res = await apiFetch(url);
+export async function apiGet<T>(url: string, options: FetchOptions = {}): Promise<T> {
+  const res = await apiFetch(url, options);
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: 'Erreur lors du chargement' }));
     throw new Error(err.error || 'Erreur lors du chargement');
