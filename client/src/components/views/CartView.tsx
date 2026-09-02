@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { Trash2, ShoppingBag, ArrowRight, Check, Plus, Minus, Square, CheckSquare, MapPin, Phone, User } from "lucide-react";
+import { Trash2, ShoppingBag, ArrowRight, Check, Plus, Minus, Square, CheckSquare, MapPin, Phone, User } from "../../ui/Icons";
 import { motion, AnimatePresence } from "motion/react";
 import { Cart } from "../../types";
 import { removeFromCart, updateCartItemQuantity } from "../../lib/api/cart";

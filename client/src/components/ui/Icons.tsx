@@ -176,3 +176,6 @@ export const Plus = Check;
 export const Store = Home;
 export const LogIn = ArrowRight;
 export const Upload = ArrowRight;
+export const Minus = ArrowRight;
+export const Square = Check;
+export const CheckSquare = Check;
