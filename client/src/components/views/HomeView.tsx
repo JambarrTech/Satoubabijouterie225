@@ -106,7 +106,7 @@ export function HomeView({
 
             <div className="overflow-hidden">
               <h1 className="font-serif text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-gray-900 leading-[1.15] animate-float">
-                L'élégance à <br className="hidden sm:inline" /> <span className="text-[#0B5D1E]">votre portée</span>
+                L'élégance à <span className="text-[#0B5D1E]">votre portée</span>
               </h1>
             </div>
 
