@@ -59,19 +59,16 @@ if (process.env.NODE_ENV !== 'test') {
   }));
 }
 
-// CORS — supports single origin or comma-separated list via APP_URL / CORS_ORIGIN
-// Priority: CORS_ORIGIN > APP_URL > fallback to allowed origins list
-let rawOrigins = process.env.CORS_ORIGIN || process.env.APP_URL;
-if (!rawOrigins) {
-  // Vercel production: try to infer from the deployment domain
-  const vercelUrl = process.env.VERCEL_URL;
-  if (vercelUrl) {
-    rawOrigins = `https://${vercelUrl}`;
-  } else {
-    rawOrigins = 'http://localhost:5173';
-  }
-}
-const allowedOrigins = rawOrigins.split(',').map(s => s.trim()).filter(Boolean);
+// CORS — combine configured origins with the Vercel deployment and production alias.
+const configuredOrigins = (process.env.CORS_ORIGIN || process.env.APP_URL || '')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
+const vercelOrigins = [
+  process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '',
+  'https://satoubabijouterie225.vercel.app',
+].filter(Boolean);
+const allowedOrigins = [...new Set([...configuredOrigins, ...vercelOrigins])];
 app.use(cors({
   origin: (origin, callback) => {
     // Allow non-browser requests (curl, health checks) with no origin
