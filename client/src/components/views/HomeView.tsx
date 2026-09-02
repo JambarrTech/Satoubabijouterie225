@@ -41,7 +41,8 @@ export function HomeView({
       })
       .catch((err) => {
         if (err.name !== 'AbortError') console.error(err);
-      });
+      })
+      .finally(() => setIsLoadingStats(false));
     fetchStoreSettings({ signal: controller })
       .then(setSettings)
       .catch((err) => {
