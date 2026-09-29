@@ -4,7 +4,8 @@ import crypto from 'crypto';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { generateToken, generateRefreshToken, verifyRefreshToken, revokeRefreshToken, authenticateToken, rateLimit, AuthRequest } from '../middleware/auth';
-import { sendOTPSMS } from '../lib/sms';
+import { sendOTPSMS, sendWelcomeSMS, sendPasswordChangedSMS, sendPasswordResetDoneSMS } from '../lib/sms';
+import { createNotification } from '../lib/notifications';
 import logger from '../lib/logger';
 import { logAction } from '../lib/audit';
 import { sanitizeString } from '../lib/sanitize';
@@ -85,6 +86,19 @@ router.post('/api/auth/register', rateLimit(RATE_LIMITS.register, RATE_WINDOW_MS
     });
 
     await prisma.cart.create({ data: { userId: user.id } });
+
+    // SMS de bienvenue + notification in-app (non bloquants, cf. notifyNewOrder)
+    if (user.phone) {
+      sendWelcomeSMS(user.phone, user.name).catch((err) =>
+        logger.warn({ err, userId: user.id }, 'Welcome SMS failed')
+      );
+    }
+    createNotification({
+      userId: user.id,
+      title: 'Bienvenue chez SaTouba',
+      message: `Bonjour ${user.name}, votre compte est cree. Découvrez nos bijoux sur-mesure et nos créations artisanales.`,
+      type: 'SYSTEM',
+    }).catch((err) => logger.warn({ err, userId: user.id }, 'Welcome notification failed'));
 
     const token = generateToken(user.id, user.role);
     const refreshToken = await generateRefreshToken(user.id);
@@ -314,6 +328,13 @@ router.post('/api/auth/change-password', authenticateToken, async (req: AuthRequ
       data: { password: hashedPassword },
     });
 
+    // SMS de confirmation (sécurité : alerte en cas de changement non voulu)
+    if (user.phone) {
+      sendPasswordChangedSMS(user.phone, user.name).catch((err) =>
+        logger.warn({ err, userId: user.id }, 'Password changed SMS failed')
+      );
+    }
+
     logger.info({ userId: req.userId }, 'Password changed');
     res.json({ success: true, message: 'Mot de passe modifié avec succès' });
   } catch (error) {
@@ -358,9 +379,9 @@ router.post('/api/auth/forgot-password', rateLimit(RATE_LIMITS.forgotPassword, R
       },
     });
 
-    // Send OTP by SMS
+    // Send OTP by SMS (personnalisé avec le prénom)
     if (user.phone) {
-      await sendOTPSMS(user.phone, otp);
+      await sendOTPSMS(user.phone, otp, user.name);
     }
 
     logger.info({ userId: user.id }, 'Password reset OTP sent via SMS');
@@ -431,6 +452,13 @@ router.post('/api/auth/reset-password', rateLimit(RATE_LIMITS.resetPassword, RAT
     ]);
 
     await clearAttempts(`otp:${validPhone}`);
+
+    // SMS de confirmation (non bloquant)
+    if (user.phone) {
+      sendPasswordResetDoneSMS(user.phone, user.name).catch((err) =>
+        logger.warn({ err, userId: user.id }, 'Password reset SMS failed')
+      );
+    }
 
     logger.info({ userId: resetRecord.userId }, 'Password reset completed via OTP');
     res.json({ success: true, message: 'Mot de passe réinitialisé avec succès' });

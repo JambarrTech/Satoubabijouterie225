@@ -71,7 +71,7 @@ export async function notifyNewOrder(orderId: string) {
 
   // Dedicated confirmation SMS
   if (order.user.phone) {
-    await sendOrderConfirmationSMS(order.user.phone, order.orderNumber, order.totalAmount);
+    await sendOrderConfirmationSMS(order.user.phone, order.orderNumber, order.totalAmount, order.user.name);
   }
 
   // 2. Notify all admins
@@ -120,7 +120,7 @@ export async function notifyOrderStatusChange(
 ) {
   const order = await prisma.order.findUnique({
     where: { id: orderId },
-    include: { user: { select: { id: true, phone: true } } },
+    include: { user: { select: { id: true, name: true, phone: true } } },
   });
 
   if (!order || !order.user) return;
@@ -146,23 +146,24 @@ export async function notifyOrderStatusChange(
     orderId,
   });
 
-  // Dedicated SMS per status
+  // Dedicated SMS per status (personnalisé avec le prénom du client)
   if (order.user.phone) {
+    const clientName = order.user.name;
     switch (status) {
       case 'CONFIRMED':
-        await sendOrderConfirmationSMS(order.user.phone, order.orderNumber, order.totalAmount);
+        await sendOrderConfirmationSMS(order.user.phone, order.orderNumber, order.totalAmount, clientName);
         break;
       case 'PREPARING':
-        await sendPreparingSMS(order.user.phone, order.orderNumber);
+        await sendPreparingSMS(order.user.phone, order.orderNumber, clientName);
         break;
       case 'SHIPPED':
-        await sendShippingSMS(order.user.phone, order.orderNumber);
+        await sendShippingSMS(order.user.phone, order.orderNumber, undefined, clientName);
         break;
       case 'DELIVERED':
-        await sendDeliverySMS(order.user.phone, order.orderNumber);
+        await sendDeliverySMS(order.user.phone, order.orderNumber, clientName);
         break;
       case 'CANCELLED':
-        await sendCancelledSMS(order.user.phone, order.orderNumber);
+        await sendCancelledSMS(order.user.phone, order.orderNumber, undefined, clientName);
         break;
     }
   }

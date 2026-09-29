@@ -446,10 +446,17 @@ async function sendSMS(options) {
     };
   }
 }
-async function sendOrderConfirmationSMS(phone, orderNumber, total) {
+function firstName(name) {
+  return (name || "").trim().split(/\s+/)[0] || "";
+}
+function greeting(name) {
+  const first = firstName(name);
+  return first ? `Bonjour ${first},` : "Bonjour,";
+}
+async function sendOrderConfirmationSMS(phone, orderNumber, total, customerName) {
   const message = [
     `SaTouba`,
-    `Bonjour, votre commande ${orderNumber} a bien ete confirmee.`,
+    `${greeting(customerName)} votre commande ${orderNumber} a bien ete confirmee.`,
     `Montant: ${total.toLocaleString()} FCFA.`,
     `Nos artisans artisan commence la fabrication de votre bijou.`,
     `Vous recevrez un SMS a chaque etape (fabrication, expedition, livraison).`,
@@ -457,44 +464,45 @@ async function sendOrderConfirmationSMS(phone, orderNumber, total) {
   ].join(" ");
   return sendSMS({ to: phone, message });
 }
-async function sendPreparingSMS(phone, orderNumber) {
+async function sendPreparingSMS(phone, orderNumber, customerName) {
   const message = [
     `SaTouba`,
-    `Votre commande ${orderNumber} est en cours de fabrication par nos artisans.`,
+    `${greeting(customerName)} votre commande ${orderNumber} est en cours de fabrication par nos artisans.`,
     `Delai estime: 3 a 7 jours ouvrables selon le type de bijou.`,
     `Nous vous notifierons des que votre commande sera expediee.`,
     `Suivi: ${CONTACT_PHONE}`
   ].join(" ");
   return sendSMS({ to: phone, message });
 }
-async function sendShippingSMS(phone, orderNumber, trackingUrl) {
+async function sendShippingSMS(phone, orderNumber, trackingUrl, customerName) {
   const tracking = trackingUrl ? `
 Suivi colis: ${trackingUrl}` : "";
+  const client = firstName(customerName);
   const message = [
     `SaTouba`,
-    `Bonne nouvelle! Votre commande ${orderNumber} est en route vers vous.`,
+    `Bonne nouvelle${client ? ` ${client}` : ""}! Votre commande ${orderNumber} est en route vers vous.`,
     `Livraison prevue sous 24 a 48h a Abidjan, 48 a 72h en province.${tracking}`,
     `En cas d'absence, le coursier vous contactera.`,
     `Questions? ${CONTACT_PHONE}`
   ].join(" ");
   return sendSMS({ to: phone, message });
 }
-async function sendDeliverySMS(phone, orderNumber) {
+async function sendDeliverySMS(phone, orderNumber, customerName) {
   const message = [
     `SaTouba`,
-    `Votre commande ${orderNumber} a ete livree avec succes!`,
+    `${greeting(customerName)} votre commande ${orderNumber} a ete livree avec succes!`,
     `Merci pour votre confiance. Votre satisfaction est notre priorite.`,
     `Nous vous remercions de prendre un moment pour nous laisser un avis sur l'application.`,
     `Pour toute question sur votre bijou: ${CONTACT_PHONE}`
   ].join(" ");
   return sendSMS({ to: phone, message });
 }
-async function sendCancelledSMS(phone, orderNumber, reason) {
+async function sendCancelledSMS(phone, orderNumber, reason, customerName) {
   const reasonPart = reason ? `
 Motif: ${reason}.` : "";
   const message = [
     `SaTouba`,
-    `Votre commande ${orderNumber} a ete annulee.${reasonPart}`,
+    `${greeting(customerName)} votre commande ${orderNumber} a ete annulee.${reasonPart}`,
     `Si un paiement a ete effectue, le remboursement sera traite sous 3 a 5 jours ouvrables.`,
     `Pour plus d'informations, contactez-nous: ${CONTACT_PHONE}`
   ].join(" ");
@@ -639,9 +647,293 @@ async function sendNewRepairToGerantSMS(phone, requestId, customerName, jewelryT
   ].join(" ");
   return sendSMS({ to: phone, message });
 }
-async function sendOTPSMS(phone, code) {
-  const message = `SaTouba: Votre code de verification est ${code}. Valable 10 minutes. Ne partagez ce code avec personne.`;
+async function sendWelcomeSMS(phone, name) {
+  const message = [
+    `SaTouba Bijouterie`,
+    `${greeting(name)} bienvenue chez SaTouba!`,
+    `Votre compte client est cree. Commandez vos bijoux en or, argent et pierres precieuses, avec livraison partout a Abidjan.`,
+    `Besoin d'aide? Appelez-nous: ${CONTACT_PHONE}`
+  ].join(" ");
   return sendSMS({ to: phone, message });
+}
+async function sendPasswordResetDoneSMS(phone, name) {
+  const message = [
+    `SaTouba`,
+    `${greeting(name)} votre mot de passe a ete reinitialise avec succes.`,
+    `Vous pouvez desormais vous connecter avec votre nouveau mot de passe.`,
+    `Si ce n'est pas vous, contactez-nous immediatement: ${CONTACT_PHONE}`
+  ].join(" ");
+  return sendSMS({ to: phone, message });
+}
+async function sendPasswordChangedSMS(phone, name) {
+  const message = [
+    `SaTouba`,
+    `${greeting(name)} votre mot de passe a ete modifie avec succes.`,
+    `Si vous n'etes pas a l'origine de ce changement, contactez-nous immediatement: ${CONTACT_PHONE}`
+  ].join(" ");
+  return sendSMS({ to: phone, message });
+}
+async function sendOTPSMS(phone, code, name) {
+  const message = `SaTouba: ${greeting(name)} votre code de verification est ${code}. Valable 10 minutes. Ne partagez ce code avec personne.`;
+  return sendSMS({ to: phone, message });
+}
+
+// backend/lib/notifications.ts
+async function createNotification(options) {
+  try {
+    const notification = await prisma.notification.create({
+      data: {
+        userId: options.userId,
+        title: options.title,
+        message: options.message,
+        type: options.type,
+        read: false
+      }
+    });
+    return notification;
+  } catch (error) {
+    logger_default.error({ err: error }, "Create notification error");
+    throw error;
+  }
+}
+async function notifyNewOrder(orderId) {
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    include: {
+      user: { select: { id: true, name: true, phone: true } },
+      items: true
+    }
+  });
+  if (!order) return;
+  const title = "Commande confirmee";
+  const body = `Votre commande ${order.orderNumber} a ete confirmee. Nos artisans commencent la fabrication.`;
+  await createNotification({
+    userId: order.user.id,
+    title,
+    message: body,
+    type: "ORDER",
+    data: { orderId: order.id, orderNumber: order.orderNumber, status: "CONFIRMED" },
+    orderId
+  });
+  if (order.user.phone) {
+    await sendOrderConfirmationSMS(order.user.phone, order.orderNumber, order.totalAmount, order.user.name);
+  }
+  await notifyGerantsNewOrder(order);
+}
+async function notifyGerantsNewOrder(order) {
+  const admins = await prisma.user.findMany({
+    where: { role: "ADMIN" },
+    select: { id: true, phone: true }
+  });
+  const itemCount = order.items.reduce((sum, i) => sum + i.quantity, 0);
+  const itemsList = order.items.map((i) => `${i.productName} x${i.quantity}`).join(", ");
+  for (const admin of admins) {
+    const title = "Nouvelle commande";
+    const message = `Commande ${order.orderNumber} de ${order.customerName} \u2014 ${order.totalAmount.toLocaleString()} FCFA (${itemCount} article${itemCount > 1 ? "s" : ""}). Articles: ${itemsList}.`;
+    await createNotification({
+      userId: admin.id,
+      title,
+      message,
+      type: "ORDER",
+      data: { orderId: order.id, orderNumber: order.orderNumber, type: "NEW_ORDER" },
+      orderId: order.id
+    });
+    if (admin.phone) {
+      await sendNewOrderSMS(admin.phone, order.orderNumber, order.customerName, order.totalAmount);
+    }
+  }
+}
+async function notifyOrderStatusChange(orderId, status) {
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    include: { user: { select: { id: true, name: true, phone: true } } }
+  });
+  if (!order || !order.user) return;
+  const statusLabels = {
+    CONFIRMED: "Commande confirmee",
+    PREPARING: "En cours de fabrication",
+    SHIPPED: "Commande expediee",
+    DELIVERED: "Livree avec succes",
+    CANCELLED: "Commande annulee"
+  };
+  const title = statusLabels[status] || "Statut mis a jour";
+  const body = `Votre commande ${order.orderNumber}: ${statusLabels[status] || status}.`;
+  await createNotification({
+    userId: order.user.id,
+    title,
+    message: body,
+    type: "ORDER",
+    data: { orderId: order.id, orderNumber: order.orderNumber, status },
+    orderId
+  });
+  if (order.user.phone) {
+    const clientName = order.user.name;
+    switch (status) {
+      case "CONFIRMED":
+        await sendOrderConfirmationSMS(order.user.phone, order.orderNumber, order.totalAmount, clientName);
+        break;
+      case "PREPARING":
+        await sendPreparingSMS(order.user.phone, order.orderNumber, clientName);
+        break;
+      case "SHIPPED":
+        await sendShippingSMS(order.user.phone, order.orderNumber, void 0, clientName);
+        break;
+      case "DELIVERED":
+        await sendDeliverySMS(order.user.phone, order.orderNumber, clientName);
+        break;
+      case "CANCELLED":
+        await sendCancelledSMS(order.user.phone, order.orderNumber, void 0, clientName);
+        break;
+    }
+  }
+}
+async function notifyCustomRequest(userId, requestId) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { name: true, phone: true }
+  });
+  await createNotification({
+    userId,
+    title: "Demande sur-mesure recue",
+    message: `Votre demande ${requestId} a ete prise en compte. Notre equipe vous contactera sous 24h.`,
+    type: "CUSTOM",
+    data: { requestId, type: "custom" }
+  });
+  if (user?.phone) {
+    await sendCustomRequestSMS(user.phone, requestId);
+  }
+  await notifyGerantsNewCustom(userId, requestId);
+}
+async function notifyGerantsNewCustom(userId, requestId) {
+  const admins = await prisma.user.findMany({
+    where: { role: "ADMIN" },
+    select: { id: true, phone: true }
+  });
+  const request = await prisma.customRequest.findUnique({
+    where: { id: requestId },
+    select: { jewelryType: true }
+  });
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { name: true }
+  });
+  const customerName = user?.name || "Client";
+  const jewelryType = request?.jewelryType || "Bijou";
+  for (const admin of admins) {
+    const title = "Nouvelle demande sur-mesure";
+    const message = `Demande ${requestId} de ${customerName} \u2014 ${jewelryType}. Connectez-vous pour gerer.`;
+    await createNotification({
+      userId: admin.id,
+      title,
+      message,
+      type: "CUSTOM",
+      data: { requestId, type: "new_custom" }
+    });
+    if (admin.phone) {
+      await sendNewCustomToGerantSMS(admin.phone, requestId, customerName, jewelryType);
+    }
+  }
+}
+async function notifyRepairRequest(userId, requestId) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { name: true, phone: true }
+  });
+  await createNotification({
+    userId,
+    title: "Demande de reparation recue",
+    message: `Votre demande ${requestId} a ete enregistree. Nous vous contacterons pour organiser le depot.`,
+    type: "REPAIR",
+    data: { requestId, type: "repair" }
+  });
+  if (user?.phone) {
+    await sendRepairRequestSMS(user.phone, requestId);
+  }
+  await notifyGerantsNewRepair(userId, requestId);
+}
+async function notifyGerantsNewRepair(userId, requestId) {
+  const admins = await prisma.user.findMany({
+    where: { role: "ADMIN" },
+    select: { id: true, phone: true }
+  });
+  const request = await prisma.repairRequest.findUnique({
+    where: { id: requestId },
+    select: { jewelryType: true }
+  });
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { name: true }
+  });
+  const customerName = user?.name || "Client";
+  const jewelryType = request?.jewelryType || "Bijou";
+  for (const admin of admins) {
+    const title = "Nouvelle demande de reparation";
+    const message = `Demande ${requestId} de ${customerName} \u2014 ${jewelryType}. Connectez-vous pour gerer.`;
+    await createNotification({
+      userId: admin.id,
+      title,
+      message,
+      type: "REPAIR",
+      data: { requestId, type: "new_repair" }
+    });
+    if (admin.phone) {
+      await sendNewRepairToGerantSMS(admin.phone, requestId, customerName, jewelryType);
+    }
+  }
+}
+async function notifyRepairStatusChange(requestId, status) {
+  const request = await prisma.repairRequest.findUnique({
+    where: { id: requestId },
+    include: { user: { select: { id: true, phone: true } } }
+  });
+  if (!request || !request.user) return;
+  const statusLabels = {
+    RECEIVED: "Reparation recue",
+    IN_PROGRESS: "En cours de traitement",
+    WAITING_PARTS: "En attente de pieces",
+    COMPLETED: "Reparation terminee",
+    DELIVERED: "Bijou remis",
+    CANCELLED: "Reparation annulee"
+  };
+  const title = statusLabels[status] || "Statut mis a jour";
+  const body = `Votre reparation ${requestId}: ${statusLabels[status] || status}.`;
+  await createNotification({
+    userId: request.user.id,
+    title,
+    message: body,
+    type: "REPAIR",
+    data: { requestId, status, type: "repair" }
+  });
+  if (request.user.phone) {
+    await sendRepairStatusSMS(request.user.phone, requestId, status);
+  }
+}
+async function notifyCustomStatusChange(requestId, status) {
+  const request = await prisma.customRequest.findUnique({
+    where: { id: requestId },
+    include: { user: { select: { id: true, phone: true } } }
+  });
+  if (!request || !request.user) return;
+  const statusLabels = {
+    PENDING: "Demande en attente",
+    IN_PROGRESS: "Etude en cours",
+    QUOTE_SENT: "Devis envoye",
+    APPROVED: "Demande approuvee",
+    COMPLETED: "Bijou termine",
+    CANCELLED: "Demande annulee"
+  };
+  const title = statusLabels[status] || "Statut mis a jour";
+  const body = `Votre demande sur-mesure ${requestId}: ${statusLabels[status] || status}.`;
+  await createNotification({
+    userId: request.user.id,
+    title,
+    message: body,
+    type: "CUSTOM",
+    data: { requestId, status, type: "custom" }
+  });
+  if (request.user.phone) {
+    await sendCustomStatusSMS(request.user.phone, requestId, status);
+  }
 }
 
 // backend/lib/audit.ts
@@ -779,6 +1071,17 @@ router.post("/api/auth/register", rateLimit(RATE_LIMITS.register, RATE_WINDOW_MS
       data: { name: validName, identifier: validIdentifier.toLowerCase(), password: hashedPassword, phone: validation.data.phone || null }
     });
     await prisma.cart.create({ data: { userId: user.id } });
+    if (user.phone) {
+      sendWelcomeSMS(user.phone, user.name).catch(
+        (err) => logger_default.warn({ err, userId: user.id }, "Welcome SMS failed")
+      );
+    }
+    createNotification({
+      userId: user.id,
+      title: "Bienvenue chez SaTouba",
+      message: `Bonjour ${user.name}, votre compte est cree. D\xE9couvrez nos bijoux sur-mesure et nos cr\xE9ations artisanales.`,
+      type: "SYSTEM"
+    }).catch((err) => logger_default.warn({ err, userId: user.id }, "Welcome notification failed"));
     const token = generateToken(user.id, user.role);
     const refreshToken = await generateRefreshToken(user.id);
     const { password: _, ...userWithoutPassword } = user;
@@ -954,6 +1257,11 @@ router.post("/api/auth/change-password", authenticateToken, async (req, res) => 
       where: { id: req.userId },
       data: { password: hashedPassword }
     });
+    if (user.phone) {
+      sendPasswordChangedSMS(user.phone, user.name).catch(
+        (err) => logger_default.warn({ err, userId: user.id }, "Password changed SMS failed")
+      );
+    }
     logger_default.info({ userId: req.userId }, "Password changed");
     res.json({ success: true, message: "Mot de passe modifi\xE9 avec succ\xE8s" });
   } catch (error) {
@@ -987,7 +1295,7 @@ router.post("/api/auth/forgot-password", rateLimit(RATE_LIMITS.forgotPassword, R
       }
     });
     if (user.phone) {
-      await sendOTPSMS(user.phone, otp);
+      await sendOTPSMS(user.phone, otp, user.name);
     }
     logger_default.info({ userId: user.id }, "Password reset OTP sent via SMS");
     res.json({ success: true, message: "Si un compte existe avec ce num\xE9ro, un code de r\xE9initialisation a \xE9t\xE9 envoy\xE9 par SMS." });
@@ -1041,6 +1349,11 @@ router.post("/api/auth/reset-password", rateLimit(RATE_LIMITS.resetPassword, RAT
       })
     ]);
     await clearAttempts(`otp:${validPhone}`);
+    if (user.phone) {
+      sendPasswordResetDoneSMS(user.phone, user.name).catch(
+        (err) => logger_default.warn({ err, userId: user.id }, "Password reset SMS failed")
+      );
+    }
     logger_default.info({ userId: resetRecord.userId }, "Password reset completed via OTP");
     res.json({ success: true, message: "Mot de passe r\xE9initialis\xE9 avec succ\xE8s" });
   } catch (error) {
@@ -1622,265 +1935,6 @@ var cart_default = router4;
 
 // backend/routes/orders.ts
 var import_express5 = require("express");
-
-// backend/lib/notifications.ts
-async function createNotification(options) {
-  try {
-    const notification = await prisma.notification.create({
-      data: {
-        userId: options.userId,
-        title: options.title,
-        message: options.message,
-        type: options.type,
-        read: false
-      }
-    });
-    return notification;
-  } catch (error) {
-    logger_default.error({ err: error }, "Create notification error");
-    throw error;
-  }
-}
-async function notifyNewOrder(orderId) {
-  const order = await prisma.order.findUnique({
-    where: { id: orderId },
-    include: {
-      user: { select: { id: true, name: true, phone: true } },
-      items: true
-    }
-  });
-  if (!order) return;
-  const title = "Commande confirmee";
-  const body = `Votre commande ${order.orderNumber} a ete confirmee. Nos artisans commencent la fabrication.`;
-  await createNotification({
-    userId: order.user.id,
-    title,
-    message: body,
-    type: "ORDER",
-    data: { orderId: order.id, orderNumber: order.orderNumber, status: "CONFIRMED" },
-    orderId
-  });
-  if (order.user.phone) {
-    await sendOrderConfirmationSMS(order.user.phone, order.orderNumber, order.totalAmount);
-  }
-  await notifyGerantsNewOrder(order);
-}
-async function notifyGerantsNewOrder(order) {
-  const admins = await prisma.user.findMany({
-    where: { role: "ADMIN" },
-    select: { id: true, phone: true }
-  });
-  const itemCount = order.items.reduce((sum, i) => sum + i.quantity, 0);
-  const itemsList = order.items.map((i) => `${i.productName} x${i.quantity}`).join(", ");
-  for (const admin of admins) {
-    const title = "Nouvelle commande";
-    const message = `Commande ${order.orderNumber} de ${order.customerName} \u2014 ${order.totalAmount.toLocaleString()} FCFA (${itemCount} article${itemCount > 1 ? "s" : ""}). Articles: ${itemsList}.`;
-    await createNotification({
-      userId: admin.id,
-      title,
-      message,
-      type: "ORDER",
-      data: { orderId: order.id, orderNumber: order.orderNumber, type: "NEW_ORDER" },
-      orderId: order.id
-    });
-    if (admin.phone) {
-      await sendNewOrderSMS(admin.phone, order.orderNumber, order.customerName, order.totalAmount);
-    }
-  }
-}
-async function notifyOrderStatusChange(orderId, status) {
-  const order = await prisma.order.findUnique({
-    where: { id: orderId },
-    include: { user: { select: { id: true, phone: true } } }
-  });
-  if (!order || !order.user) return;
-  const statusLabels = {
-    CONFIRMED: "Commande confirmee",
-    PREPARING: "En cours de fabrication",
-    SHIPPED: "Commande expediee",
-    DELIVERED: "Livree avec succes",
-    CANCELLED: "Commande annulee"
-  };
-  const title = statusLabels[status] || "Statut mis a jour";
-  const body = `Votre commande ${order.orderNumber}: ${statusLabels[status] || status}.`;
-  await createNotification({
-    userId: order.user.id,
-    title,
-    message: body,
-    type: "ORDER",
-    data: { orderId: order.id, orderNumber: order.orderNumber, status },
-    orderId
-  });
-  if (order.user.phone) {
-    switch (status) {
-      case "CONFIRMED":
-        await sendOrderConfirmationSMS(order.user.phone, order.orderNumber, order.totalAmount);
-        break;
-      case "PREPARING":
-        await sendPreparingSMS(order.user.phone, order.orderNumber);
-        break;
-      case "SHIPPED":
-        await sendShippingSMS(order.user.phone, order.orderNumber);
-        break;
-      case "DELIVERED":
-        await sendDeliverySMS(order.user.phone, order.orderNumber);
-        break;
-      case "CANCELLED":
-        await sendCancelledSMS(order.user.phone, order.orderNumber);
-        break;
-    }
-  }
-}
-async function notifyCustomRequest(userId, requestId) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { name: true, phone: true }
-  });
-  await createNotification({
-    userId,
-    title: "Demande sur-mesure recue",
-    message: `Votre demande ${requestId} a ete prise en compte. Notre equipe vous contactera sous 24h.`,
-    type: "CUSTOM",
-    data: { requestId, type: "custom" }
-  });
-  if (user?.phone) {
-    await sendCustomRequestSMS(user.phone, requestId);
-  }
-  await notifyGerantsNewCustom(userId, requestId);
-}
-async function notifyGerantsNewCustom(userId, requestId) {
-  const admins = await prisma.user.findMany({
-    where: { role: "ADMIN" },
-    select: { id: true, phone: true }
-  });
-  const request = await prisma.customRequest.findUnique({
-    where: { id: requestId },
-    select: { jewelryType: true }
-  });
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { name: true }
-  });
-  const customerName = user?.name || "Client";
-  const jewelryType = request?.jewelryType || "Bijou";
-  for (const admin of admins) {
-    const title = "Nouvelle demande sur-mesure";
-    const message = `Demande ${requestId} de ${customerName} \u2014 ${jewelryType}. Connectez-vous pour gerer.`;
-    await createNotification({
-      userId: admin.id,
-      title,
-      message,
-      type: "CUSTOM",
-      data: { requestId, type: "new_custom" }
-    });
-    if (admin.phone) {
-      await sendNewCustomToGerantSMS(admin.phone, requestId, customerName, jewelryType);
-    }
-  }
-}
-async function notifyRepairRequest(userId, requestId) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { name: true, phone: true }
-  });
-  await createNotification({
-    userId,
-    title: "Demande de reparation recue",
-    message: `Votre demande ${requestId} a ete enregistree. Nous vous contacterons pour organiser le depot.`,
-    type: "REPAIR",
-    data: { requestId, type: "repair" }
-  });
-  if (user?.phone) {
-    await sendRepairRequestSMS(user.phone, requestId);
-  }
-  await notifyGerantsNewRepair(userId, requestId);
-}
-async function notifyGerantsNewRepair(userId, requestId) {
-  const admins = await prisma.user.findMany({
-    where: { role: "ADMIN" },
-    select: { id: true, phone: true }
-  });
-  const request = await prisma.repairRequest.findUnique({
-    where: { id: requestId },
-    select: { jewelryType: true }
-  });
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { name: true }
-  });
-  const customerName = user?.name || "Client";
-  const jewelryType = request?.jewelryType || "Bijou";
-  for (const admin of admins) {
-    const title = "Nouvelle demande de reparation";
-    const message = `Demande ${requestId} de ${customerName} \u2014 ${jewelryType}. Connectez-vous pour gerer.`;
-    await createNotification({
-      userId: admin.id,
-      title,
-      message,
-      type: "REPAIR",
-      data: { requestId, type: "new_repair" }
-    });
-    if (admin.phone) {
-      await sendNewRepairToGerantSMS(admin.phone, requestId, customerName, jewelryType);
-    }
-  }
-}
-async function notifyRepairStatusChange(requestId, status) {
-  const request = await prisma.repairRequest.findUnique({
-    where: { id: requestId },
-    include: { user: { select: { id: true, phone: true } } }
-  });
-  if (!request || !request.user) return;
-  const statusLabels = {
-    RECEIVED: "Reparation recue",
-    IN_PROGRESS: "En cours de traitement",
-    WAITING_PARTS: "En attente de pieces",
-    COMPLETED: "Reparation terminee",
-    DELIVERED: "Bijou remis",
-    CANCELLED: "Reparation annulee"
-  };
-  const title = statusLabels[status] || "Statut mis a jour";
-  const body = `Votre reparation ${requestId}: ${statusLabels[status] || status}.`;
-  await createNotification({
-    userId: request.user.id,
-    title,
-    message: body,
-    type: "REPAIR",
-    data: { requestId, status, type: "repair" }
-  });
-  if (request.user.phone) {
-    await sendRepairStatusSMS(request.user.phone, requestId, status);
-  }
-}
-async function notifyCustomStatusChange(requestId, status) {
-  const request = await prisma.customRequest.findUnique({
-    where: { id: requestId },
-    include: { user: { select: { id: true, phone: true } } }
-  });
-  if (!request || !request.user) return;
-  const statusLabels = {
-    PENDING: "Demande en attente",
-    IN_PROGRESS: "Etude en cours",
-    QUOTE_SENT: "Devis envoye",
-    APPROVED: "Demande approuvee",
-    COMPLETED: "Bijou termine",
-    CANCELLED: "Demande annulee"
-  };
-  const title = statusLabels[status] || "Statut mis a jour";
-  const body = `Votre demande sur-mesure ${requestId}: ${statusLabels[status] || status}.`;
-  await createNotification({
-    userId: request.user.id,
-    title,
-    message: body,
-    type: "CUSTOM",
-    data: { requestId, status, type: "custom" }
-  });
-  if (request.user.phone) {
-    await sendCustomStatusSMS(request.user.phone, requestId, status);
-  }
-}
-
-// backend/routes/orders.ts
 var router5 = (0, import_express5.Router)();
 var VALID_STATUSES = ["CONFIRMED", "PREPARING", "SHIPPED", "DELIVERED", "CANCELLED"];
 var ALLOWED_TRANSITIONS = {

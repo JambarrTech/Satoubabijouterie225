@@ -133,14 +133,25 @@ export async function sendSMS(options: SMSOptions): Promise<SMSResponse> {
   }
 }
 
+// Prénom du client pour personnaliser les messages (1er mot du nom complet).
+// Exportés pour tests — sans nom, salutation générique inchangée.
+export function firstName(name?: string | null): string {
+  return (name || '').trim().split(/\s+/)[0] || '';
+}
+
+export function greeting(name?: string | null): string {
+  const first = firstName(name);
+  return first ? `Bonjour ${first},` : 'Bonjour,';
+}
+
 // ====================================================
 // COMMANDES — Templates SMS
 // ====================================================
 
-export async function sendOrderConfirmationSMS(phone: string, orderNumber: string, total: number): Promise<SMSResponse> {
+export async function sendOrderConfirmationSMS(phone: string, orderNumber: string, total: number, customerName?: string): Promise<SMSResponse> {
   const message = [
     `SaTouba`,
-    `Bonjour, votre commande ${orderNumber} a bien ete confirmee.`,
+    `${greeting(customerName)} votre commande ${orderNumber} a bien ete confirmee.`,
     `Montant: ${total.toLocaleString()} FCFA.`,
     `Nos artisans artisan commence la fabrication de votre bijou.`,
     `Vous recevrez un SMS a chaque etape (fabrication, expedition, livraison).`,
@@ -149,10 +160,10 @@ export async function sendOrderConfirmationSMS(phone: string, orderNumber: strin
   return sendSMS({ to: phone, message });
 }
 
-export async function sendPreparingSMS(phone: string, orderNumber: string): Promise<SMSResponse> {
+export async function sendPreparingSMS(phone: string, orderNumber: string, customerName?: string): Promise<SMSResponse> {
   const message = [
     `SaTouba`,
-    `Votre commande ${orderNumber} est en cours de fabrication par nos artisans.`,
+    `${greeting(customerName)} votre commande ${orderNumber} est en cours de fabrication par nos artisans.`,
     `Delai estime: 3 a 7 jours ouvrables selon le type de bijou.`,
     `Nous vous notifierons des que votre commande sera expediee.`,
     `Suivi: ${CONTACT_PHONE}`,
@@ -160,11 +171,12 @@ export async function sendPreparingSMS(phone: string, orderNumber: string): Prom
   return sendSMS({ to: phone, message });
 }
 
-export async function sendShippingSMS(phone: string, orderNumber: string, trackingUrl?: string): Promise<SMSResponse> {
+export async function sendShippingSMS(phone: string, orderNumber: string, trackingUrl?: string, customerName?: string): Promise<SMSResponse> {
   const tracking = trackingUrl ? `\nSuivi colis: ${trackingUrl}` : '';
+  const client = firstName(customerName);
   const message = [
     `SaTouba`,
-    `Bonne nouvelle! Votre commande ${orderNumber} est en route vers vous.`,
+    `Bonne nouvelle${client ? ` ${client}` : ''}! Votre commande ${orderNumber} est en route vers vous.`,
     `Livraison prevue sous 24 a 48h a Abidjan, 48 a 72h en province.${tracking}`,
     `En cas d'absence, le coursier vous contactera.`,
     `Questions? ${CONTACT_PHONE}`,
@@ -172,10 +184,10 @@ export async function sendShippingSMS(phone: string, orderNumber: string, tracki
   return sendSMS({ to: phone, message });
 }
 
-export async function sendDeliverySMS(phone: string, orderNumber: string): Promise<SMSResponse> {
+export async function sendDeliverySMS(phone: string, orderNumber: string, customerName?: string): Promise<SMSResponse> {
   const message = [
     `SaTouba`,
-    `Votre commande ${orderNumber} a ete livree avec succes!`,
+    `${greeting(customerName)} votre commande ${orderNumber} a ete livree avec succes!`,
     `Merci pour votre confiance. Votre satisfaction est notre priorite.`,
     `Nous vous remercions de prendre un moment pour nous laisser un avis sur l'application.`,
     `Pour toute question sur votre bijou: ${CONTACT_PHONE}`,
@@ -183,11 +195,11 @@ export async function sendDeliverySMS(phone: string, orderNumber: string): Promi
   return sendSMS({ to: phone, message });
 }
 
-export async function sendCancelledSMS(phone: string, orderNumber: string, reason?: string): Promise<SMSResponse> {
+export async function sendCancelledSMS(phone: string, orderNumber: string, reason?: string, customerName?: string): Promise<SMSResponse> {
   const reasonPart = reason ? `\nMotif: ${reason}.` : '';
   const message = [
     `SaTouba`,
-    `Votre commande ${orderNumber} a ete annulee.${reasonPart}`,
+    `${greeting(customerName)} votre commande ${orderNumber} a ete annulee.${reasonPart}`,
     `Si un paiement a ete effectue, le remboursement sera traite sous 3 a 5 jours ouvrables.`,
     `Pour plus d'informations, contactez-nous: ${CONTACT_PHONE}`,
   ].join(' ');
@@ -349,10 +361,43 @@ export async function sendNewRepairToGerantSMS(phone: string, requestId: string,
 }
 
 // ====================================================
+// COMPTE — Templates SMS (bienvenue / mots de passe)
+// ====================================================
+
+export async function sendWelcomeSMS(phone: string, name?: string): Promise<SMSResponse> {
+  const message = [
+    `SaTouba Bijouterie`,
+    `${greeting(name)} bienvenue chez SaTouba!`,
+    `Votre compte client est cree. Commandez vos bijoux en or, argent et pierres precieuses, avec livraison partout a Abidjan.`,
+    `Besoin d'aide? Appelez-nous: ${CONTACT_PHONE}`,
+  ].join(' ');
+  return sendSMS({ to: phone, message });
+}
+
+export async function sendPasswordResetDoneSMS(phone: string, name?: string): Promise<SMSResponse> {
+  const message = [
+    `SaTouba`,
+    `${greeting(name)} votre mot de passe a ete reinitialise avec succes.`,
+    `Vous pouvez desormais vous connecter avec votre nouveau mot de passe.`,
+    `Si ce n'est pas vous, contactez-nous immediatement: ${CONTACT_PHONE}`,
+  ].join(' ');
+  return sendSMS({ to: phone, message });
+}
+
+export async function sendPasswordChangedSMS(phone: string, name?: string): Promise<SMSResponse> {
+  const message = [
+    `SaTouba`,
+    `${greeting(name)} votre mot de passe a ete modifie avec succes.`,
+    `Si vous n'etes pas a l'origine de ce changement, contactez-nous immediatement: ${CONTACT_PHONE}`,
+  ].join(' ');
+  return sendSMS({ to: phone, message });
+}
+
+// ====================================================
 // OTP — Code de verification
 // ====================================================
 
-export async function sendOTPSMS(phone: string, code: string): Promise<SMSResponse> {
-  const message = `SaTouba: Votre code de verification est ${code}. Valable 10 minutes. Ne partagez ce code avec personne.`;
+export async function sendOTPSMS(phone: string, code: string, name?: string): Promise<SMSResponse> {
+  const message = `SaTouba: ${greeting(name)} votre code de verification est ${code}. Valable 10 minutes. Ne partagez ce code avec personne.`;
   return sendSMS({ to: phone, message });
 }
