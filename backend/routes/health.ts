@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
+import { getRedis } from '../lib/rateLimit';
 
 const router = Router();
 
@@ -14,6 +15,19 @@ router.get('/api/health', async (_req: Request, res: Response) => {
   } catch (e: any) {
     checks.database = `error: ${e.message?.slice(0, 100) || 'unknown'}`;
     healthy = false;
+  }
+
+  // Redis check (optionnel — rate-limit et idempotence basculent en mémoire sans lui)
+  try {
+    const redis = getRedis();
+    if (!redis) {
+      checks.redis = 'not configured (memory fallback)';
+    } else {
+      await redis.ping();
+      checks.redis = 'ok';
+    }
+  } catch (e: any) {
+    checks.redis = `error: ${String(e?.message || e).slice(0, 80)}`;
   }
 
   // Memory check

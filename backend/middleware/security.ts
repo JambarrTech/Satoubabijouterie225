@@ -52,16 +52,16 @@ export function setupSecurity(app: Express) {
     next();
   });
 
-  // Stricter rate limit for auth endpoints
-  const authRateLimit = rateLimit(RATE_LIMITS.auth, RATE_WINDOW_MS);
+  // Stricter rate limit for auth endpoints (portée 'auth' dédiée)
+  const authRateLimit = rateLimit(RATE_LIMITS.auth, RATE_WINDOW_MS, { name: 'auth' });
   app.use('/api/auth', authRateLimit);
 
   // Rate limit for order creation
-  const orderRateLimit = rateLimit(RATE_LIMITS.orders, RATE_WINDOW_MS);
+  const orderRateLimit = rateLimit(RATE_LIMITS.orders, RATE_WINDOW_MS, { name: 'orders' });
   app.use('/api/orders', orderRateLimit);
 
   // Rate limit for uploads
-  const uploadRateLimit = rateLimit(RATE_LIMITS.upload, RATE_WINDOW_MS);
+  const uploadRateLimit = rateLimit(RATE_LIMITS.upload, RATE_WINDOW_MS, { name: 'upload' });
   app.use('/api/upload', uploadRateLimit);
 
 
@@ -72,6 +72,6 @@ export function setupSecurity(app: Express) {
   });
 
   // Global rate limiter (fallback)
-  const globalRateLimit = rateLimit(RATE_LIMITS.global, RATE_WINDOW_MS);
+  const globalRateLimit = rateLimit(RATE_LIMITS.global, RATE_WINDOW_MS, { name: 'global' });
   app.use(globalRateLimit);
 }

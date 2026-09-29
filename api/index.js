@@ -109,9 +109,10 @@ function rateLimit(maxRequests, windowMs, opts) {
   return async (req, res, next) => {
     const authedId = req.userId;
     const key = opts?.keyBy === "user" && authedId ? `u:${authedId}` : `${req.ip || req.socket.remoteAddress || "unknown"}`;
+    const scope = opts?.name || `${req.method}:${req.baseUrl}${req.path}`;
     const client = getRedis();
     if (client) {
-      const bucketKey = `rl:${key}:${Math.floor(Date.now() / windowMs)}`;
+      const bucketKey = `rl:${scope}:${key}:${Math.floor(Date.now() / windowMs)}`;
       try {
         const count = await client.incr(bucketKey);
         if (count === 1) {
@@ -128,9 +129,10 @@ function rateLimit(maxRequests, windowMs, opts) {
     }
     const now = Date.now();
     memCleanup(windowMs);
-    const entry = memStore.get(key);
+    const memKey = `${scope}|${key}`;
+    const entry = memStore.get(memKey);
     if (!entry || now > entry.resetAt) {
-      memStore.set(key, { count: 1, resetAt: now + windowMs });
+      memStore.set(memKey, { count: 1, resetAt: now + windowMs });
       return next();
     }
     entry.count++;
@@ -231,17 +233,17 @@ function setupSecurity(app2) {
     }
     next();
   });
-  const authRateLimit = rateLimit(RATE_LIMITS.auth, RATE_WINDOW_MS);
+  const authRateLimit = rateLimit(RATE_LIMITS.auth, RATE_WINDOW_MS, { name: "auth" });
   app2.use("/api/auth", authRateLimit);
-  const orderRateLimit = rateLimit(RATE_LIMITS.orders, RATE_WINDOW_MS);
+  const orderRateLimit = rateLimit(RATE_LIMITS.orders, RATE_WINDOW_MS, { name: "orders" });
   app2.use("/api/orders", orderRateLimit);
-  const uploadRateLimit = rateLimit(RATE_LIMITS.upload, RATE_WINDOW_MS);
+  const uploadRateLimit = rateLimit(RATE_LIMITS.upload, RATE_WINDOW_MS, { name: "upload" });
   app2.use("/api/upload", uploadRateLimit);
   app2.use("/uploads", (_req, res, next) => {
     res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
     next();
   });
-  const globalRateLimit = rateLimit(RATE_LIMITS.global, RATE_WINDOW_MS);
+  const globalRateLimit = rateLimit(RATE_LIMITS.global, RATE_WINDOW_MS, { name: "global" });
   app2.use(globalRateLimit);
 }
 
@@ -3078,6 +3080,17 @@ router14.get("/api/health", async (_req, res) => {
   } catch (e) {
     checks.database = `error: ${e.message?.slice(0, 100) || "unknown"}`;
     healthy = false;
+  }
+  try {
+    const redis2 = getRedis();
+    if (!redis2) {
+      checks.redis = "not configured (memory fallback)";
+    } else {
+      await redis2.ping();
+      checks.redis = "ok";
+    }
+  } catch (e) {
+    checks.redis = `error: ${String(e?.message || e).slice(0, 80)}`;
   }
   const mem = process.memoryUsage();
   const heapUsedMB = Math.round(mem.heapUsed / 1024 / 1024);

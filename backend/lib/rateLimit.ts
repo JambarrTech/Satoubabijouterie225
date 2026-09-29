@@ -47,7 +47,7 @@ function memCleanup(windowMs: number) {
   }
 }
 
-export function rateLimit(maxRequests: number, windowMs: number, opts?: { keyBy?: 'ip' | 'user' }) {
+export function rateLimit(maxRequests: number, windowMs: number, opts?: { keyBy?: 'ip' | 'user'; name?: string }) {
   return async (req: Request, res: Response, next: NextFunction) => {
     // keyBy 'user' : bucket par compte (évite de bloquer tout un NAT mobile partagé).
     // Réservé aux routes APRÈS authenticateToken. Les routes publiques/sensibles
@@ -56,10 +56,14 @@ export function rateLimit(maxRequests: number, windowMs: number, opts?: { keyBy?
     const key = opts?.keyBy === 'user' && authedId
       ? `u:${authedId}`
       : `${req.ip || req.socket.remoteAddress || 'unknown'}`;
+    // Portée du compteur : chaque middleware a SON propre bucket (sans ça, le
+    // compteur global + les middlewares de route partagent la même clé et
+    // multiplient les incréments → 429 prématurés pour un client normal).
+    const scope = opts?.name || `${req.method}:${req.baseUrl}${req.path}`;
     const client = getRedis();
 
     if (client) {
-      const bucketKey = `rl:${key}:${Math.floor(Date.now() / windowMs)}`;
+      const bucketKey = `rl:${scope}:${key}:${Math.floor(Date.now() / windowMs)}`;
       try {
         const count = await client.incr(bucketKey);
         if (count === 1) {
@@ -77,12 +81,13 @@ export function rateLimit(maxRequests: number, windowMs: number, opts?: { keyBy?
       }
     }
 
-    // Fallback mémoire
+    // Fallback mémoire (clé par portée + IP/compte + fenêtre)
     const now = Date.now();
     memCleanup(windowMs);
-    const entry = memStore.get(key);
+    const memKey = `${scope}|${key}`;
+    const entry = memStore.get(memKey);
     if (!entry || now > entry.resetAt) {
-      memStore.set(key, { count: 1, resetAt: now + windowMs });
+      memStore.set(memKey, { count: 1, resetAt: now + windowMs });
       return next();
     }
     entry.count++;
