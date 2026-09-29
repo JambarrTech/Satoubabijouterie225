@@ -45,6 +45,11 @@ export const PAGINATION_MAX_LIMIT = 100;
 
 export const GERANT_IDENTIFIER = process.env.GERANT_IDENTIFIER || 'gerantSatoubaBijouterie6002';
 export const PROD_URL = process.env.PROD_URL || 'https://satoubabijouterie225.vercel.app';
+// Domaine personnalisé : toujours autorisé en plus (modifiable via EXTRA_ORIGINS).
+export const EXTRA_ORIGINS: string[] = (process.env.EXTRA_ORIGINS || 'https://satoubabijouterie.com,https://www.satoubabijouterie.com')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
 
 export const COUNTRY_CODE = process.env.COUNTRY_CODE || '225';
 export const CONTACT_PHONE = process.env.CONTACT_PHONE || '+225 05 54 13 07 46';

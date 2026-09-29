@@ -177,6 +177,7 @@ var PAGINATION_DEFAULT_LIMIT = 50;
 var PAGINATION_MAX_LIMIT = 100;
 var GERANT_IDENTIFIER = process.env.GERANT_IDENTIFIER || "gerantSatoubaBijouterie6002";
 var PROD_URL = process.env.PROD_URL || "https://satoubabijouterie225.vercel.app";
+var EXTRA_ORIGINS = (process.env.EXTRA_ORIGINS || "https://satoubabijouterie.com,https://www.satoubabijouterie.com").split(",").map((s) => s.trim()).filter(Boolean);
 var COUNTRY_CODE = process.env.COUNTRY_CODE || "225";
 var CONTACT_PHONE = process.env.CONTACT_PHONE || "+225 05 54 13 07 46";
 var AT_USERNAME = process.env.AFRICASTALKING_USERNAME || "sandbox";
@@ -3408,7 +3409,8 @@ if (process.env.NODE_ENV !== "test") {
 var configuredOrigins = (process.env.CORS_ORIGIN || process.env.APP_URL || "").split(",").map((s) => s.trim()).filter(Boolean);
 var vercelOrigins = [
   process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "",
-  PROD_URL
+  PROD_URL,
+  ...EXTRA_ORIGINS
 ].filter(Boolean);
 var allowedOrigins = [.../* @__PURE__ */ new Set([...configuredOrigins, ...vercelOrigins])];
 app.use((0, import_cors.default)({

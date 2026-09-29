@@ -7,7 +7,7 @@ import { createRequire } from "module";
 import pinoHttp from "pino-http";
 import logger from "./lib/logger";
 import { setupSecurity } from "./middleware/security";
-import { JSON_BODY_LIMIT, PROD_URL } from "./lib/config";
+import { EXTRA_ORIGINS, JSON_BODY_LIMIT, PROD_URL } from "./lib/config";
 import authRoutes from "./routes/auth";
 import categoryRoutes from "./routes/categories";
 import productRoutes from "./routes/products";
@@ -68,6 +68,7 @@ const configuredOrigins = (process.env.CORS_ORIGIN || process.env.APP_URL || '')
 const vercelOrigins = [
   process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '',
   PROD_URL,
+  ...EXTRA_ORIGINS,
 ].filter(Boolean);
 const allowedOrigins = [...new Set([...configuredOrigins, ...vercelOrigins])];
 app.use(cors({
