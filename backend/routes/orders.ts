@@ -6,13 +6,14 @@ import { sanitizeString } from '../lib/sanitize';
 import logger from '../lib/logger';
 import { notifyNewOrder, notifyOrderStatusChange } from '../lib/notifications';
 import { logAction } from '../lib/audit';
+import { PAGINATION_DEFAULT_LIMIT, PAGINATION_MAX_LIMIT } from '../lib/config';
 
 const router = Router();
 
-const VALID_STATUSES = ['CONFIRMED', 'PREPARING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
+export const VALID_STATUSES = ['CONFIRMED', 'PREPARING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
 
 // Allowed status transitions (state machine)
-const ALLOWED_TRANSITIONS: Record<string, string[]> = {
+export const ALLOWED_TRANSITIONS: Record<string, string[]> = {
   CONFIRMED: ['PREPARING', 'CANCELLED'],
   PREPARING: ['SHIPPED', 'CANCELLED'],
   SHIPPED: ['DELIVERED', 'CANCELLED'],
@@ -49,7 +50,7 @@ router.get('/api/orders', authenticateToken, async (req: AuthRequest, res) => {
 router.get('/api/orders/all', authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 50));
+    const limit = Math.min(PAGINATION_MAX_LIMIT, Math.max(1, parseInt(req.query.limit as string) || PAGINATION_DEFAULT_LIMIT));
     const skip = (page - 1) * limit;
 
     const [orders, total] = await Promise.all([
@@ -135,16 +136,17 @@ router.post('/api/orders', authenticateToken, async (req: AuthRequest, res) => {
       }
     }
 
-    // Total recalcule serveur sur le sous-ensemble
+    // Total recalcule serveur sur le sous-ensemble (inclut coupon Cart.couponCode si présent)
     const { total } = await calculateCartTotal(
       cart,
       itemsToOrder
     );
 
-    const orderNumber = `ORD-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
     const user = await prisma.user.findUnique({ where: { id: req.userId! } });
 
-    const order = await prisma.$transaction(async (tx) => {
+    const generateOrderNumber = () => `ORD-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+
+    const createOrderTx = (orderNumber: string) => prisma.$transaction(async (tx) => {
       // Atomic stock check + decrement (prevents overselling)
       for (const item of itemsToOrder) {
         const result = await tx.product.updateMany({
@@ -178,15 +180,19 @@ router.post('/api/orders', authenticateToken, async (req: AuthRequest, res) => {
             { status: 'CONFIRMED', label: 'Commande confirmee', date: new Date().toISOString(), completed: true },
           ]),
           items: {
-            create: itemsToOrder.map((item) => ({
-              productId: item.productId,
-              productName: item.product.name,
-              productImage: item.product.images?.[0] || '',
-              price: item.product.price,
-              quantity: item.quantity,
-              selectedSize: item.selectedSize,
-              selectedMaterial: item.selectedMaterial,
-            })),
+            create: itemsToOrder.map((item) => {
+              const imgs = (item.product as any).images;
+              const firstImg = Array.isArray(imgs) ? (imgs[0] || '') : (safeJsonParse(imgs as unknown as string, [])[0] || '');
+              return {
+                productId: item.productId,
+                productName: item.product.name,
+                productImage: firstImg,
+                price: item.product.price,
+                quantity: item.quantity,
+                selectedSize: item.selectedSize,
+                selectedMaterial: item.selectedMaterial,
+              };
+            }),
           },
         },
         include: { items: true },
@@ -212,6 +218,18 @@ router.post('/api/orders', authenticateToken, async (req: AuthRequest, res) => {
 
       return order;
     });
+
+    // Retry une fois en cas de collision orderNumber (contrainte unique)
+    let order;
+    try {
+      order = await createOrderTx(generateOrderNumber());
+    } catch (e: any) {
+      if (e?.code === 'P2002' && e?.meta?.target?.includes('orderNumber')) {
+        order = await createOrderTx(generateOrderNumber());
+      } else {
+        throw e;
+      }
+    }
 
     // Notify customer + gerants (async, non-blocking)
     notifyNewOrder(order.id).catch((err) =>

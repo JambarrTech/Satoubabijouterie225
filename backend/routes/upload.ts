@@ -7,6 +7,7 @@ import crypto from 'crypto';
 import { authenticateToken, requireAdmin } from '../middleware/auth';
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import logger from '../lib/logger';
+import { MAX_UPLOAD_BYTES } from '../lib/config';
 
 const router = Router();
 
@@ -28,12 +29,10 @@ router.post('/api/upload/handle', authenticateToken, requireAdmin, async (req, r
     const jsonResponse = await handleUpload({
       body,
       request: req,
-      onBeforeGenerateToken: async (pathname) => ({
+      onBeforeGenerateToken: async () => ({
         allowedContentTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
-        maximumSizeInBytes: 5 * 1024 * 1024,
+        maximumSizeInBytes: MAX_UPLOAD_BYTES,
         addRandomSuffix: true,
-        // L'admin est déjà validé par le middleware requireAdmin ci-dessus.
-        ...(pathname ? {} : {}),
       }),
       onUploadCompleted: async () => {},
     });
@@ -90,7 +89,7 @@ function getUpload(): multer.Multer {
   });
   upload = multer({
     storage,
-    limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+    limits: { fileSize: MAX_UPLOAD_BYTES },
     fileFilter: (_req, file, cb) => {
       const allowed = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
       const ext = path.extname(file.originalname).toLowerCase();

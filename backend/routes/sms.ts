@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma';
 import { authenticateToken, requireAdmin, AuthRequest } from '../middleware/auth';
 import { sendSMS } from '../lib/sms';
 import logger from '../lib/logger';
+import { SMS_MAX_LENGTH } from '../lib/config';
 
 const router = Router();
 
@@ -15,7 +16,7 @@ router.post('/api/sms/send', authenticateToken, requireAdmin, async (req: AuthRe
       return res.status(400).json({ error: 'Telephone et message requis' });
     }
 
-    if (message.length > 160) {
+    if (message.length > SMS_MAX_LENGTH) {
       return res.status(400).json({ error: 'Message trop long (max 160 caracteres)' });
     }
 

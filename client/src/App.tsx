@@ -28,12 +28,26 @@ import { fetchProducts } from './lib/api/products';
 import { fetchCart, addToCart } from './lib/api/cart';
 import { fetchFavorites, toggleFavorite } from './lib/api/favorites';
 import { fetchNotifications, markNotificationAsRead } from './lib/api/notifications';
+import { apiGet } from './lib/apiClient';
+import { VALID_TABS } from './lib/constants';
+
+function readInitialNav(): { tab: string; productId: string | null } {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get('tab') || 'home';
+    const productId = params.get('product');
+    return { tab: (VALID_TABS as readonly string[]).includes(tab) ? tab : 'home', productId };
+  } catch {
+    return { tab: 'home', productId: null };
+  }
+}
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
-  const [currentTab, setCurrentTab] = useState<string>('home');
+  const initialNav = readInitialNav();
+  const [currentTab, setCurrentTab] = useState<string>(initialNav.tab);
   const [selectedCategorySlug, setSelectedCategorySlug] = useState<string | undefined>();
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
@@ -53,6 +67,11 @@ export default function App() {
       try {
         const parsedUser = JSON.parse(savedUser) as User;
         setUser(parsedUser);
+        // Revalide la session côté serveur (comme l'espace gérant), sans casser l'UX si offline
+        apiGet<User>('/api/auth/me').then((serverUser) => {
+          setUser(serverUser);
+          localStorage.setItem('satouba_user', JSON.stringify(serverUser));
+        }).catch(() => {});
       } catch {
         localStorage.removeItem('satouba_token');
         localStorage.removeItem('satouba_user');
@@ -62,7 +81,20 @@ export default function App() {
 
   useEffect(() => {
     fetchCategories().then(setCategories).catch(console.error);
-    fetchProducts({ limit: 100 }).then((res) => setProducts(res.data)).catch(console.error);
+    fetchProducts({ limit: 100 }).then((res) => {
+      setProducts(res.data);
+      // Deep-link produit ?product=<id|slug> (partage / refresh)
+      try {
+        const productId = new URLSearchParams(window.location.search).get('product');
+        if (productId) {
+          const found = res.data.find((p) => p.id === productId || (p as any).slug === productId);
+          if (found) {
+            setSelectedProduct(found);
+            setCurrentTab('produit');
+          }
+        }
+      } catch {}
+    }).catch(console.error);
   }, []);
 
   useEffect(() => {
@@ -80,7 +112,7 @@ export default function App() {
   }, [user]);
 
 
-  const handleLogin = (loggedInUser: User, _token: string, _refreshToken?: string) => {
+  const handleLogin = (loggedInUser: User) => {
     setUser(loggedInUser);
   };
 
@@ -125,12 +157,25 @@ export default function App() {
     }
     setSelectedProduct(null);
     setCurrentTab(tab);
+    // Synchronise l'URL pour deep-link / refresh (sans router, suit la logique currentTab existante)
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', tab);
+      url.searchParams.delete('product');
+      window.history.replaceState(null, '', url.toString());
+    } catch {}
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSelectProduct = (product: Product) => {
     setSelectedProduct(product);
     setCurrentTab('produit');
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', 'produit');
+      url.searchParams.set('product', (product as any).slug || product.id);
+      window.history.replaceState(null, '', url.toString());
+    } catch {}
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 

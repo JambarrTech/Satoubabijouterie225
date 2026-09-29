@@ -17,7 +17,8 @@ export function GerantOverview() {
       fetchStoreSettings().catch(() => null)
     ]).then(([statsData, ordersData, settingsData]) => {
       setStats(statsData as Stats);
-      setOrders(ordersData as Order[]);
+      const list = Array.isArray(ordersData) ? ordersData : (ordersData as any)?.data || [];
+      setOrders(list as Order[]);
       setSettings(settingsData);
       setLoading(false);
     }).catch(err => {

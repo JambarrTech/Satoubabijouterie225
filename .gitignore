@@ -46,3 +46,7 @@ api/index.js.map
 backend/app.cjs
 backend/app.js
 .vercel
+
+# Documents personnels (ne jamais commiter)
+"commande nom de domaine.pdf"
+*.pdf

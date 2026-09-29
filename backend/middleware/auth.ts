@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { prisma } from '../lib/prisma';
+import { JWT_EXPIRES_IN, REFRESH_TOKEN_DAYS } from '../lib/config';
 
 function getJWTSecret(): string {
   const secret = process.env.JWT_SECRET || (process.env.NODE_ENV === 'test' ? 'test-jwt-secret-for-vitest-only' : '');
@@ -80,12 +81,12 @@ export function requireAdmin(req: AuthRequest, res: Response, next: NextFunction
 }
 
 export function generateToken(userId: string, role: string): string {
-  return jwt.sign({ userId, role }, getJWTSecret(), { expiresIn: '15m' });
+  return jwt.sign({ userId, role }, getJWTSecret(), { expiresIn: JWT_EXPIRES_IN as any });
 }
 
 export async function generateRefreshToken(userId: string): Promise<string> {
   const token = crypto.randomBytes(40).toString('hex');
-  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+  const expiresAt = new Date(Date.now() + REFRESH_TOKEN_DAYS * 24 * 60 * 60 * 1000);
 
   await prisma.refreshToken.create({
     data: {

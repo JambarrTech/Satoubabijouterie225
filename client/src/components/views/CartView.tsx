@@ -2,11 +2,12 @@ import { useState, useMemo, useEffect } from "react";
 import { Trash2, ShoppingBag, ArrowRight, Check, Plus, Minus, Square, CheckSquare, MapPin, Phone, User } from "../../ui/Icons";
 import { motion, AnimatePresence } from "motion/react";
 import { Cart } from "../../types";
-import { removeFromCart, updateCartItemQuantity } from "../../lib/api/cart";
+import { removeFromCart, updateCartItemQuantity, applyCoupon, removeCoupon } from "../../lib/api/cart";
 import { createOrder } from "../../lib/api/orders";
 import { Price } from "../ui/Price";
 import { Button } from "../ui/Button";
 import { useToast } from "../ui/Toast";
+import { PHONE_REGEX } from "../../lib/constants";
 
 interface CartViewProps {
   cart: Cart;
@@ -22,6 +23,8 @@ export function CartView({ cart, onUpdateCart, onNavigate, onRefreshCart }: Cart
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showShippingForm, setShowShippingForm] = useState(false);
+  const [couponInput, setCouponInput] = useState("");
+  const [couponLoading, setCouponLoading] = useState(false);
   const [shippingInfo, setShippingInfo] = useState({
     fullName: "",
     phone: "",
@@ -73,10 +76,18 @@ export function CartView({ cart, onUpdateCart, onNavigate, onRefreshCart }: Cart
     return Math.round(cart.shippingFee * ratio);
   }, [isAllSelected, cart.shippingFee, cart.subtotal, selectedSubtotal]);
 
+  const displayDiscount = useMemo(() => {
+    const d = (cart as any).discount || 0;
+    if (!d) return 0;
+    if (isAllSelected) return d;
+    const ratio = cart.subtotal > 0 ? selectedSubtotal / cart.subtotal : 0;
+    return Math.round(d * ratio);
+  }, [isAllSelected, (cart as any).discount, cart.subtotal, selectedSubtotal]);
+
   const displayTotal = useMemo(() => {
     if (selectedIds.size === 0) return 0;
-    return selectedSubtotal + displayShipping;
-  }, [selectedSubtotal, displayShipping, selectedIds.size]);
+    return Math.max(0, selectedSubtotal - displayDiscount + displayShipping);
+  }, [selectedSubtotal, displayDiscount, displayShipping, selectedIds.size]);
 
   const handleRemove = async (itemId: string) => {
     try {
@@ -100,13 +111,37 @@ export function CartView({ cart, onUpdateCart, onNavigate, onRefreshCart }: Cart
     }
   };
 
+  const handleApplyCoupon = async () => {
+    if (!couponInput.trim() || couponLoading) return;
+    setCouponLoading(true);
+    try {
+      const updated = await applyCoupon(couponInput.trim());
+      onUpdateCart(updated);
+      setCouponInput("");
+      toast("Code promo appliqué", "success");
+    } catch (e: any) {
+      toast(e.message || "Code promo invalide", "error");
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const handleRemoveCoupon = async () => {
+    try {
+      const updated = await removeCoupon();
+      onUpdateCart(updated);
+    } catch (e: any) {
+      toast(e.message || "Erreur", "error");
+    }
+  };
+
   const validateShipping = (): boolean => {
     const newErrors: Record<string, string | undefined> = {};
     if (!shippingInfo.fullName.trim() || shippingInfo.fullName.trim().length < 2) {
       newErrors.fullName = "Nom complet requis (min. 2 caracteres)";
     }
     const phoneClean = shippingInfo.phone.replace(/\s/g, "");
-    if (!phoneClean || phoneClean.length < 8 || !/^\+?\d{8,}$/.test(phoneClean)) {
+    if (!phoneClean || phoneClean.length < 8 || !PHONE_REGEX.test(phoneClean)) {
       newErrors.phone = "Numero de telephone invalide (+225 XX XX XX XX XX)";
     }
     if (!shippingInfo.address.trim() || shippingInfo.address.trim().length < 5) {
@@ -123,6 +158,8 @@ export function CartView({ cart, onUpdateCart, onNavigate, onRefreshCart }: Cart
     if (selectedIds.size === 0) {
       return;
     }
+    // Garde anti double-clic (suit le disabled isSubmitting existant)
+    if (isSubmitting) return;
     if (!validateShipping()) {
       return;
     }
@@ -251,6 +288,12 @@ export function CartView({ cart, onUpdateCart, onNavigate, onRefreshCart }: Cart
                   <span>Sous-total selection</span>
                   <span className="font-medium text-gray-900">{selectedSubtotal.toLocaleString()} FCFA</span>
                 </div>
+                {displayDiscount > 0 && (
+                  <div className="flex justify-between text-[#0B5D1E]">
+                    <span>Remise {(cart as any).couponCode ? `(${(cart as any).couponCode})` : ""}</span>
+                    <span className="font-medium">-{displayDiscount.toLocaleString()} FCFA</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-gray-600">
                   <span>Livraison</span>
                   <span className="font-medium text-gray-900">{displayShipping === 0 ? "Gratuite" : displayShipping.toLocaleString() + " FCFA"}</span>
@@ -259,6 +302,32 @@ export function CartView({ cart, onUpdateCart, onNavigate, onRefreshCart }: Cart
                   <span>Total estime</span>
                   <span className="text-[#0B5D1E] text-xl">{displayTotal.toLocaleString()} FCFA</span>
                 </div>
+              </div>
+
+              <div className="pt-2">
+                {(cart as any).couponCode ? (
+                  <div className="flex items-center justify-between text-xs bg-[#EAF7ED]/60 border border-[#0B5D1E]/20 rounded-xl px-3 py-2">
+                    <span className="font-semibold text-[#064A15]">Code {(cart as any).couponCode} appliqué</span>
+                    <button onClick={handleRemoveCoupon} className="text-red-500 hover:underline font-semibold">Retirer</button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={couponInput}
+                      onChange={(e) => setCouponInput(e.target.value)}
+                      placeholder="Code promo"
+                      className="flex-1 rounded-xl border border-gray-200 p-2.5 text-sm uppercase focus:outline-none focus:border-[#0B5D1E]"
+                    />
+                    <button
+                      onClick={handleApplyCoupon}
+                      disabled={couponLoading || !couponInput.trim()}
+                      className="px-4 rounded-xl bg-[#0B5D1E] text-white text-sm font-semibold disabled:opacity-40"
+                    >
+                      {couponLoading ? "..." : "OK"}
+                    </button>
+                  </div>
+                )}
               </div>
 
               {!showShippingForm ? (

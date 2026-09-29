@@ -10,6 +10,8 @@ import { logAction } from '../lib/audit';
 
 const router = Router();
 
+export const VALID_REPAIR_STATUSES = ['RECEIVED', 'IN_PROGRESS', 'WAITING_PARTS', 'COMPLETED', 'DELIVERED', 'CANCELLED'] as const;
+
 const createRepairSchema = z.object({
   jewelryType: z.string().trim().min(1, 'Type de bijou requis').max(200),
   problemType: z.string().trim().min(1, 'Type de problème requis').max(200),
@@ -19,7 +21,7 @@ const createRepairSchema = z.object({
 });
 
 const repairStatusSchema = z.object({
-  status: z.enum(['RECEIVED', 'IN_PROGRESS', 'WAITING_PARTS', 'COMPLETED', 'DELIVERED', 'CANCELLED'] as const),
+  status: z.enum(VALID_REPAIR_STATUSES),
 });
 
 function validateRepair<T extends z.ZodTypeAny>(schema: T, data: unknown): { success: true; data: z.infer<T> } | { success: false; error: string } {
@@ -105,8 +107,10 @@ router.post('/api/repairs', authenticateToken, async (req: AuthRequest, res) => 
       },
     });
 
-    // Notify user
-    await notifyRepairRequest(req.userId!, repair.id);
+    // Notify user + gérants (non-bloquant, comme les commandes)
+    notifyRepairRequest(req.userId!, repair.id).catch((err) =>
+      logger.error({ err, requestId: repair.id }, 'Failed to send repair request notifications')
+    );
 
     res.status(201).json(repair);
   } catch {

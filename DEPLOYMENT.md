@@ -122,3 +122,34 @@ gérant sous `/gerant`). Pour le faire tourner en local :
 - `uuid` (moderate, 8) : transitives via la pile `firebase-admin`/Google Cloud. Ne pas
   forcer `npm audit fix --force` (casserait firebase-admin 12 → 14, breaking). Low risk
   pratique.
+
+## CI/CD — GitHub Actions + Vercel
+
+- **CI** (`.github/workflows/ci.yml`) : sur chaque `push`/`PR` vers `main`,
+  `npm ci` → `prisma generate` → `vitest` (32 tests) → `build:api` →
+  `build:client` → `build:gerant` → `assemble-vercel.mjs`. Le déploiement
+  Vercel ne doit partir que sur un `main` vert (recommandé : branch protection
+  exigeant le check `validate`).
+- **CD** : Vercel déploie automatiquement chaque commit de `main`
+  (`vercel.json` : build + `outputDirectory: dist`, fonction `api/index.js`
+  30 s / 1024 MB).
+- **Avant chaque push risqué**, taguer la prod stable :
+  ```
+  git tag prod-backup-AAAAMMJJ origin/main
+  git push origin prod-backup-AAAAMMJJ
+  ```
+
+## Rollback — si le site casse après un push
+
+1. **Le plus rapide (recommandé)** : Vercel Dashboard → Deployments →
+   déploiement Production précédent → **Redeploy**. Le site revient en
+   ~1 min sans toucher à git.
+2. **Via git (définitif)** :
+   ```
+   git fetch origin --tags
+   git checkout main && git reset --hard <tag-stable>   # ex: prod-backup-20260929
+   git push --force-with-lease origin main
+   ```
+3. **Via workflow** : Actions → `Rollback` → `Run workflow` → saisir le tag
+   (valide tests + builds du tag avant de réécrire `main`).
+4. **Vérifier** : `GET https://<domaine>/api/health` → `{"status":"healthy",...}`.

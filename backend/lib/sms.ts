@@ -1,14 +1,14 @@
 import axios from 'axios';
 import logger from './logger';
-
-const AT_USERNAME = process.env.AFRICASTALKING_USERNAME || 'sandbox';
-const AT_API_KEY = process.env.AFRICASTALKING_API_KEY || '';
-const AT_SENDER_ID = process.env.AFRICASTALKING_SENDER_ID || 'SaTouba';
-const AT_BASE_URL = AT_USERNAME === 'sandbox'
-  ? 'https://api.sandbox.africastalking.com'
-  : 'https://api.africastalking.com';
-const COUNTRY_CODE = process.env.COUNTRY_CODE || '225';
-const CONTACT_PHONE = process.env.CONTACT_PHONE || '+225 05 54 13 07 46';
+import {
+  AT_API_KEY,
+  AT_BASE_URL,
+  AT_SENDER_ID,
+  AT_USERNAME,
+  CONTACT_PHONE,
+  COUNTRY_CODE,
+  SMS_TIMEOUT_MS,
+} from './config';
 
 interface SMSOptions {
   to: string;
@@ -83,7 +83,7 @@ export async function sendSMS(options: SMSOptions): Promise<SMSResponse> {
           'Content-Type': 'application/x-www-form-urlencoded',
           'Accept': 'application/json',
         },
-        timeout: 10000, // 10s timeout
+        timeout: SMS_TIMEOUT_MS,
       }
     );
 
@@ -129,67 +129,6 @@ export async function sendSMS(options: SMSOptions): Promise<SMSResponse> {
     return {
       success: false,
       error: errData?.errorMessage || error.message,
-    };
-  }
-}
-
-export async function sendBulkSMS(phones: string[], message: string): Promise<SMSResponse> {
-  if (!AT_API_KEY) {
-    return { success: false, error: 'SMS service not configured' };
-  }
-
-  if (phones.length === 0) {
-    return { success: false, error: 'No recipients' };
-  }
-
-  const formattedPhones = phones.map(formatPhoneNumber).join(',');
-
-  logger.info({
-    recipientCount: phones.length,
-    messageLength: message.length,
-  }, 'Bulk SMS send attempt');
-
-  try {
-    const bulkParams: Record<string, string> = {
-      username: AT_USERNAME,
-      to: formattedPhones,
-      message,
-    };
-
-    const response = await axios.post(
-      `${AT_BASE_URL}/version1/messaging`,
-      new URLSearchParams(bulkParams),
-      {
-        headers: {
-          'apiKey': AT_API_KEY,
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Accept': 'application/json',
-        },
-        timeout: 15000,
-      }
-    );
-
-    const recipients = response.data.SMSMessageData?.Recipients || [];
-    const successCount = recipients.filter((r: any) => r.status === 'Success').length;
-    const failedCount = recipients.length - successCount;
-
-    logger.info({
-      successCount,
-      failedCount,
-      total: recipients.length,
-    }, 'Bulk SMS completed');
-
-    return {
-      success: successCount > 0,
-      recipients,
-    };
-  } catch (error: any) {
-    logger.error({
-      error: error.response?.data?.errorMessage || error.message,
-    }, 'Bulk SMS API error');
-    return {
-      success: false,
-      error: error.response?.data?.errorMessage || error.message,
     };
   }
 }

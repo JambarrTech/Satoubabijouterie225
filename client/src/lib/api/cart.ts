@@ -17,6 +17,10 @@ export async function removeFromCart(itemId: string): Promise<Cart> {
   return apiDelete<Cart>(`/api/cart/items/${itemId}`);
 }
 
-export async function clearCart(): Promise<{ success: boolean }> {
-  return apiDelete<{ success: boolean }>('/api/cart');
+export async function applyCoupon(code: string): Promise<Cart> {
+  return apiPost<Cart>('/api/cart/coupon', { code });
+}
+
+export async function removeCoupon(): Promise<Cart> {
+  return apiDelete<Cart>('/api/cart/coupon');
 }

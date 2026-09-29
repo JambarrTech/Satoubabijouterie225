@@ -25,8 +25,24 @@ export async function calculateCartTotal(_cart: any, cartItems: any[]) {
   const shippingFeeValue = parseInt(settingsMap.get('shipping_fee') || '0') || 0;
   const freeThreshold = parseInt(settingsMap.get('free_shipping_threshold') || '0') || 0;
   const shippingFee = subtotal > freeThreshold ? 0 : (subtotal > 0 ? shippingFeeValue : 0);
-  const total = subtotal + shippingFee;
-  return { subtotal, discount: 0, shippingFee, total };
+
+  // Coupon existant (Cart.couponCode + Coupon.code) : pourcentage si actif et non expiré
+  let discount = 0;
+  const couponCode = (_cart?.couponCode || '').toString().trim().toUpperCase();
+  if (couponCode && subtotal > 0) {
+    try {
+      const coupon = await prisma.coupon.findFirst({ where: { code: couponCode } });
+      if (coupon && coupon.isActive && new Date(coupon.expiryDate).getTime() > Date.now()) {
+        const pct = Math.min(100, Math.max(0, Number(coupon.discountPercent) || 0));
+        discount = Math.round((subtotal * pct) / 100);
+      }
+    } catch {
+      discount = 0;
+    }
+  }
+
+  const total = Math.max(0, subtotal - discount + shippingFee);
+  return { subtotal, discount, shippingFee, total };
 }
 
 export function formatCartItems(items: any[]) {

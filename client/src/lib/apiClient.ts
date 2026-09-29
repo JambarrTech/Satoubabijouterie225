@@ -165,7 +165,9 @@ export async function apiUpload(file: File): Promise<{ url: string; filename: st
   if (useBlob) {
     try {
       const { upload } = await import('@vercel/blob/client');
-      const blob = await upload(`products/${file.name}`, file, {
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]+/g, '-');
+      const uniquePath = `products/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safeName}`;
+      const blob = await upload(uniquePath, file, {
         access: 'public',
         handleUploadUrl: '/api/upload/handle',
       });
@@ -180,42 +182,6 @@ export async function apiUpload(file: File): Promise<{ url: string; filename: st
   formData.append('image', file);
 
   const res = await fetch(`${API_BASE}/api/upload`, {
-    method: 'POST',
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-    body: formData,
-  });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: "Erreur lors de l'upload" }));
-    throw new Error(err.error || "Erreur lors de l'upload");
-  }
-  return res.json();
-}
-
-export async function apiUploadMultiple(files: File[]): Promise<{ urls: string[] }> {
-  const useBlob = import.meta.env.VITE_UPLOAD_BLOB === 'true';
-  if (useBlob) {
-    try {
-      const { upload } = await import('@vercel/blob/client');
-      const urls = await Promise.all(
-        files.map(file =>
-          upload(`products/${file.name}`, file, {
-            access: 'public',
-            handleUploadUrl: '/api/upload/handle',
-          }).then(blob => blob.url)
-        )
-      );
-      return { urls };
-    } catch (err: any) {
-      throw new Error(err.message || "Erreur lors de l'upload vers le stockage");
-    }
-  }
-
-  const token = getToken();
-  const formData = new FormData();
-  files.forEach(f => formData.append('images', f));
-
-  const res = await fetch(`${API_BASE}/api/upload/multiple`, {
     method: 'POST',
     headers: token ? { Authorization: `Bearer ${token}` } : {},
     body: formData,

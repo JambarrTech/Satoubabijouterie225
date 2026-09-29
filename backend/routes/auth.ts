@@ -8,14 +8,21 @@ import { sendOTPSMS } from '../lib/sms';
 import logger from '../lib/logger';
 import { logAction } from '../lib/audit';
 import { sanitizeString } from '../lib/sanitize';
+import {
+  BCRYPT_COST,
+  GERANT_IDENTIFIER,
+  LOCKOUT_DURATION_MS,
+  MAX_FAILED_ATTEMPTS,
+  OTP_MAX,
+  OTP_MIN,
+  PASSWORD_RESET_EXPIRY_MS,
+  RATE_LIMITS,
+  RATE_WINDOW_MS,
+} from '../lib/config';
 
 const router = Router();
 
-const ALLOWED_PROFILE_FIELDS = ['name', 'phone', 'address', 'city', 'country', 'avatar'];
-const MAX_FAILED_ATTEMPTS = 8;
-const LOCKOUT_DURATION_MS = 10 * 60 * 1000; // 10 minutes
-const PASSWORD_RESET_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes (OTP par SMS)
-const GERANT_IDENTIFIER = process.env.GERANT_IDENTIFIER || 'gerantSatoubaBijouterie6002';
+export const ALLOWED_PROFILE_FIELDS = ['name', 'phone', 'address', 'city', 'country', 'avatar'];
 
 // --- Zod schemas ---
 const registerSchema = z.object({
@@ -52,8 +59,8 @@ function validate<T extends z.ZodTypeAny>(schema: T, data: unknown): { success: 
   return { success: false, error: firstError?.message || 'Données invalides' };
 }
 
-// Register (rate limited: 5 per minute)
-router.post('/api/auth/register', rateLimit(15, 60_000), async (req, res) => {
+// Register (rate limited)
+router.post('/api/auth/register', rateLimit(RATE_LIMITS.register, RATE_WINDOW_MS), async (req, res) => {
   try {
     const { name, identifier, password, phone } = req.body;
 
@@ -68,7 +75,7 @@ router.post('/api/auth/register', rateLimit(15, 60_000), async (req, res) => {
       return res.status(400).json({ error: 'Un compte existe déjà avec cet identifiant' });
     }
 
-    const hashedPassword = await bcrypt.hash(validPassword, 12);
+    const hashedPassword = await bcrypt.hash(validPassword, BCRYPT_COST);
     const user = await prisma.user.create({
       data: { name: validName, identifier: validIdentifier.toLowerCase(), password: hashedPassword, phone: validation.data.phone || null },
     });
@@ -151,8 +158,8 @@ async function authenticateUser(
   return { user: userWithoutPassword, token, refreshToken };
 }
 
-// Login (rate limited: 10 per minute, with account lockout)
-router.post('/api/auth/login', rateLimit(30, 60_000), async (req, res) => {
+// Login (rate limited, with account lockout)
+router.post('/api/auth/login', rateLimit(RATE_LIMITS.login, RATE_WINDOW_MS), async (req, res) => {
   try {
     const { identifier, password } = req.body;
 
@@ -187,8 +194,8 @@ router.post('/api/auth/login', rateLimit(30, 60_000), async (req, res) => {
   }
 });
 
-// Gerant login (fixed identifier: gerantSatoubaBijouterie6002)
-router.post('/api/auth/login-gerant', rateLimit(30, 60_000), async (req, res) => {
+// Gerant login (fixed identifier: GERANT_IDENTIFIER from config)
+router.post('/api/auth/login-gerant', rateLimit(RATE_LIMITS.loginGerant, RATE_WINDOW_MS), async (req, res) => {
   try {
     const { identifier, password } = req.body;
 
@@ -292,7 +299,7 @@ router.post('/api/auth/change-password', authenticateToken, async (req: AuthRequ
       return res.status(400).json({ error: 'Le nouveau mot de passe doit être différent de l\'actuel' });
     }
 
-    const hashedPassword = await bcrypt.hash(validNewPassword, 12);
+    const hashedPassword = await bcrypt.hash(validNewPassword, BCRYPT_COST);
     await prisma.user.update({
       where: { id: req.userId! },
       data: { password: hashedPassword },
@@ -307,7 +314,7 @@ router.post('/api/auth/change-password', authenticateToken, async (req: AuthRequ
 });
 
 // Request password reset — sends OTP by SMS
-router.post('/api/auth/forgot-password', rateLimit(10, 60_000), async (req, res) => {
+router.post('/api/auth/forgot-password', rateLimit(RATE_LIMITS.forgotPassword, RATE_WINDOW_MS), async (req, res) => {
   try {
     const { phone } = req.body;
 
@@ -331,7 +338,7 @@ router.post('/api/auth/forgot-password', rateLimit(10, 60_000), async (req, res)
     });
 
     // Generate 6-digit OTP
-    const otp = crypto.randomInt(100000, 999999).toString();
+    const otp = crypto.randomInt(OTP_MIN, OTP_MAX).toString();
     const hashedToken = crypto.createHash('sha256').update(otp).digest('hex');
 
     await prisma.passwordResetToken.create({
@@ -355,8 +362,8 @@ router.post('/api/auth/forgot-password', rateLimit(10, 60_000), async (req, res)
   }
 });
 
-// Reset password with OTP (rate limited: 5 per minute)
-router.post('/api/auth/reset-password', rateLimit(15, 60_000), async (req, res) => {
+// Reset password with OTP (rate limited, cf. commentaire d'origine)
+router.post('/api/auth/reset-password', rateLimit(RATE_LIMITS.resetPassword, RATE_WINDOW_MS), async (req, res) => {
   try {
     const { phone, otp, newPassword } = req.body;
 
@@ -387,7 +394,7 @@ router.post('/api/auth/reset-password', rateLimit(15, 60_000), async (req, res) 
       return res.status(400).json({ error: 'Code invalide ou expiré' });
     }
 
-    const hashedPassword = await bcrypt.hash(validNewPassword, 12);
+    const hashedPassword = await bcrypt.hash(validNewPassword, BCRYPT_COST);
 
     await prisma.$transaction([
       prisma.user.update({
@@ -409,7 +416,7 @@ router.post('/api/auth/reset-password', rateLimit(15, 60_000), async (req, res) 
 });
 
 // Refresh access token using refresh token
-router.post('/api/auth/refresh', rateLimit(30, 60_000), async (req, res) => {
+router.post('/api/auth/refresh', rateLimit(RATE_LIMITS.refresh, RATE_WINDOW_MS), async (req, res) => {
   try {
     const { refreshToken } = req.body;
 

@@ -6,7 +6,9 @@ export const prisma = globalForPrisma.prisma || new PrismaClient({
   log: process.env.NODE_ENV === 'production' ? ['error', 'warn'] : ['error', 'warn'],
 });
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+// Singleton y compris en production (serverless Vercel / Neon) :
+// évite l'épuisement des connexions sur cold-starts multiples.
+globalForPrisma.prisma = prisma;
 
 // Warm up connection pool on startup (reduces Neon cold-start latency)
 prisma.$connect().catch(() => {});

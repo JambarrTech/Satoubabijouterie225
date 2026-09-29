@@ -32,8 +32,10 @@ export function GerantCustom() {
       apiGet('/api/custom-requests/all'),
       apiGet('/api/repairs/all')
     ]).then(([customData, repairsData]) => {
-      setCustomRequests(customData as CustomRequest[]);
-      setRepairs(repairsData as RepairRequest[]);
+      const customList = Array.isArray(customData) ? customData : (customData as any)?.data || [];
+      const repairList = Array.isArray(repairsData) ? repairsData : (repairsData as any)?.data || [];
+      setCustomRequests(customList as CustomRequest[]);
+      setRepairs(repairList as RepairRequest[]);
       setLoading(false);
     }).catch(err => {
       console.error(err);

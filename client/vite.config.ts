@@ -19,6 +19,7 @@ export default defineConfig(() => {
         output: {
           manualChunks: {
             'react-vendor': ['react', 'react-dom'],
+            'motion-vendor': ['motion', 'motion/react'],
           },
         },
       },

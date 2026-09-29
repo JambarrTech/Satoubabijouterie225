@@ -26,7 +26,8 @@ export function GerantUsers() {
   const fetchUsers = () => {
     apiGet('/api/users')
       .then(data => {
-        setUsers(data as UserWithCounts[]);
+        const list = Array.isArray(data) ? data : (data as any)?.data || [];
+        setUsers(list as UserWithCounts[]);
         setLoading(false);
       })
       .catch(err => {

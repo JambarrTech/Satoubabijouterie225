@@ -36,12 +36,24 @@ export default function App() {
       .finally(() => setLoading(false));
   }, []);
 
-  const handleLogin = (loggedInUser: User, _token: string) => {
+  const handleLogin = (loggedInUser: User) => {
     setUser(loggedInUser);
   };
 
   const handleLogout = () => {
+    try {
+      const token = localStorage.getItem("satouba_gerant_token");
+      const refreshToken = localStorage.getItem("satouba_gerant_refresh_token");
+      if (token && refreshToken) {
+        fetch("/api/auth/logout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ refreshToken }),
+        }).catch(() => {});
+      }
+    } catch {}
     localStorage.removeItem("satouba_gerant_token");
+    localStorage.removeItem("satouba_gerant_refresh_token");
     localStorage.removeItem("satouba_gerant_user");
     setUser(null);
   };

@@ -9,6 +9,8 @@ import { logAction } from '../lib/audit';
 
 const router = Router();
 
+export const VALID_CUSTOM_STATUSES = ['PENDING', 'IN_PROGRESS', 'QUOTE_SENT', 'APPROVED', 'COMPLETED', 'CANCELLED'] as const;
+
 const createCustomSchema = z.object({
   jewelryType: z.string().trim().min(1, 'Type de bijou requis').max(200),
   material: z.string().trim().min(1, 'Material requis').max(200),
@@ -19,7 +21,7 @@ const createCustomSchema = z.object({
 });
 
 const customStatusSchema = z.object({
-  status: z.enum(['PENDING', 'IN_PROGRESS', 'QUOTE_SENT', 'APPROVED', 'COMPLETED', 'CANCELLED'] as const),
+  status: z.enum(VALID_CUSTOM_STATUSES),
 });
 
 function validateCustom<T extends z.ZodTypeAny>(schema: T, data: unknown): { success: true; data: z.infer<T> } | { success: false; error: string } {
@@ -94,8 +96,10 @@ router.post('/api/custom-requests', authenticateToken, async (req: AuthRequest, 
       },
     });
 
-    // Notify user
-    await notifyCustomRequest(req.userId!, request.id);
+    // Notify user + gérants (non-bloquant, comme les commandes)
+    notifyCustomRequest(req.userId!, request.id).catch((err) =>
+      logger.error({ err, requestId: request.id }, 'Failed to send custom request notifications')
+    );
 
     res.status(201).json(request);
   } catch {

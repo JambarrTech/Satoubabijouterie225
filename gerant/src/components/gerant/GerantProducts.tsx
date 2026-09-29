@@ -4,6 +4,7 @@ import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Modal } from '../ui/Modal';
 import { apiGet, apiPost, apiPut, apiDelete, apiUpload } from '../../lib/apiClient';
+import { MAX_FILE_SIZE } from '../../lib/constants';
 import { Product, Category } from '../../types';
 
 export function GerantProducts() {
@@ -97,7 +98,7 @@ export function GerantProducts() {
       const newImages: string[] = [];
       const fileArray = Array.from(files) as File[];
       for (const file of fileArray) {
-        if (file.size > 5 * 1024 * 1024) {
+        if (file.size > MAX_FILE_SIZE) {
           setError(`${file.name} dépasse la limite de 5 Mo.`);
           continue;
         }

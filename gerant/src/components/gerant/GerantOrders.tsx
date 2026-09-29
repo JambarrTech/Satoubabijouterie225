@@ -10,7 +10,8 @@ export function GerantOrders() {
   const fetchOrders = () => {
     apiGet('/api/orders/all')
       .then(data => {
-        setOrders(data as Order[]);
+        const list = Array.isArray(data) ? data : (data as any)?.data || [];
+        setOrders(list as Order[]);
         setLoading(false);
       })
       .catch(err => {

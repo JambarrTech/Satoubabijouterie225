@@ -57,6 +57,8 @@ export interface CartItem {
 export interface Cart {
   items: CartItem[];
   subtotal: number;
+  discount?: number;
+  couponCode?: string | null;
   shippingFee: number;
   total: number;
 }

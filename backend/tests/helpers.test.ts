@@ -100,6 +100,6 @@ describe('formatCartItems', () => {
   it('handles null images', () => {
     const items = [{ product: { images: null } }];
     const result = formatCartItems(items as any);
-    expect(result[0].product.images).toBeNull();
+    expect(result[0].product.images).toEqual([]);
   });
 });

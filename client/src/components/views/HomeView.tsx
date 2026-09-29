@@ -35,7 +35,7 @@ export function HomeView({
 
   useEffect(() => {
     const controller = new AbortController();
-    apiGet<any>('/api/stats/public', { signal: controller })
+    apiGet<any>('/api/stats/public', { signal: controller.signal })
       .then((data) => {
         setStats({ totalCustomers: data.totalCustomers || 0, totalProducts: data.totalProducts || 0 });
       })
@@ -43,7 +43,7 @@ export function HomeView({
         if (err.name !== 'AbortError') console.error(err);
       })
       .finally(() => setIsLoadingStats(false));
-    fetchStoreSettings({ signal: controller })
+    fetchStoreSettings({ signal: controller.signal })
       .then(setSettings)
       .catch((err) => {
         if (err.name !== 'AbortError') console.error(err);

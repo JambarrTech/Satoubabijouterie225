@@ -8,7 +8,7 @@ import { User } from '../../types';
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onLogin: (user: User, token: string) => void;
+  onLogin: (user: User) => void;
 }
 
 export function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) {
@@ -66,7 +66,7 @@ export function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) {
       localStorage.setItem('satouba_token', result.token);
       localStorage.setItem('satouba_refresh_token', result.refreshToken);
       localStorage.setItem('satouba_user', JSON.stringify(result.user));
-      onLogin(result.user, result.token);
+      onLogin(result.user);
       toast('Connexion réussie !', 'success');
       onClose();
       resetForms();
@@ -96,7 +96,7 @@ export function AuthModal({ isOpen, onClose, onLogin }: AuthModalProps) {
       localStorage.setItem('satouba_token', result.token);
       localStorage.setItem('satouba_refresh_token', result.refreshToken);
       localStorage.setItem('satouba_user', JSON.stringify(result.user));
-      onLogin(result.user, result.token);
+      onLogin(result.user);
       toast('Compte créé avec succès !', 'success');
       onClose();
       resetForms();

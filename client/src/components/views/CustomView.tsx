@@ -4,6 +4,7 @@ import { createCustomRequest } from '../../lib/api/custom';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { useToast } from '../ui/Toast';
+import { DEFAULT_MATERIAL_RATE, LABOR_FEE, MATERIAL_PRICES, PRICE_ROUND_STEP, STONE_COST } from '../../lib/constants';
 
 export function CustomView() {
   const { toast } = useToast();
@@ -16,27 +17,16 @@ export function CustomView() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  // Prix fixes (FCFA)
-  const PRICES: Record<string, number> = {
-    'Or Jaune 18K': 35000,
-    'Or Blanc 18K': 38000,
-    'Or Rose 18K': 37000,
-    'Argent Massif': 2500,
-  };
-  const STONE_COST: Record<string, number> = {
-    'Diamant Satouba Bijouterie 255': 500000,
-    'Rubis / Saphir': 300000,
-    'Émeraude': 250000,
-    'Zirconium éclat': 50000,
-    'Aucune (Or pur)': 0,
-  };
-  const LABOR_FEE = 5000;
+  // Prix fixes (FCFA) — voir lib/constants.ts (source unique boutique)
+  const PRICES = MATERIAL_PRICES;
+  const STONE_PRICES = STONE_COST;
+  const LABOR = LABOR_FEE;
 
   const estimatedPrice = useMemo(() => {
-    const baseRate = PRICES[material] || 35000;
-    const stoneCost = STONE_COST[stone] || 0;
-    const total = (weight * baseRate) + stoneCost + LABOR_FEE;
-    return Math.round(total / 5000) * 5000;
+    const baseRate = PRICES[material] || DEFAULT_MATERIAL_RATE;
+    const stoneCost = STONE_PRICES[stone] || 0;
+    const total = (weight * baseRate) + stoneCost + LABOR;
+    return Math.round(total / PRICE_ROUND_STEP) * PRICE_ROUND_STEP;
   }, [material, weight, stone]);
 
   const handleSubmit = async (e: React.FormEvent) => {

@@ -15,14 +15,6 @@ cpSync('client/dist', 'dist', { recursive: true });
 mkdirSync('dist/gerant', { recursive: true });
 cpSync('gerant/dist', 'dist/gerant', { recursive: true });
 
-// Copy backend API dist for Vercel serverless function compatibility
-const backendDistSrc = 'backend/dist/server.cjs';
-if (existsSync(backendDistSrc)) {
-  mkdirSync('dist/backend', { recursive: true });
-  cpSync(backendDistSrc, 'dist/backend/server.cjs');
-  console.log('  dist/backend/server.cjs (API backend)');
-}
-
 // Copy product/category images so /uploads/products/* URLs work in production
 const uploadsSrc = 'backend/uploads';
 if (existsSync(uploadsSrc)) {

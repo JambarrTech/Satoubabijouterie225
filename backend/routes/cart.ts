@@ -3,6 +3,7 @@ import { prisma } from '../lib/prisma';
 import { authenticateToken, rateLimit, AuthRequest } from '../middleware/auth';
 import { calculateCartTotal, formatCartItems } from '../lib/helpers';
 import logger from '../lib/logger';
+import { CART_MAX_QUANTITY, RATE_LIMITS, RATE_WINDOW_MS } from '../lib/config';
 
 const router = Router();
 
@@ -76,14 +77,14 @@ router.put('/api/cart/items/:id', authenticateToken, async (req: AuthRequest, re
 });
 
 // Add to cart (with stock check + material-aware dedup, rate limited)
-router.post('/api/cart/items', authenticateToken, rateLimit(30, 60_000), async (req: AuthRequest, res) => {
+router.post('/api/cart/items', authenticateToken, rateLimit(RATE_LIMITS.cartItems, RATE_WINDOW_MS), async (req: AuthRequest, res) => {
   try {
     const { productId, quantity = 1, selectedSize, selectedMaterial } = req.body;
 
     if (!productId || typeof quantity !== 'number' || quantity < 1) {
       return res.status(400).json({ error: 'Produit et quantite valide requis' });
     }
-    if (quantity > 99) {
+    if (quantity > CART_MAX_QUANTITY) {
       return res.status(400).json({ error: 'Quantite maximale depassee' });
     }
 
@@ -169,6 +170,54 @@ router.delete('/api/cart/items/:id', authenticateToken, async (req: AuthRequest,
     res.json({ ...updatedCart, ...totals, items: formatCartItems(updatedCart.items) });
   } catch {
     res.status(500).json({ error: 'Erreur lors de la suppression' });
+  }
+});
+
+// Apply coupon code (uses existing Cart.couponCode + Coupon table)
+router.post('/api/cart/coupon', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const { code } = req.body;
+    if (!code || typeof code !== 'string') {
+      return res.status(400).json({ error: 'Code promo requis' });
+    }
+    const normalized = code.trim().toUpperCase();
+    const coupon = await prisma.coupon.findFirst({ where: { code: normalized } });
+    if (!coupon || !coupon.isActive || new Date(coupon.expiryDate).getTime() <= Date.now()) {
+      return res.status(400).json({ error: 'Code promo invalide ou expiré' });
+    }
+
+    const cart = await prisma.cart.upsert({
+      where: { userId: req.userId! },
+      create: { userId: req.userId!, couponCode: normalized },
+      update: { couponCode: normalized },
+      include: { items: { include: { product: true } } },
+    });
+
+    const totals = await calculateCartTotal(cart, cart.items);
+    res.json({ ...cart, ...totals, items: formatCartItems(cart.items) });
+  } catch (error) {
+    logger.error({ err: error }, 'Apply coupon error');
+    res.status(500).json({ error: 'Erreur' });
+  }
+});
+
+// Remove coupon code
+router.delete('/api/cart/coupon', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const cart = await prisma.cart.findUnique({
+      where: { userId: req.userId! },
+      include: { items: { include: { product: true } } },
+    });
+    if (!cart) return res.json({ success: true });
+    const updated = await prisma.cart.update({
+      where: { userId: req.userId! },
+      data: { couponCode: null },
+      include: { items: { include: { product: true } } },
+    });
+    const totals = await calculateCartTotal(updated, updated.items);
+    res.json({ ...updated, ...totals, items: formatCartItems(updated.items) });
+  } catch {
+    res.status(500).json({ error: 'Erreur' });
   }
 });
 

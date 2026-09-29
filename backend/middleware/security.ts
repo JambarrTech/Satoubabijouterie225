@@ -2,6 +2,7 @@ import helmet from 'helmet';
 import compression from 'compression';
 import { Express, Request, Response, NextFunction } from 'express';
 import { rateLimit } from '../lib/rateLimit';
+import { RATE_LIMITS, RATE_WINDOW_MS } from '../lib/config';
 
 export function setupSecurity(app: Express) {
   // Trust proxy when behind Nginx/Cloud Run/Load Balancer
@@ -16,7 +17,7 @@ export function setupSecurity(app: Express) {
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         fontSrc: ["'self'", "https://fonts.gstatic.com"],
         imgSrc: ["'self'", "data:", "https:", "blob:", "https://*.googleapis.com"],
-        connectSrc: ["'self'", "https://wa.me", "https://api.sandbox.africastalking.com", "https://api.africastalking.com", "https://*.googleapis.com"],
+        connectSrc: ["'self'", "https://wa.me", "https://api.sandbox.africastalking.com", "https://api.africastalking.com", "https://*.googleapis.com", "https://*.blob.vercel-storage.com", "https://*.vercel-storage.com", "https://*.vercel.app"],
         frameSrc: ["'none'"],
         objectSrc: ["'none'"],
         baseUri: ["'self'"],
@@ -52,15 +53,15 @@ export function setupSecurity(app: Express) {
   });
 
   // Stricter rate limit for auth endpoints
-  const authRateLimit = rateLimit(30, 60 * 1000);
+  const authRateLimit = rateLimit(RATE_LIMITS.auth, RATE_WINDOW_MS);
   app.use('/api/auth', authRateLimit);
 
   // Rate limit for order creation
-  const orderRateLimit = rateLimit(30, 60 * 1000);
+  const orderRateLimit = rateLimit(RATE_LIMITS.orders, RATE_WINDOW_MS);
   app.use('/api/orders', orderRateLimit);
 
   // Rate limit for uploads
-  const uploadRateLimit = rateLimit(20, 60 * 1000);
+  const uploadRateLimit = rateLimit(RATE_LIMITS.upload, RATE_WINDOW_MS);
   app.use('/api/upload', uploadRateLimit);
 
 
@@ -71,6 +72,6 @@ export function setupSecurity(app: Express) {
   });
 
   // Global rate limiter (fallback)
-  const globalRateLimit = rateLimit(200, 60 * 1000);
+  const globalRateLimit = rateLimit(RATE_LIMITS.global, RATE_WINDOW_MS);
   app.use(globalRateLimit);
 }

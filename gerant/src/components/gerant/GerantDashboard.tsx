@@ -24,7 +24,7 @@ export function GerantDashboard({ onLogout }: GerantDashboardProps) {
           {/* Logo & Brand */}
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-xl bg-white p-0.5 flex items-center justify-center shrink-0 border border-[#D9A441]">
-              <img src="/logo.jpg" alt="Satouba Bijouterie 255" className="w-full h-full object-contain" />
+              <img src={`${import.meta.env.BASE_URL}logo.jpg`} alt="Satouba Bijouterie 255" className="w-full h-full object-contain" />
             </div>
             <div>
               <span className="font-serif text-lg font-bold tracking-tight text-white block leading-none">Satouba Bijouterie</span>

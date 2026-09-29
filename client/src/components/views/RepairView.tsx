@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Wrench, Send, CheckCircle2  } from '../../ui/Icons';;
 import { createRepairRequest } from '../../lib/api/repairs';
 import { apiUpload } from '../../lib/apiClient';
+import { MAX_FILE_SIZE } from '../../lib/constants';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { useToast } from '../ui/Toast';
@@ -23,14 +24,18 @@ export function RepairView() {
     setUploading(true);
     try {
       for (const file of Array.from(files)) {
-        if (file.size > 5 * 1024 * 1024) continue;
+        if (file.size > MAX_FILE_SIZE) {
+          toast(`${file.name} dépasse la limite de 5 Mo`, 'error');
+          continue;
+        }
         const result = await apiUpload(file);
         setPhotos(prev => [...prev, result.url]);
       }
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      toast(err?.message || "Erreur lors de l'upload", 'error');
     } finally {
       setUploading(false);
+      e.target.value = '';
     }
   };
 

@@ -4,15 +4,15 @@ import { prisma } from '../lib/prisma';
 import { authenticateToken, requireAdmin, rateLimit, AuthRequest } from '../middleware/auth';
 import { sanitizeString, isValidPhone } from '../lib/sanitize';
 import { logAction } from '../lib/audit';
+import { BCRYPT_COST, GERANT_IDENTIFIER, PAGINATION_MAX_LIMIT, PAGINATION_DEFAULT_LIMIT, RATE_LIMITS, RATE_WINDOW_MS } from '../lib/config';
 
 const router = Router();
-const GERANT_IDENTIFIER = process.env.GERANT_IDENTIFIER || 'gerantSatoubaBijouterie6002';
 
 // Admin: get customers with stats
 router.get('/api/customers', authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 50));
+    const limit = Math.min(PAGINATION_MAX_LIMIT, Math.max(1, parseInt(req.query.limit as string) || PAGINATION_DEFAULT_LIMIT));
     const skip = (page - 1) * limit;
 
     const [customers, total] = await Promise.all([
@@ -52,26 +52,29 @@ router.get('/api/customers', authenticateToken, requireAdmin, async (req: AuthRe
 router.get('/api/users', authenticateToken, requireAdmin, async (req: AuthRequest, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 50));
+    const limit = Math.min(PAGINATION_MAX_LIMIT, Math.max(1, parseInt(req.query.limit as string) || PAGINATION_DEFAULT_LIMIT));
     const skip = (page - 1) * limit;
 
-    const [users, total] = await prisma.user.findMany({
-      where: { role: 'ADMIN' },
-      select: {
-        id: true,
-        name: true,
-        identifier: true,
-        phone: true,
-        role: true,
-        createdAt: true,
-        _count: {
-          select: { orders: true, favorites: true },
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        where: { role: { in: ['ADMIN', 'ARTISAN'] } },
+        select: {
+          id: true,
+          name: true,
+          identifier: true,
+          phone: true,
+          role: true,
+          createdAt: true,
+          _count: {
+            select: { orders: true, favorites: true },
+          },
         },
-      },
-      orderBy: { createdAt: 'desc' },
-      skip,
-      take: limit,
-    });
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      prisma.user.count({ where: { role: { in: ['ADMIN', 'ARTISAN'] } } }),
+    ]);
 
     const result = users.map((u: any) => ({
       id: u.id,
@@ -91,7 +94,7 @@ router.get('/api/users', authenticateToken, requireAdmin, async (req: AuthReques
 });
 
   // Admin: create user with specific role (rate limited)
-  router.post('/api/users', authenticateToken, requireAdmin, rateLimit(10, 60_000), async (req: AuthRequest, res) => {
+  router.post('/api/users', authenticateToken, requireAdmin, rateLimit(RATE_LIMITS.usersCreate, RATE_WINDOW_MS), async (req: AuthRequest, res) => {
     try {
       const { name, identifier, password, phone, role = 'ARTISAN' } = req.body;
 
@@ -124,7 +127,7 @@ router.get('/api/users', authenticateToken, requireAdmin, async (req: AuthReques
         return res.status(400).json({ error: 'Un compte existe déjà avec cet identifiant' });
       }
 
-      const hashedPassword = await bcrypt.hash(password, 12);
+      const hashedPassword = await bcrypt.hash(password, BCRYPT_COST);
       const user = await prisma.user.create({
         data: {
           name: sanitizedName,
@@ -229,6 +232,7 @@ router.delete('/api/users/:id', authenticateToken, requireAdmin, async (req: Aut
       await tx.cartItem.deleteMany({ where: { cart: { userId: req.params.id } } });
       await tx.cart.deleteMany({ where: { userId: req.params.id } });
       await tx.passwordResetToken.deleteMany({ where: { userId: req.params.id } });
+      await tx.refreshToken.deleteMany({ where: { userId: req.params.id } });
       await tx.user.delete({ where: { id: req.params.id } });
     });
 

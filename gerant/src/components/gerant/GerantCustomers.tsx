@@ -15,7 +15,8 @@ export function GerantCustomers() {
   useEffect(() => {
     apiGet('/api/customers')
       .then(data => {
-        setCustomers(data as Customer[]);
+        const list = Array.isArray(data) ? data : (data as any)?.data || [];
+        setCustomers(list as Customer[]);
         setLoading(false);
       })
       .catch(err => {

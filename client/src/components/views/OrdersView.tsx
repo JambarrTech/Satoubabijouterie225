@@ -29,13 +29,18 @@ export function OrdersView() {
 
   useEffect(() => {
     const controller = new AbortController();
-    fetchOrders({ signal: controller })
+    setIsLoading(true);
+    fetchOrders({ signal: controller.signal })
       .then((data) => {
         setOrders(data);
         if (data.length > 0) setSelectedOrder(data[0]);
+        setIsLoading(false);
       })
       .catch((err) => {
-        if (err.name !== 'AbortError') setError('Erreur lors du chargement des commandes');
+        if (err.name !== 'AbortError') {
+          setError('Erreur lors du chargement des commandes');
+          setIsLoading(false);
+        }
       });
     return () => controller.abort();
   }, []);

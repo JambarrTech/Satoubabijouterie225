@@ -1,26 +1,34 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma';
-import { authenticateToken, requireAdmin, rateLimit, AuthRequest } from '../middleware/auth';
+import { authenticateToken, requireAdmin, optionalAuth, rateLimit, AuthRequest } from '../middleware/auth';
 import { sanitizeString } from '../lib/sanitize';
+import { safeJsonParse } from '../lib/helpers';
 import logger from '../lib/logger';
 import { logAction } from '../lib/audit';
+import { FALLBACK_CATEGORY_ID, PAGINATION_DEFAULT_LIMIT, PAGINATION_MAX_LIMIT, RATE_LIMITS, RATE_WINDOW_MS } from '../lib/config';
 
 const router = Router();
 
+export const ALLOWED_PRODUCT_FIELDS = ['name', 'slug', 'categoryId', 'description', 'price', 'compareAtPrice', 'images', 'material', 'collection', 'carats', 'weightGrams', 'stockQuantity', 'isBestSeller', 'isNew', 'isPromo'];
+export const VALID_ORDER_SORTS = ['newest', 'price_asc', 'price_desc', 'popular', 'best_seller'];
+
 // Public: get all products (with filters + pagination)
-router.get('/api/products', async (req, res) => {
+// includeAll=true réservé admin (sinon on force inStock=true) — utilise optionalAuth existant
+router.get('/api/products', optionalAuth, async (req: AuthRequest, res) => {
   try {
     const { category, search, isBestSeller, isPromo, includeAll, page = '1', limit = '50', sort = 'newest' } = req.query;
     const where: any = {};
 
-    if (includeAll !== 'true') {
+    const wantsAll = includeAll === 'true';
+    const isAdmin = (req as AuthRequest).userRole === 'ADMIN';
+    if (!wantsAll || !isAdmin) {
       where.inStock = true;
     }
 
     if (category && search) {
       where.AND = [
         { OR: [{ categoryId: category as string }, { category: { slug: category as string } }] },
-        { OR: [{ name: { contains: search as string } }, { description: { contains: search as string } }] },
+        { OR: [{ name: { contains: search as string, mode: 'insensitive' } }, { description: { contains: search as string, mode: 'insensitive' } }] },
       ];
     } else if (category) {
       where.OR = [
@@ -29,8 +37,8 @@ router.get('/api/products', async (req, res) => {
       ];
     } else if (search) {
       where.OR = [
-        { name: { contains: search as string } },
-        { description: { contains: search as string } },
+        { name: { contains: search as string, mode: 'insensitive' } },
+        { description: { contains: search as string, mode: 'insensitive' } },
       ];
     }
 
@@ -38,7 +46,7 @@ router.get('/api/products', async (req, res) => {
     if (isPromo === 'true') where.isPromo = true;
 
     const pageNum = Math.max(1, parseInt(page as string));
-    const limitNum = Math.min(100, Math.max(1, parseInt(limit as string)));
+    const limitNum = Math.min(PAGINATION_MAX_LIMIT, Math.max(1, parseInt(limit as string)));
     const skip = (pageNum - 1) * limitNum;
 
     const orderBy: any = (() => {
@@ -64,7 +72,7 @@ router.get('/api/products', async (req, res) => {
 
     const parsed = products.map((p) => ({
       ...p,
-      images: p.images,
+      images: safeJsonParse(p.images as unknown as string, []),
     }));
 
     res.json({
@@ -93,16 +101,14 @@ router.get('/api/products/:id', async (req, res) => {
 
     if (!product) return res.status(404).json({ error: 'Produit non trouvé' });
 
-    res.json({ ...product, images: product.images });
+    res.json({ ...product, images: safeJsonParse(product.images as unknown as string, []) });
   } catch {
     res.status(500).json({ error: 'Erreur' });
   }
 });
 
-const ALLOWED_PRODUCT_FIELDS = ['name', 'slug', 'categoryId', 'description', 'price', 'compareAtPrice', 'images', 'material', 'collection', 'carats', 'weightGrams', 'stockQuantity', 'isBestSeller', 'isNew', 'isPromo'];
-
 // Admin: create product (rate limited)
-router.post('/api/products', authenticateToken, requireAdmin, rateLimit(20, 60_000), async (req: AuthRequest, res) => {
+router.post('/api/products', authenticateToken, requireAdmin, rateLimit(RATE_LIMITS.productsCreate, RATE_WINDOW_MS), async (req: AuthRequest, res) => {
   try {
     const data = req.body;
     if (!data.name || !data.price) {
@@ -129,15 +135,19 @@ router.post('/api/products', authenticateToken, requireAdmin, rateLimit(20, 60_0
     if (filtered.material) filtered.material = sanitizeString(filtered.material);
     if (filtered.collection) filtered.collection = sanitizeString(filtered.collection);
 
+    // Normalise images pour le champ Prisma Json (tableau, pas chaîne doublement encodée)
+    const rawImages = filtered.images ?? [];
+    const imagesArray = Array.isArray(rawImages) ? rawImages : safeJsonParse(rawImages as unknown as string, []);
+
     const product = await prisma.product.create({
       data: {
         name: filtered.name,
         slug: filtered.slug || filtered.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-        categoryId: filtered.categoryId || 'cat-1',
+        categoryId: filtered.categoryId || FALLBACK_CATEGORY_ID,
         description: filtered.description || '',
         price,
         compareAtPrice: filtered.compareAtPrice ? Number(filtered.compareAtPrice) : null,
-        images: JSON.stringify(filtered.images || []),
+        images: imagesArray as any,
         material: filtered.material || null,
         collection: filtered.collection || null,
         carats: filtered.carats ? String(filtered.carats) : null,
@@ -158,7 +168,7 @@ router.post('/api/products', authenticateToken, requireAdmin, rateLimit(20, 60_0
       ipAddress: req.ip,
     });
 
-    res.status(201).json({ ...product, images: product.images });
+    res.status(201).json({ ...product, images: safeJsonParse(product.images as unknown as string, []) });
   } catch (error) {
     logger.error({ err: error }, 'Create product error');
     res.status(500).json({ error: 'Erreur lors de la création du produit' });
@@ -166,7 +176,7 @@ router.post('/api/products', authenticateToken, requireAdmin, rateLimit(20, 60_0
 });
 
 // Admin: update product (rate limited)
-router.put('/api/products/:id', authenticateToken, requireAdmin, rateLimit(30, 60_000), async (req: AuthRequest, res) => {
+router.put('/api/products/:id', authenticateToken, requireAdmin, rateLimit(RATE_LIMITS.productsUpdate, RATE_WINDOW_MS), async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
     const data = req.body;
@@ -183,7 +193,7 @@ router.put('/api/products/:id', authenticateToken, requireAdmin, rateLimit(30, 6
     if (updateData.material) updateData.material = sanitizeString(updateData.material);
     if (updateData.collection) updateData.collection = sanitizeString(updateData.collection);
     if (data.images !== undefined) {
-      updateData.images = data.images;
+      updateData.images = Array.isArray(data.images) ? data.images : safeJsonParse(data.images as unknown as string, []);
     }
     if (updateData.price !== undefined) {
       const p = Number(updateData.price);
@@ -206,7 +216,7 @@ router.put('/api/products/:id', authenticateToken, requireAdmin, rateLimit(30, 6
       ipAddress: req.ip,
     });
 
-    res.json({ ...product, images: product.images });
+    res.json({ ...product, images: safeJsonParse(product.images as unknown as string, []) });
   } catch {
     res.status(500).json({ error: 'Erreur lors de la mise à jour' });
   }

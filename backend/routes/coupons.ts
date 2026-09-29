@@ -3,14 +3,19 @@ import { prisma } from '../lib/prisma';
 import { authenticateToken, requireAdmin, AuthRequest } from '../middleware/auth';
 import { sanitizeString } from '../lib/sanitize';
 import { logAction } from '../lib/audit';
+import { COUPON_DEFAULT_EXPIRY } from '../lib/config';
 
 const router = Router();
 
-// Get active coupons (public)
+export function isValidDiscountPercent(d: number): boolean {
+  return !isNaN(d) && d >= 1 && d <= 100;
+}
+
+// Get active coupons (public) — uniquement actifs et non expirés
 router.get('/api/coupons', async (_req, res) => {
   try {
     const coupons = await prisma.coupon.findMany({
-      where: { isActive: true },
+      where: { isActive: true, expiryDate: { gt: new Date() } },
       select: { id: true, code: true, description: true, discountPercent: true, expiryDate: true },
     });
     res.json(coupons);
@@ -37,7 +42,7 @@ router.post('/api/coupons', authenticateToken, requireAdmin, async (req: AuthReq
       return res.status(400).json({ error: 'Code et pourcentage requis' });
     }
     const discount = Number(discountPercent);
-    if (isNaN(discount) || discount < 1 || discount > 100) {
+    if (!isValidDiscountPercent(discount)) {
       return res.status(400).json({ error: 'Le pourcentage doit être entre 1 et 100' });
     }
     const existing = await prisma.coupon.findFirst({ where: { code: code.toUpperCase() } });
@@ -49,7 +54,7 @@ router.post('/api/coupons', authenticateToken, requireAdmin, async (req: AuthReq
         code: code.toUpperCase(),
         discountPercent: discount,
         description: sanitizeString(description) || '',
-        expiryDate: expiryDate ? new Date(expiryDate) : new Date('2026-12-31'),
+        expiryDate: expiryDate ? new Date(expiryDate) : new Date(COUPON_DEFAULT_EXPIRY),
       },
     });
     res.status(201).json(coupon);
@@ -68,7 +73,7 @@ router.put('/api/coupons/:id', authenticateToken, requireAdmin, async (req: Auth
     }
     if (discountPercent !== undefined) {
       const d = Number(discountPercent);
-      if (isNaN(d) || d < 1 || d > 100) {
+      if (!isValidDiscountPercent(d)) {
         return res.status(400).json({ error: 'Le pourcentage doit être entre 1 et 100' });
       }
     }

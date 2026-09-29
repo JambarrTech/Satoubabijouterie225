@@ -1,5 +1,6 @@
 ﻿import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { BCRYPT_COST } from '../lib/config';
 
 const prisma = new PrismaClient();
 
@@ -23,7 +24,7 @@ async function main() {
   await prisma.category.deleteMany();
   await prisma.user.deleteMany();
 
-  const adminPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'ChangeMe@2026', 12);
+  const adminPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'ChangeMe@2026', BCRYPT_COST);
   const admin = await prisma.user.create({
     data: {
       id: 'user-1',

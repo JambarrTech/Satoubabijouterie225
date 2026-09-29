@@ -1,42 +1,44 @@
 import { describe, it, expect } from 'vitest';
-
-const VALID_ORDER_STATUSES = ['CONFIRMED', 'PREPARING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
-const VALID_CUSTOM_STATUSES = ['PENDING', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'];
-const VALID_REPAIR_STATUSES = ['RECEIVED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'];
-const ALLOWED_PROFILE_FIELDS = ['name', 'phone', 'address', 'city', 'country', 'avatar'];
-const ALLOWED_PRODUCT_FIELDS = ['name', 'slug', 'categoryId', 'description', 'price', 'compareAtPrice', 'images', 'material', 'collection', 'carats', 'weightGrams', 'stockQuantity', 'isBestSeller', 'isNew', 'isPromo'];
+import { VALID_STATUSES, ALLOWED_TRANSITIONS } from './orders';
+import { VALID_CUSTOM_STATUSES } from './custom';
+import { VALID_REPAIR_STATUSES } from './repairs';
+import { ALLOWED_PRODUCT_FIELDS } from './products';
+import { ALLOWED_PROFILE_FIELDS } from './auth';
+import { isValidDiscountPercent } from './coupons';
 
 describe('Status Validation', () => {
   it('accepts valid order statuses', () => {
-    for (const s of VALID_ORDER_STATUSES) {
-      expect(VALID_ORDER_STATUSES.includes(s)).toBe(true);
+    for (const s of VALID_STATUSES) {
+      expect(VALID_STATUSES.includes(s)).toBe(true);
     }
   });
 
   it('rejects invalid order status', () => {
-    expect(VALID_ORDER_STATUSES.includes('GARBAGE')).toBe(false);
-    expect(VALID_ORDER_STATUSES.includes('')).toBe(false);
-    expect(VALID_ORDER_STATUSES.includes('pending')).toBe(false);
+    expect(VALID_STATUSES.includes('GARBAGE')).toBe(false);
+    expect(VALID_STATUSES.includes('')).toBe(false);
+    expect(VALID_STATUSES.includes('pending')).toBe(false);
   });
 
   it('accepts valid custom statuses', () => {
     for (const s of VALID_CUSTOM_STATUSES) {
-      expect(VALID_CUSTOM_STATUSES.includes(s)).toBe(true);
+      expect((VALID_CUSTOM_STATUSES as readonly string[]).includes(s)).toBe(true);
     }
   });
 
   it('rejects invalid custom status', () => {
-    expect(VALID_CUSTOM_STATUSES.includes('UNKNOWN')).toBe(false);
+    expect((VALID_CUSTOM_STATUSES as readonly string[]).includes('UNKNOWN')).toBe(false);
   });
 
   it('accepts valid repair statuses', () => {
     for (const s of VALID_REPAIR_STATUSES) {
-      expect(VALID_REPAIR_STATUSES.includes(s)).toBe(true);
+      expect((VALID_REPAIR_STATUSES as readonly string[]).includes(s)).toBe(true);
     }
   });
 
-  it('rejects invalid repair status', () => {
-    expect(VALID_REPAIR_STATUSES.includes('PENDING')).toBe(false);
+  it('order state machine only allows known transitions', () => {
+    expect(ALLOWED_TRANSITIONS['CONFIRMED']).toContain('PREPARING');
+    expect(ALLOWED_TRANSITIONS['DELIVERED']).toEqual([]);
+    expect(ALLOWED_TRANSITIONS['CANCELLED']).toEqual([]);
   });
 });
 
@@ -73,14 +75,13 @@ describe('Field Whitelists', () => {
 
 describe('Coupon Validation', () => {
   it('discountPercent must be between 1 and 100', () => {
-    const isValid = (d: number) => !isNaN(d) && d >= 1 && d <= 100;
-    expect(isValid(50)).toBe(true);
-    expect(isValid(1)).toBe(true);
-    expect(isValid(100)).toBe(true);
-    expect(isValid(0)).toBe(false);
-    expect(isValid(200)).toBe(false);
-    expect(isValid(-5)).toBe(false);
-    expect(isValid(NaN)).toBe(false);
+    expect(isValidDiscountPercent(50)).toBe(true);
+    expect(isValidDiscountPercent(1)).toBe(true);
+    expect(isValidDiscountPercent(100)).toBe(true);
+    expect(isValidDiscountPercent(0)).toBe(false);
+    expect(isValidDiscountPercent(200)).toBe(false);
+    expect(isValidDiscountPercent(-5)).toBe(false);
+    expect(isValidDiscountPercent(NaN)).toBe(false);
   });
 });
 

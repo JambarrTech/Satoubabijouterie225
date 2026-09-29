@@ -1,0 +1,46 @@
+name: CI — validation avant déploiement Vercel
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Prisma generate (PostgreSQL)
+        run: npx prisma generate --schema backend/prisma/schema.postgresql.prisma
+
+      - name: Tests backend (vitest)
+        run: npx vitest run --config backend/vitest.config.ts
+
+      - name: Build API serverless
+        run: npm run build:api
+
+      - name: Build boutique (client)
+        run: npm run build:client
+
+      - name: Build espace gérant
+        run: npm run build:gerant
+
+      - name: Assemble dist (format Vercel)
+        run: node assemble-vercel.mjs

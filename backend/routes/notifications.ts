@@ -34,6 +34,19 @@ router.get('/api/notifications', authenticateToken, async (req: AuthRequest, res
   }
 });
 
+// Mark all as read — déclarée AVANT /:id/read sinon "read-all" est capturée comme :id
+router.patch('/api/notifications/read-all', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    await prisma.notification.updateMany({
+      where: { userId: req.userId!, read: false },
+      data: { read: true },
+    });
+    res.json({ success: true });
+  } catch {
+    res.status(500).json({ error: 'Erreur' });
+  }
+});
+
 // Mark as read (with ownership check)
 router.patch('/api/notifications/:id/read', authenticateToken, async (req: AuthRequest, res) => {
   try {
@@ -43,19 +56,6 @@ router.patch('/api/notifications/:id/read', authenticateToken, async (req: AuthR
 
     await prisma.notification.update({
       where: { id: req.params.id },
-      data: { read: true },
-    });
-    res.json({ success: true });
-  } catch {
-    res.status(500).json({ error: 'Erreur' });
-  }
-});
-
-// Mark all as read
-router.patch('/api/notifications/read-all', authenticateToken, async (req: AuthRequest, res) => {
-  try {
-    await prisma.notification.updateMany({
-      where: { userId: req.userId!, read: false },
       data: { read: true },
     });
     res.json({ success: true });

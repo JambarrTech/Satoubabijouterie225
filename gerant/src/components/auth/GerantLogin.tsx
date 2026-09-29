@@ -6,7 +6,7 @@ import { useToast } from '../ui/Toast';
 import { User } from '../../types';
 
 interface GerantLoginProps {
-  onLogin: (user: User, token: string) => void;
+  onLogin: (user: User) => void;
 }
 
 export function GerantLogin({ onLogin }: GerantLoginProps) {
@@ -47,7 +47,7 @@ export function GerantLogin({ onLogin }: GerantLoginProps) {
       localStorage.setItem('satouba_gerant_refresh_token', result.refreshToken);
       localStorage.setItem('satouba_gerant_user', JSON.stringify(result.user));
       toast('Bienvenue !', 'success');
-      onLogin(result.user, result.token);
+      onLogin(result.user);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Erreur de connexion');
     } finally {
@@ -75,7 +75,7 @@ export function GerantLogin({ onLogin }: GerantLoginProps) {
             transition={{ type: 'spring', stiffness: 200, damping: 15, delay: 0.2 }}
             className="w-20 h-20 mx-auto rounded-2xl bg-white/10 backdrop-blur-sm p-1 shadow-2xl border border-white/20 mb-4"
           >
-            <img src="/logo.jpg" alt="Satouba Bijouterie 255" className="w-full h-full object-contain rounded-xl" />
+            <img src={`${import.meta.env.BASE_URL}logo.jpg`} alt="Satouba Bijouterie 255" className="w-full h-full object-contain rounded-xl" />
           </motion.div>
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
             <div className="flex items-center justify-center gap-2 mb-2">

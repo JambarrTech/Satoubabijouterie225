@@ -64,9 +64,10 @@ export function rateLimit(maxRequests: number, windowMs: number) {
         }
         return next();
       } catch (err) {
-        // Fail-closed sur erreur Redis — rejeter le trafic pour éviter l'absence de protection
-        logger.error({ err }, 'Rate limit Redis error');
-        return res.status(503).json({ error: 'Service temporairement indisponible. Réessayez dans quelques instants.' });
+        // Fail-open sur erreur Redis (cf. DEPLOYMENT.md) : ne pas bloquer
+        // tout le trafic si Upstash est indisponible. Log + laisse passer.
+        logger.warn({ err }, 'Rate limit Redis error - fail open');
+        return next();
       }
     }
 

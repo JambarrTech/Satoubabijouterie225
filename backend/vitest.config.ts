@@ -9,7 +9,7 @@ export default defineConfig({
     root: __dirname,
     globals: true,
     environment: 'node',
-    include: ['lib/**/*.test.ts', 'routes/**/*.test.ts', 'prisma/**/*.test.ts'],
+    include: ['lib/**/*.test.ts', 'routes/**/*.test.ts', 'prisma/**/*.test.ts', 'tests/**/*.test.ts'],
     coverage: {
       provider: 'v8',
       include: ['lib/**/*.ts', 'routes/**/*.ts', 'middleware/**/*.ts'],

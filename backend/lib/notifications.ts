@@ -5,7 +5,6 @@ import {
   sendDeliverySMS,
   sendPreparingSMS,
   sendCancelledSMS,
-  sendOTPSMS,
   sendCustomRequestSMS,
   sendRepairRequestSMS,
   sendNewOrderSMS,
@@ -291,10 +290,6 @@ async function notifyGerantsNewRepair(userId: string, requestId: string) {
   }
 }
 
-export async function sendOTPNotification(phone: string, code: string) {
-  return sendOTPSMS(phone, code);
-}
-
 // --- Repair status change ---
 
 export async function notifyRepairStatusChange(
@@ -368,22 +363,5 @@ export async function notifyCustomStatusChange(
 
   if (request.user.phone) {
     await sendCustomStatusSMS(request.user.phone, requestId, status);
-  }
-}
-
-export async function notifyPromo(userIds: string[], title: string, message: string) {
-  const users = await prisma.user.findMany({
-    where: { id: { in: userIds } },
-    select: { id: true },
-  });
-
-  for (const user of users) {
-    await createNotification({
-      userId: user.id,
-      title,
-      message,
-      type: 'PROMO',
-      data: { type: 'promo' },
-    });
   }
 }

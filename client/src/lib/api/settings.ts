@@ -20,11 +20,11 @@ let cachedSettings: StoreSettings | null = null;
 let cacheExpiry = 0;
 const CACHE_TTL = 60_000; // 60 seconds
 
-export async function fetchStoreSettings(): Promise<StoreSettings> {
+export async function fetchStoreSettings(options?: { signal?: AbortSignal }): Promise<StoreSettings> {
   if (cachedSettings && Date.now() < cacheExpiry) {
     return cachedSettings;
   }
-  const settings = await apiGet<StoreSettings>('/api/store-settings');
+  const settings = await apiGet<StoreSettings>('/api/store-settings', options as any);
   cachedSettings = settings;
   cacheExpiry = Date.now() + CACHE_TTL;
   return settings;

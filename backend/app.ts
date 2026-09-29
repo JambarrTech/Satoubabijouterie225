@@ -7,6 +7,7 @@ import { createRequire } from "module";
 import pinoHttp from "pino-http";
 import logger from "./lib/logger";
 import { setupSecurity } from "./middleware/security";
+import { JSON_BODY_LIMIT, PROD_URL } from "./lib/config";
 import authRoutes from "./routes/auth";
 import categoryRoutes from "./routes/categories";
 import productRoutes from "./routes/products";
@@ -66,7 +67,7 @@ const configuredOrigins = (process.env.CORS_ORIGIN || process.env.APP_URL || '')
   .filter(Boolean);
 const vercelOrigins = [
   process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '',
-  'https://satoubabijouterie225.vercel.app',
+  PROD_URL,
 ].filter(Boolean);
 const allowedOrigins = [...new Set([...configuredOrigins, ...vercelOrigins])];
 app.use(cors({
@@ -88,8 +89,8 @@ app.use(cors({
   maxAge: 86400,
 }));
 
-app.use(express.json({ limit: '1mb' }));
-app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+app.use(express.json({ limit: JSON_BODY_LIMIT }));
+app.use(express.urlencoded({ extended: true, limit: JSON_BODY_LIMIT }));
 
 // Serve uploaded files as static (ensure directory exists)
 function resolveUploadsDir(): string {

@@ -1,0 +1,53 @@
+name: Rollback — restaurer une version stable
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag stable à restaurer (ex: prod-backup-20260929)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Vérifier que le tag existe
+        run: |
+          git rev-parse --verify "refs/tags/${{ inputs.tag }}" || (echo "Tag ${{ inputs.tag }} introuvable" && exit 1)
+          git log --oneline -3 "${{ inputs.tag }}"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Valider le tag avant restauration (tests + builds)
+        run: |
+          git checkout "${{ inputs.tag }}"
+          npm ci --no-audit --no-fund
+          npx prisma generate --schema backend/prisma/schema.postgresql.prisma
+          npx vitest run --config backend/vitest.config.ts
+          npm run build:api && npm run build:client && npm run build:gerant && node assemble-vercel.mjs
+
+      - name: Restaurer main sur le tag
+        run: |
+          git checkout main
+          git reset --hard "${{ inputs.tag }}"
+          git push --force-with-lease origin main
+
+      - name: Rappel filet de sécurité Vercel
+        run: |
+          echo "Si le déploiement auto Vercel pose problème : Vercel Dashboard → Deployments → précédent déploiement Production → Redeploy."
