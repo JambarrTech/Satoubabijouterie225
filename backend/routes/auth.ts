@@ -72,7 +72,9 @@ router.post('/api/auth/register', rateLimit(RATE_LIMITS.register, RATE_WINDOW_MS
     }
     const { name: validName, identifier: validIdentifier, password: validPassword } = validation.data;
 
-    const existing = await prisma.user.findUnique({ where: { identifier: validIdentifier.toLowerCase() } });
+    const existing = await prisma.user.findFirst({
+      where: { identifier: { equals: validIdentifier.toLowerCase(), mode: 'insensitive' } },
+    });
     if (existing) {
       return res.status(400).json({ error: 'Un compte existe déjà avec cet identifiant' });
     }
@@ -102,7 +104,12 @@ async function authenticateUser(
   password: string,
   options?: { requireAdmin?: boolean }
 ): Promise<{ user: any; token: string; refreshToken: string }> {
-  const user = await prisma.user.findUnique({ where: { identifier: identifier.toLowerCase() } });
+  // Recherche insensible à la casse : register stocke en minuscules mais le seed
+  // admin crée GERANT_IDENTIFIER tel quel (majuscules) — un findUnique sur la
+  // minuscule ne trouverait jamais le compte gérant.
+  const user = await prisma.user.findFirst({
+    where: { identifier: { equals: identifier.toLowerCase(), mode: 'insensitive' } },
+  });
   if (!user || (options?.requireAdmin && user.role !== 'ADMIN')) {
     throw Object.assign(new Error('Identifiant ou mot de passe incorrect'), { status: 401 });
   }

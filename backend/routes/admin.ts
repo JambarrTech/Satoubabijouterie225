@@ -114,7 +114,7 @@ router.get('/api/users', authenticateToken, requireAdmin, async (req: AuthReques
       // Only gerant can create other admins
       if (role === 'ADMIN') {
         const currentUser = await prisma.user.findUnique({ where: { id: req.userId! }, select: { identifier: true } });
-        if (currentUser?.identifier !== GERANT_IDENTIFIER) {
+        if ((currentUser?.identifier || '').toLowerCase() !== GERANT_IDENTIFIER.toLowerCase()) {
           return res.status(403).json({ error: 'Seul le gérant principal peut créer des administrateurs' });
         }
       }
@@ -122,7 +122,9 @@ router.get('/api/users', authenticateToken, requireAdmin, async (req: AuthReques
         return res.status(400).json({ error: 'Le mot de passe doit contenir au moins 8 caractères' });
       }
 
-      const existing = await prisma.user.findUnique({ where: { identifier: identifier.toLowerCase() } });
+      const existing = await prisma.user.findFirst({
+        where: { identifier: { equals: identifier.toLowerCase(), mode: 'insensitive' } },
+      });
       if (existing) {
         return res.status(400).json({ error: 'Un compte existe déjà avec cet identifiant' });
       }
