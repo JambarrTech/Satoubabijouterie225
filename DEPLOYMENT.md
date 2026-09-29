@@ -134,6 +134,9 @@ gérant sous `/gerant`). Pour le faire tourner en local :
 - **CD** : Vercel déploie automatiquement chaque commit de `main`
   (`vercel.json` : build + `outputDirectory: dist`, fonction `api/index.js`
   avec les limites par défaut du plan Hobby — ne pas dépasser `maxDuration: 10`).
+- `api/index.js` reste **committé** bien que généré : Vercel détecte les
+  Functions dans `api/` depuis le dépôt, et `build:api` le régénère à chaque
+  build. Ne pas le supprimer de git (sinon `/api/*` → 404).
 - **Avant chaque push risqué**, taguer la prod stable :
   ```
   git tag prod-backup-AAAAMMJJ origin/main
