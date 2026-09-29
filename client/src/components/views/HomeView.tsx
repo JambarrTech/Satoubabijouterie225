@@ -99,11 +99,6 @@ export function HomeView({
             transition={{ duration: 0.6 }}
             className="lg:col-span-7 space-y-6 text-center lg:text-left"
           >
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#0B5D1E]/10 text-[#0B5D1E] text-xs font-semibold tracking-wide">
-              <Sparkles size={14} className="text-[#D9A441]" />
-              <span>Joaillerie d'Exception · Abidjan</span>
-            </div>
-
             <div className="overflow-hidden">
               <h1 className="font-serif text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-gray-900 leading-[1.15] animate-float">
                 L'élégance à <span className="text-[#0B5D1E]">votre portée</span>
