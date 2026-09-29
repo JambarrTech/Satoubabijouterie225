@@ -77,8 +77,9 @@ Dans le projet, ajouter (Project Settings → Environment Variables, scope Produ
 5. **Vercel** : importer le repo. Le `vercel.json` gére le build
    (`prisma generate` puis `vite build` de `client` et `gerant`), l'assemble des deux
    builds dans `dist/` (`assemble-vercel.mjs`), l'`outputDirectory: "dist"`, les rewrites
-   `/api/*` → `/api`, `/gerant/*` → `/gerant/index.html`, le fallback SPA client, ainsi
-   que la config de la fonction API (30 s max, 1024 MB).
+   `/api/*` → `/api/index.js`, `/gerant/*` → `/gerant/index.html` et le fallback SPA client.
+   Ne pas ajouter de bloc `functions` avec `maxDuration > 10` sur le plan Hobby
+   (Vercel rejette le déploiement à la validation).
 6. Ajouter toutes les variables d'environnement, puis **Deploy**.
 
 ## Vérifications
@@ -132,7 +133,7 @@ gérant sous `/gerant`). Pour le faire tourner en local :
   exigeant le check `validate`).
 - **CD** : Vercel déploie automatiquement chaque commit de `main`
   (`vercel.json` : build + `outputDirectory: dist`, fonction `api/index.js`
-  30 s / 1024 MB).
+  avec les limites par défaut du plan Hobby — ne pas dépasser `maxDuration: 10`).
 - **Avant chaque push risqué**, taguer la prod stable :
   ```
   git tag prod-backup-AAAAMMJJ origin/main
