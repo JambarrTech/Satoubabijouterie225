@@ -14,11 +14,26 @@ if (!password) {
 
 async function main() {
   const hash = bcrypt.hashSync(password, 12);
-  await prisma.user.update({
-    where: { identifier },
-    data: { password: hash }
-  });
-  console.log('Mot de passe mis a jour pour:', identifier);
+  const existing = await prisma.user.findUnique({ where: { identifier } });
+  if (!existing) {
+    await prisma.user.create({
+      data: {
+        name: 'Gérant',
+        identifier,
+        password: hash,
+        role: 'ADMIN',
+        failedLoginAttempts: 0,
+        lockedUntil: null,
+      },
+    });
+    console.log('Compte ADMIN créé pour:', identifier);
+  } else {
+    await prisma.user.update({
+      where: { identifier },
+      data: { password: hash, role: 'ADMIN', failedLoginAttempts: 0, lockedUntil: null },
+    });
+    console.log('Mot de passe mis a jour + rôle ADMIN + verrouillage réinitialisé pour:', identifier);
+  }
   await prisma.$disconnect();
 }
 
