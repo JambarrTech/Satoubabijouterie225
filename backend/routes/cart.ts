@@ -77,7 +77,7 @@ router.put('/api/cart/items/:id', authenticateToken, async (req: AuthRequest, re
 });
 
 // Add to cart (with stock check + material-aware dedup, rate limited)
-router.post('/api/cart/items', authenticateToken, rateLimit(RATE_LIMITS.cartItems, RATE_WINDOW_MS), async (req: AuthRequest, res) => {
+router.post('/api/cart/items', authenticateToken, rateLimit(RATE_LIMITS.cartItems, RATE_WINDOW_MS, { keyBy: 'user' }), async (req: AuthRequest, res) => {
   try {
     const { productId, quantity = 1, selectedSize, selectedMaterial } = req.body;
 

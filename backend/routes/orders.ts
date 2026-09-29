@@ -1,12 +1,13 @@
 import { Router } from 'express';
 import { prisma } from '../lib/prisma';
-import { authenticateToken, requireAdmin, AuthRequest } from '../middleware/auth';
+import { authenticateToken, requireAdmin, rateLimit, AuthRequest } from '../middleware/auth';
 import { safeJsonParse, calculateCartTotal } from '../lib/helpers';
 import { sanitizeString } from '../lib/sanitize';
 import logger from '../lib/logger';
 import { notifyNewOrder, notifyOrderStatusChange } from '../lib/notifications';
 import { logAction } from '../lib/audit';
-import { PAGINATION_DEFAULT_LIMIT, PAGINATION_MAX_LIMIT } from '../lib/config';
+import { getRedis } from '../lib/rateLimit';
+import { IDEMPOTENCY_PENDING_TTL_S, IDEMPOTENCY_TTL_S, PAGINATION_DEFAULT_LIMIT, PAGINATION_MAX_LIMIT, RATE_LIMITS, RATE_WINDOW_MS } from '../lib/config';
 
 const router = Router();
 
@@ -99,11 +100,60 @@ router.get('/api/orders/:id', authenticateToken, async (req: AuthRequest, res) =
   }
 });
 
-// Create order (rate limited: 10 per minute)
+// Idempotence POST /orders : clé fournie par le client (header Idempotency-Key
+// ou champ body idempotencyKey), stockée dans Redis avec l'orderId (fail-open :
+// sans Redis, la commande passe normalement). Évite les doublons double-clic/retry.
+const IDEM_KEY_RE = /^[A-Za-z0-9-]{8,64}$/;
+
+function parseOrder(order: any) {
+  return {
+    ...order,
+    shippingAddress: safeJsonParse(order.shippingAddress as string, null),
+    statusHistory: safeJsonParse(order.statusHistory as string, []),
+  };
+}
+
+async function findIdempotentOrder(redis: any, key: string, userId: string) {
+  const existing = await redis.get(key);
+  if (!existing || existing === 'pending') return existing;
+  const order = await prisma.order.findFirst({
+    where: { id: existing, userId },
+    include: { items: true },
+  });
+  return order ? parseOrder(order) : null;
+}
+
+// Create order (rate limited per user + idempotent)
 // Body peut contenir `cartItemIds?: string[]` pour commander 1 ou N articles selectionnes
-router.post('/api/orders', authenticateToken, async (req: AuthRequest, res) => {
+// et `idempotencyKey?: string` (ou header Idempotency-Key) stable par tentative de commande.
+router.post('/api/orders', authenticateToken, rateLimit(RATE_LIMITS.orders, RATE_WINDOW_MS, { keyBy: 'user' }), async (req: AuthRequest, res) => {
   try {
     const { shippingAddress, cartItemIds } = req.body;
+    const rawKey = (req.headers['idempotency-key'] as string) || (req.body as any).idempotencyKey;
+    const idemKey = typeof rawKey === 'string' && IDEM_KEY_RE.test(rawKey) ? rawKey : null;
+    const redisKey = idemKey ? `idem:${req.userId!}:${idemKey}` : null;
+    const redis = redisKey ? getRedis() : null;
+
+    // Rejeu d'une tentative déjà aboutie → retourne la commande existante (200, pas de doublon)
+    if (redis && redisKey) {
+      try {
+        const replay = await findIdempotentOrder(redis, redisKey, req.userId!);
+        if (replay === 'pending') {
+          return res.status(409).json({ error: 'Commande déjà en cours de traitement' });
+        }
+        if (replay) return res.json(replay);
+        const claimed = await redis.set(redisKey, 'pending', { ex: IDEMPOTENCY_PENDING_TTL_S, nx: true });
+        if (!claimed) {
+          const raced = await findIdempotentOrder(redis, redisKey, req.userId!);
+          if (raced === 'pending') {
+            return res.status(409).json({ error: 'Commande déjà en cours de traitement' });
+          }
+          if (raced) return res.json(raced);
+        }
+      } catch {
+        // Redis indisponible → on continue sans idempotence (fail-open)
+      }
+    }
 
     // Sanitize shipping address fields
     const sanitizedAddress = shippingAddress ? {
@@ -231,6 +281,13 @@ router.post('/api/orders', authenticateToken, async (req: AuthRequest, res) => {
       }
     }
 
+    // Mémorise la tentative (une même clé rejoue la même commande, jamais de doublon)
+    if (redis && redisKey) {
+      try {
+        await redis.set(redisKey, order.id, { ex: IDEMPOTENCY_TTL_S });
+      } catch {}
+    }
+
     // Notify customer + gerants (async, non-blocking)
     notifyNewOrder(order.id).catch((err) =>
       logger.error({ err, orderId: order.id }, 'Failed to send new order notifications')
@@ -238,6 +295,13 @@ router.post('/api/orders', authenticateToken, async (req: AuthRequest, res) => {
 
     res.status(201).json(order);
   } catch (error: any) {
+    // Échec : libère la clé pour autoriser une nouvelle tentative avec la même clé
+    if (redisKey) {
+      try {
+        const r = getRedis();
+        if (r) await r.del(redisKey);
+      } catch {}
+    }
     if (error.message && error.message.includes('en stock')) {
       return res.status(400).json({ error: error.message });
     }

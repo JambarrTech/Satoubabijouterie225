@@ -13,12 +13,14 @@ import {
   GERANT_IDENTIFIER,
   LOCKOUT_DURATION_MS,
   MAX_FAILED_ATTEMPTS,
+  MAX_OTP_ATTEMPTS,
   OTP_MAX,
   OTP_MIN,
   PASSWORD_RESET_EXPIRY_MS,
   RATE_LIMITS,
   RATE_WINDOW_MS,
 } from '../lib/config';
+import { clearAttempts, countAttempt } from '../lib/attempts';
 
 const router = Router();
 
@@ -373,9 +375,23 @@ router.post('/api/auth/reset-password', rateLimit(RATE_LIMITS.resetPassword, RAT
     }
     const { phone: validPhone, otp: validOtp, newPassword: validNewPassword } = validation.data;
 
+    // Compteur d'essais par numéro (clé = phone : chaque code deviné compte,
+    // quel que soit le hash essayé). Au-delà du max, les codes actifs sont
+    // brûlés et il faut redemander un code. Message générique (anti-énumération).
+    const otpAttempts = await countAttempt(`otp:${validPhone}`, PASSWORD_RESET_EXPIRY_MS);
+
     // Find user by phone
     const user = await prisma.user.findFirst({ where: { phone: validPhone } });
     if (!user) {
+      return res.status(400).json({ error: 'Code invalide ou expiré' });
+    }
+
+    if (otpAttempts > MAX_OTP_ATTEMPTS) {
+      await prisma.passwordResetToken.updateMany({
+        where: { userId: user.id, used: false },
+        data: { used: true },
+      });
+      logger.warn({ userId: user.id }, 'OTP burnt after too many attempts');
       return res.status(400).json({ error: 'Code invalide ou expiré' });
     }
 
@@ -406,6 +422,8 @@ router.post('/api/auth/reset-password', rateLimit(RATE_LIMITS.resetPassword, RAT
         data: { used: true },
       }),
     ]);
+
+    await clearAttempts(`otp:${validPhone}`);
 
     logger.info({ userId: resetRecord.userId }, 'Password reset completed via OTP');
     res.json({ success: true, message: 'Mot de passe réinitialisé avec succès' });

@@ -47,7 +47,6 @@ model User {
   passwordResets  PasswordResetToken[]
   refreshTokens   RefreshToken[]
   auditLogs       AuditLog[]
-  pushTokens      String    @default("[]") @db.Text
 
   @@index([role])
 }

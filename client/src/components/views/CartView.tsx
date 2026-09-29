@@ -25,6 +25,9 @@ export function CartView({ cart, onUpdateCart, onNavigate, onRefreshCart }: Cart
   const [showShippingForm, setShowShippingForm] = useState(false);
   const [couponInput, setCouponInput] = useState("");
   const [couponLoading, setCouponLoading] = useState(false);
+  // Clé d'idempotence : stable pour une tentative (générée à l'ouverture du formulaire),
+  // renouvelée à chaque nouvelle tentative → le retry ne duplique jamais la commande.
+  const [idemKey, setIdemKey] = useState("");
   const [shippingInfo, setShippingInfo] = useState({
     fullName: "",
     phone: "",
@@ -174,6 +177,7 @@ export function CartView({ cart, onUpdateCart, onNavigate, onRefreshCart }: Cart
           notes: shippingInfo.notes.trim() || undefined
         },
         cartItemIds: Array.from(selectedIds),
+        idempotencyKey: idemKey || undefined,
       });
       toast("Commande confirmee !", "success");
       setShowShippingForm(false);
@@ -331,7 +335,7 @@ export function CartView({ cart, onUpdateCart, onNavigate, onRefreshCart }: Cart
               </div>
 
               {!showShippingForm ? (
-                <Button size="lg" onClick={() => setShowShippingForm(true)} icon={<ArrowRight size={18} />} className="w-full shadow-lg" disabled={selectedIds.size === 0}>
+                <Button size="lg" onClick={() => { setIdemKey(crypto.randomUUID()); setShowShippingForm(true); }} icon={<ArrowRight size={18} />} className="w-full shadow-lg" disabled={selectedIds.size === 0}>
                   {selectedIds.size === 0 ? "Selectionnez des articles" : "Commander " + selectedCount + " article" + (selectedCount > 1 ? "s" : "")}
                 </Button>
               ) : (

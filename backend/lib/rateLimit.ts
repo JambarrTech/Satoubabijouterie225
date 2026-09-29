@@ -11,7 +11,7 @@ import logger from './logger';
 
 let redis: Redis | null | undefined;
 
-function getRedis(): Redis | null {
+export function getRedis(): Redis | null {
   if (redis !== undefined) return redis;
   const url = process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
@@ -47,9 +47,15 @@ function memCleanup(windowMs: number) {
   }
 }
 
-export function rateLimit(maxRequests: number, windowMs: number) {
+export function rateLimit(maxRequests: number, windowMs: number, opts?: { keyBy?: 'ip' | 'user' }) {
   return async (req: Request, res: Response, next: NextFunction) => {
-    const key = `${req.ip || req.socket.remoteAddress || 'unknown'}`;
+    // keyBy 'user' : bucket par compte (évite de bloquer tout un NAT mobile partagé).
+    // Réservé aux routes APRÈS authenticateToken. Les routes publiques/sensibles
+    // (login, OTP…) restent keyées par IP pour ne pas affaiblir l'anti-brute-force.
+    const authedId = (req as any).userId as string | undefined;
+    const key = opts?.keyBy === 'user' && authedId
+      ? `u:${authedId}`
+      : `${req.ip || req.socket.remoteAddress || 'unknown'}`;
     const client = getRedis();
 
     if (client) {

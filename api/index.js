@@ -105,9 +105,10 @@ function memCleanup(windowMs) {
     }
   }
 }
-function rateLimit(maxRequests, windowMs) {
+function rateLimit(maxRequests, windowMs, opts) {
   return async (req, res, next) => {
-    const key = `${req.ip || req.socket.remoteAddress || "unknown"}`;
+    const authedId = req.userId;
+    const key = opts?.keyBy === "user" && authedId ? `u:${authedId}` : `${req.ip || req.socket.remoteAddress || "unknown"}`;
     const client = getRedis();
     if (client) {
       const bucketKey = `rl:${key}:${Math.floor(Date.now() / windowMs)}`;
@@ -121,8 +122,8 @@ function rateLimit(maxRequests, windowMs) {
         }
         return next();
       } catch (err) {
-        logger_default.error({ err }, "Rate limit Redis error");
-        return res.status(503).json({ error: "Service temporairement indisponible. R\xE9essayez dans quelques instants." });
+        logger_default.warn({ err }, "Rate limit Redis error - fail open");
+        return next();
       }
     }
     const now = Date.now();
@@ -140,9 +141,57 @@ function rateLimit(maxRequests, windowMs) {
   };
 }
 
+// backend/lib/config.ts
+var JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "15m";
+var REFRESH_TOKEN_DAYS = Number(process.env.REFRESH_TOKEN_DAYS) || 7;
+var BCRYPT_COST = Number(process.env.BCRYPT_COST) || 12;
+var MAX_FAILED_ATTEMPTS = Number(process.env.MAX_FAILED_ATTEMPTS) || 8;
+var LOCKOUT_DURATION_MS = Number(process.env.LOCKOUT_DURATION_MS) || 10 * 60 * 1e3;
+var PASSWORD_RESET_EXPIRY_MS = Number(process.env.PASSWORD_RESET_EXPIRY_MS) || 10 * 60 * 1e3;
+var OTP_MIN = 1e5;
+var OTP_MAX = 999999;
+var MAX_OTP_ATTEMPTS = Number(process.env.MAX_OTP_ATTEMPTS) || 5;
+var TRUST_PROXY = process.env.TRUST_PROXY ? Number(process.env.TRUST_PROXY) : 1;
+var IDEMPOTENCY_TTL_S = Number(process.env.IDEMPOTENCY_TTL_S) || 24 * 60 * 60;
+var IDEMPOTENCY_PENDING_TTL_S = 120;
+var MAX_UPLOAD_BYTES = Number(process.env.MAX_UPLOAD_BYTES) || 5 * 1024 * 1024;
+var JSON_BODY_LIMIT = process.env.JSON_BODY_LIMIT || "1mb";
+var RATE_LIMITS = {
+  auth: Number(process.env.RATE_LIMIT_AUTH) || 30,
+  orders: Number(process.env.RATE_LIMIT_ORDERS) || 30,
+  upload: Number(process.env.RATE_LIMIT_UPLOAD) || 20,
+  global: Number(process.env.RATE_LIMIT_GLOBAL) || 200,
+  register: Number(process.env.RATE_LIMIT_REGISTER) || 15,
+  login: Number(process.env.RATE_LIMIT_LOGIN) || 30,
+  loginGerant: Number(process.env.RATE_LIMIT_LOGIN_GERANT) || 30,
+  forgotPassword: Number(process.env.RATE_LIMIT_FORGOT) || 10,
+  resetPassword: Number(process.env.RATE_LIMIT_RESET) || 5,
+  refresh: Number(process.env.RATE_LIMIT_REFRESH) || 30,
+  usersCreate: Number(process.env.RATE_LIMIT_USERS_CREATE) || 10,
+  productsCreate: Number(process.env.RATE_LIMIT_PRODUCTS_CREATE) || 20,
+  productsUpdate: Number(process.env.RATE_LIMIT_PRODUCTS_UPDATE) || 30,
+  cartItems: Number(process.env.RATE_LIMIT_CART) || 30
+};
+var RATE_WINDOW_MS = 60 * 1e3;
+var PAGINATION_DEFAULT_LIMIT = 50;
+var PAGINATION_MAX_LIMIT = 100;
+var GERANT_IDENTIFIER = process.env.GERANT_IDENTIFIER || "gerantSatoubaBijouterie6002";
+var PROD_URL = process.env.PROD_URL || "https://satoubabijouterie225.vercel.app";
+var COUNTRY_CODE = process.env.COUNTRY_CODE || "225";
+var CONTACT_PHONE = process.env.CONTACT_PHONE || "+225 05 54 13 07 46";
+var AT_USERNAME = process.env.AFRICASTALKING_USERNAME || "sandbox";
+var AT_API_KEY = process.env.AFRICASTALKING_API_KEY || "";
+var AT_SENDER_ID = process.env.AFRICASTALKING_SENDER_ID || "SaTouba";
+var AT_BASE_URL = AT_USERNAME === "sandbox" ? "https://api.sandbox.africastalking.com" : "https://api.africastalking.com";
+var SMS_TIMEOUT_MS = 10 * 1e3;
+var SMS_MAX_LENGTH = 160;
+var COUPON_DEFAULT_EXPIRY = "2026-12-31";
+var FALLBACK_CATEGORY_ID = "cat-1";
+var CART_MAX_QUANTITY = 99;
+
 // backend/middleware/security.ts
 function setupSecurity(app2) {
-  app2.set("trust proxy", 1);
+  app2.set("trust proxy", TRUST_PROXY);
   app2.use((0, import_helmet.default)({
     contentSecurityPolicy: {
       directives: {
@@ -151,7 +200,7 @@ function setupSecurity(app2) {
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         fontSrc: ["'self'", "https://fonts.gstatic.com"],
         imgSrc: ["'self'", "data:", "https:", "blob:", "https://*.googleapis.com"],
-        connectSrc: ["'self'", "https://wa.me", "https://api.sandbox.africastalking.com", "https://api.africastalking.com", "https://*.googleapis.com"],
+        connectSrc: ["'self'", "https://wa.me", "https://api.sandbox.africastalking.com", "https://api.africastalking.com", "https://*.googleapis.com", "https://*.blob.vercel-storage.com", "https://*.vercel-storage.com", "https://*.vercel.app"],
         frameSrc: ["'none'"],
         objectSrc: ["'none'"],
         baseUri: ["'self'"],
@@ -181,17 +230,17 @@ function setupSecurity(app2) {
     }
     next();
   });
-  const authRateLimit = rateLimit(30, 60 * 1e3);
+  const authRateLimit = rateLimit(RATE_LIMITS.auth, RATE_WINDOW_MS);
   app2.use("/api/auth", authRateLimit);
-  const orderRateLimit = rateLimit(30, 60 * 1e3);
+  const orderRateLimit = rateLimit(RATE_LIMITS.orders, RATE_WINDOW_MS);
   app2.use("/api/orders", orderRateLimit);
-  const uploadRateLimit = rateLimit(20, 60 * 1e3);
+  const uploadRateLimit = rateLimit(RATE_LIMITS.upload, RATE_WINDOW_MS);
   app2.use("/api/upload", uploadRateLimit);
   app2.use("/uploads", (_req, res, next) => {
     res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
     next();
   });
-  const globalRateLimit = rateLimit(200, 60 * 1e3);
+  const globalRateLimit = rateLimit(RATE_LIMITS.global, RATE_WINDOW_MS);
   app2.use(globalRateLimit);
 }
 
@@ -207,7 +256,7 @@ var globalForPrisma = globalThis;
 var prisma = globalForPrisma.prisma || new import_client.PrismaClient({
   log: process.env.NODE_ENV === "production" ? ["error", "warn"] : ["error", "warn"]
 });
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+globalForPrisma.prisma = prisma;
 prisma.$connect().catch(() => {
 });
 
@@ -253,6 +302,25 @@ async function authenticateToken(req, res, next) {
     return res.status(500).json({ error: "Erreur lors de la v\xE9rification de la session" });
   }
 }
+async function optionalAuth(req, _res, next) {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
+  if (token) {
+    try {
+      const decoded = import_jsonwebtoken.default.verify(token, getJWTSecret());
+      const user = await prisma.user.findUnique({
+        where: { id: decoded.userId },
+        select: { id: true, role: true }
+      });
+      if (user) {
+        req.userId = user.id;
+        req.userRole = user.role;
+      }
+    } catch {
+    }
+  }
+  next();
+}
 function requireAdmin(req, res, next) {
   if (req.userRole !== "ADMIN") {
     return res.status(403).json({ error: "Acc\xE8s r\xE9serv\xE9 aux administrateurs" });
@@ -260,11 +328,11 @@ function requireAdmin(req, res, next) {
   next();
 }
 function generateToken(userId, role) {
-  return import_jsonwebtoken.default.sign({ userId, role }, getJWTSecret(), { expiresIn: "15m" });
+  return import_jsonwebtoken.default.sign({ userId, role }, getJWTSecret(), { expiresIn: JWT_EXPIRES_IN });
 }
 async function generateRefreshToken(userId) {
   const token = import_crypto.default.randomBytes(40).toString("hex");
-  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1e3);
+  const expiresAt = new Date(Date.now() + REFRESH_TOKEN_DAYS * 24 * 60 * 60 * 1e3);
   await prisma.refreshToken.create({
     data: {
       token,
@@ -293,12 +361,6 @@ async function revokeRefreshToken(token) {
 
 // backend/lib/sms.ts
 var import_axios = __toESM(require("axios"), 1);
-var AT_USERNAME = process.env.AFRICASTALKING_USERNAME || "sandbox";
-var AT_API_KEY = process.env.AFRICASTALKING_API_KEY || "";
-var AT_SENDER_ID = process.env.AFRICASTALKING_SENDER_ID || "SaTouba";
-var AT_BASE_URL = AT_USERNAME === "sandbox" ? "https://api.sandbox.africastalking.com" : "https://api.africastalking.com";
-var COUNTRY_CODE = process.env.COUNTRY_CODE || "225";
-var CONTACT_PHONE = process.env.CONTACT_PHONE || "+225 05 54 13 07 46";
 function formatPhoneNumber(phone) {
   let cleaned = phone.replace(/\D/g, "");
   if (cleaned.startsWith("0")) {
@@ -339,8 +401,7 @@ async function sendSMS(options) {
           "Content-Type": "application/x-www-form-urlencoded",
           "Accept": "application/json"
         },
-        timeout: 1e4
-        // 10s timeout
+        timeout: SMS_TIMEOUT_MS
       }
     );
     const data = response.data;
@@ -631,13 +692,45 @@ function isValidPhone(phone) {
   return cleaned.length >= 8 && cleaned.length <= 15;
 }
 
+// backend/lib/attempts.ts
+var memStore2 = /* @__PURE__ */ new Map();
+async function countAttempt(key, windowMs) {
+  const namespaced = `att:${key}`;
+  const client = getRedis();
+  if (client) {
+    try {
+      const count = await client.incr(namespaced);
+      if (count === 1) {
+        await client.expire(namespaced, Math.ceil(windowMs / 1e3));
+      }
+      return count;
+    } catch {
+    }
+  }
+  const now = Date.now();
+  const entry = memStore2.get(namespaced);
+  if (!entry || now > entry.resetAt) {
+    memStore2.set(namespaced, { count: 1, resetAt: now + windowMs });
+    return 1;
+  }
+  entry.count++;
+  return entry.count;
+}
+async function clearAttempts(key) {
+  const namespaced = `att:${key}`;
+  memStore2.delete(namespaced);
+  const client = getRedis();
+  if (client) {
+    try {
+      await client.del(namespaced);
+    } catch {
+    }
+  }
+}
+
 // backend/routes/auth.ts
 var router = (0, import_express.Router)();
 var ALLOWED_PROFILE_FIELDS = ["name", "phone", "address", "city", "country", "avatar"];
-var MAX_FAILED_ATTEMPTS = 8;
-var LOCKOUT_DURATION_MS = 10 * 60 * 1e3;
-var PASSWORD_RESET_EXPIRY_MS = 10 * 60 * 1e3;
-var GERANT_IDENTIFIER = process.env.GERANT_IDENTIFIER || "gerantSatoubaBijouterie6002";
 var registerSchema = import_zod.z.object({
   name: import_zod.z.string().trim().min(2, "Le nom doit contenir au moins 2 caract\xE8res").max(100),
   identifier: import_zod.z.string().trim().min(3, "L'identifiant doit contenir au moins 3 caract\xE8res").max(50).regex(/^[a-zA-Z0-9_-]+$/, "L'identifiant ne peut contenir que des lettres, chiffres, tirets ou underscores"),
@@ -666,7 +759,7 @@ function validate(schema, data) {
   const firstError = result.error.issues[0];
   return { success: false, error: firstError?.message || "Donn\xE9es invalides" };
 }
-router.post("/api/auth/register", rateLimit(15, 6e4), async (req, res) => {
+router.post("/api/auth/register", rateLimit(RATE_LIMITS.register, RATE_WINDOW_MS), async (req, res) => {
   try {
     const { name, identifier, password, phone } = req.body;
     const validation = validate(registerSchema, { name, identifier, password, phone });
@@ -678,7 +771,7 @@ router.post("/api/auth/register", rateLimit(15, 6e4), async (req, res) => {
     if (existing) {
       return res.status(400).json({ error: "Un compte existe d\xE9j\xE0 avec cet identifiant" });
     }
-    const hashedPassword = await import_bcryptjs.default.hash(validPassword, 12);
+    const hashedPassword = await import_bcryptjs.default.hash(validPassword, BCRYPT_COST);
     const user = await prisma.user.create({
       data: { name: validName, identifier: validIdentifier.toLowerCase(), password: hashedPassword, phone: validation.data.phone || null }
     });
@@ -739,7 +832,7 @@ async function authenticateUser(identifier, password, options) {
   const { password: _, ...userWithoutPassword } = user;
   return { user: userWithoutPassword, token, refreshToken };
 }
-router.post("/api/auth/login", rateLimit(30, 6e4), async (req, res) => {
+router.post("/api/auth/login", rateLimit(RATE_LIMITS.login, RATE_WINDOW_MS), async (req, res) => {
   try {
     const { identifier, password } = req.body;
     const validation = validate(loginSchema, { identifier, password });
@@ -768,7 +861,7 @@ router.post("/api/auth/login", rateLimit(30, 6e4), async (req, res) => {
     res.status(500).json({ error: "Erreur lors de la connexion" });
   }
 });
-router.post("/api/auth/login-gerant", rateLimit(30, 6e4), async (req, res) => {
+router.post("/api/auth/login-gerant", rateLimit(RATE_LIMITS.loginGerant, RATE_WINDOW_MS), async (req, res) => {
   try {
     const { identifier, password } = req.body;
     const validation = validate(loginSchema, { identifier: identifier || GERANT_IDENTIFIER, password });
@@ -851,7 +944,7 @@ router.post("/api/auth/change-password", authenticateToken, async (req, res) => 
     if (validCurrentPassword === validNewPassword) {
       return res.status(400).json({ error: "Le nouveau mot de passe doit \xEAtre diff\xE9rent de l'actuel" });
     }
-    const hashedPassword = await import_bcryptjs.default.hash(validNewPassword, 12);
+    const hashedPassword = await import_bcryptjs.default.hash(validNewPassword, BCRYPT_COST);
     await prisma.user.update({
       where: { id: req.userId },
       data: { password: hashedPassword }
@@ -863,7 +956,7 @@ router.post("/api/auth/change-password", authenticateToken, async (req, res) => 
     res.status(500).json({ error: "Erreur lors du changement de mot de passe" });
   }
 });
-router.post("/api/auth/forgot-password", rateLimit(10, 6e4), async (req, res) => {
+router.post("/api/auth/forgot-password", rateLimit(RATE_LIMITS.forgotPassword, RATE_WINDOW_MS), async (req, res) => {
   try {
     const { phone } = req.body;
     const validation = validate(forgotPasswordSchema, { phone });
@@ -879,7 +972,7 @@ router.post("/api/auth/forgot-password", rateLimit(10, 6e4), async (req, res) =>
       where: { userId: user.id, used: false },
       data: { used: true }
     });
-    const otp = import_crypto2.default.randomInt(1e5, 999999).toString();
+    const otp = import_crypto2.default.randomInt(OTP_MIN, OTP_MAX).toString();
     const hashedToken = import_crypto2.default.createHash("sha256").update(otp).digest("hex");
     await prisma.passwordResetToken.create({
       data: {
@@ -898,7 +991,7 @@ router.post("/api/auth/forgot-password", rateLimit(10, 6e4), async (req, res) =>
     res.status(500).json({ error: "Erreur lors de la demande de r\xE9initialisation" });
   }
 });
-router.post("/api/auth/reset-password", rateLimit(15, 6e4), async (req, res) => {
+router.post("/api/auth/reset-password", rateLimit(RATE_LIMITS.resetPassword, RATE_WINDOW_MS), async (req, res) => {
   try {
     const { phone, otp, newPassword } = req.body;
     const validation = validate(resetPasswordSchema, { phone, otp, newPassword });
@@ -906,8 +999,17 @@ router.post("/api/auth/reset-password", rateLimit(15, 6e4), async (req, res) => 
       return res.status(400).json({ error: validation.error });
     }
     const { phone: validPhone, otp: validOtp, newPassword: validNewPassword } = validation.data;
+    const otpAttempts = await countAttempt(`otp:${validPhone}`, PASSWORD_RESET_EXPIRY_MS);
     const user = await prisma.user.findFirst({ where: { phone: validPhone } });
     if (!user) {
+      return res.status(400).json({ error: "Code invalide ou expir\xE9" });
+    }
+    if (otpAttempts > MAX_OTP_ATTEMPTS) {
+      await prisma.passwordResetToken.updateMany({
+        where: { userId: user.id, used: false },
+        data: { used: true }
+      });
+      logger_default.warn({ userId: user.id }, "OTP burnt after too many attempts");
       return res.status(400).json({ error: "Code invalide ou expir\xE9" });
     }
     const hashedToken = import_crypto2.default.createHash("sha256").update(validOtp).digest("hex");
@@ -922,7 +1024,7 @@ router.post("/api/auth/reset-password", rateLimit(15, 6e4), async (req, res) => 
     if (!resetRecord) {
       return res.status(400).json({ error: "Code invalide ou expir\xE9" });
     }
-    const hashedPassword = await import_bcryptjs.default.hash(validNewPassword, 12);
+    const hashedPassword = await import_bcryptjs.default.hash(validNewPassword, BCRYPT_COST);
     await prisma.$transaction([
       prisma.user.update({
         where: { id: resetRecord.userId },
@@ -933,6 +1035,7 @@ router.post("/api/auth/reset-password", rateLimit(15, 6e4), async (req, res) => 
         data: { used: true }
       })
     ]);
+    await clearAttempts(`otp:${validPhone}`);
     logger_default.info({ userId: resetRecord.userId }, "Password reset completed via OTP");
     res.json({ success: true, message: "Mot de passe r\xE9initialis\xE9 avec succ\xE8s" });
   } catch (error) {
@@ -940,7 +1043,7 @@ router.post("/api/auth/reset-password", rateLimit(15, 6e4), async (req, res) => 
     res.status(500).json({ error: "Erreur lors de la r\xE9initialisation du mot de passe" });
   }
 });
-router.post("/api/auth/refresh", rateLimit(30, 6e4), async (req, res) => {
+router.post("/api/auth/refresh", rateLimit(RATE_LIMITS.refresh, RATE_WINDOW_MS), async (req, res) => {
   try {
     const { refreshToken } = req.body;
     if (!refreshToken || typeof refreshToken !== "string") {
@@ -1056,18 +1159,79 @@ var categories_default = router2;
 
 // backend/routes/products.ts
 var import_express3 = require("express");
+
+// backend/lib/helpers.ts
+function safeJsonParse(value, fallback = null) {
+  if (value === null || value === void 0) return fallback;
+  if (typeof value === "object") return value;
+  if (typeof value !== "string") return fallback;
+  if (!value) return fallback;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return fallback;
+  }
+}
+async function calculateCartTotal(_cart, cartItems) {
+  let subtotal = 0;
+  for (const item of cartItems) {
+    const price = Number(item.product.price) || 0;
+    const qty = Number(item.quantity) || 0;
+    subtotal += price * qty;
+  }
+  const settings = await prisma.storeSettings.findMany({
+    where: { key: { in: ["shipping_fee", "free_shipping_threshold"] } }
+  });
+  const settingsMap = new Map(settings.map((s) => [s.key, s.value]));
+  const shippingFeeValue = parseInt(settingsMap.get("shipping_fee") || "0") || 0;
+  const freeThreshold = parseInt(settingsMap.get("free_shipping_threshold") || "0") || 0;
+  const shippingFee = subtotal > freeThreshold ? 0 : subtotal > 0 ? shippingFeeValue : 0;
+  let discount = 0;
+  const couponCode = (_cart?.couponCode || "").toString().trim().toUpperCase();
+  if (couponCode && subtotal > 0) {
+    try {
+      const coupon = await prisma.coupon.findFirst({ where: { code: couponCode } });
+      if (coupon && coupon.isActive && new Date(coupon.expiryDate).getTime() > Date.now()) {
+        const pct = Math.min(100, Math.max(0, Number(coupon.discountPercent) || 0));
+        discount = Math.round(subtotal * pct / 100);
+      }
+    } catch {
+      discount = 0;
+    }
+  }
+  const total = Math.max(0, subtotal - discount + shippingFee);
+  return { subtotal, discount, shippingFee, total };
+}
+function formatCartItems(items) {
+  if (!Array.isArray(items)) return [];
+  return items.map((i) => ({
+    ...i,
+    product: {
+      ...i.product,
+      images: safeJsonParse(i.product?.images, []),
+      price: Number(i.product?.price) || 0,
+      stockQuantity: Number(i.product?.stockQuantity) || 0,
+      name: i.product?.name || "Produit"
+    }
+  }));
+}
+
+// backend/routes/products.ts
 var router3 = (0, import_express3.Router)();
-router3.get("/api/products", async (req, res) => {
+var ALLOWED_PRODUCT_FIELDS = ["name", "slug", "categoryId", "description", "price", "compareAtPrice", "images", "material", "collection", "carats", "weightGrams", "stockQuantity", "isBestSeller", "isNew", "isPromo"];
+router3.get("/api/products", optionalAuth, async (req, res) => {
   try {
     const { category, search, isBestSeller, isPromo, includeAll, page = "1", limit = "50", sort = "newest" } = req.query;
     const where = {};
-    if (includeAll !== "true") {
+    const wantsAll = includeAll === "true";
+    const isAdmin = req.userRole === "ADMIN";
+    if (!wantsAll || !isAdmin) {
       where.inStock = true;
     }
     if (category && search) {
       where.AND = [
         { OR: [{ categoryId: category }, { category: { slug: category } }] },
-        { OR: [{ name: { contains: search } }, { description: { contains: search } }] }
+        { OR: [{ name: { contains: search, mode: "insensitive" } }, { description: { contains: search, mode: "insensitive" } }] }
       ];
     } else if (category) {
       where.OR = [
@@ -1076,14 +1240,14 @@ router3.get("/api/products", async (req, res) => {
       ];
     } else if (search) {
       where.OR = [
-        { name: { contains: search } },
-        { description: { contains: search } }
+        { name: { contains: search, mode: "insensitive" } },
+        { description: { contains: search, mode: "insensitive" } }
       ];
     }
     if (isBestSeller === "true") where.isBestSeller = true;
     if (isPromo === "true") where.isPromo = true;
     const pageNum = Math.max(1, parseInt(page));
-    const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
+    const limitNum = Math.min(PAGINATION_MAX_LIMIT, Math.max(1, parseInt(limit)));
     const skip = (pageNum - 1) * limitNum;
     const orderBy = (() => {
       switch (sort) {
@@ -1111,7 +1275,7 @@ router3.get("/api/products", async (req, res) => {
     ]);
     const parsed = products.map((p) => ({
       ...p,
-      images: p.images
+      images: safeJsonParse(p.images, [])
     }));
     res.json({
       data: parsed,
@@ -1135,13 +1299,12 @@ router3.get("/api/products/:id", async (req, res) => {
       include: { category: true }
     });
     if (!product) return res.status(404).json({ error: "Produit non trouv\xE9" });
-    res.json({ ...product, images: product.images });
+    res.json({ ...product, images: safeJsonParse(product.images, []) });
   } catch {
     res.status(500).json({ error: "Erreur" });
   }
 });
-var ALLOWED_PRODUCT_FIELDS = ["name", "slug", "categoryId", "description", "price", "compareAtPrice", "images", "material", "collection", "carats", "weightGrams", "stockQuantity", "isBestSeller", "isNew", "isPromo"];
-router3.post("/api/products", authenticateToken, requireAdmin, rateLimit(20, 6e4), async (req, res) => {
+router3.post("/api/products", authenticateToken, requireAdmin, rateLimit(RATE_LIMITS.productsCreate, RATE_WINDOW_MS), async (req, res) => {
   try {
     const data = req.body;
     if (!data.name || !data.price) {
@@ -1163,15 +1326,17 @@ router3.post("/api/products", authenticateToken, requireAdmin, rateLimit(20, 6e4
     if (filtered.description) filtered.description = sanitizeString(filtered.description);
     if (filtered.material) filtered.material = sanitizeString(filtered.material);
     if (filtered.collection) filtered.collection = sanitizeString(filtered.collection);
+    const rawImages = filtered.images ?? [];
+    const imagesArray = Array.isArray(rawImages) ? rawImages : safeJsonParse(rawImages, []);
     const product = await prisma.product.create({
       data: {
         name: filtered.name,
         slug: filtered.slug || filtered.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
-        categoryId: filtered.categoryId || "cat-1",
+        categoryId: filtered.categoryId || FALLBACK_CATEGORY_ID,
         description: filtered.description || "",
         price,
         compareAtPrice: filtered.compareAtPrice ? Number(filtered.compareAtPrice) : null,
-        images: JSON.stringify(filtered.images || []),
+        images: imagesArray,
         material: filtered.material || null,
         collection: filtered.collection || null,
         carats: filtered.carats ? String(filtered.carats) : null,
@@ -1190,13 +1355,13 @@ router3.post("/api/products", authenticateToken, requireAdmin, rateLimit(20, 6e4
       details: { name: product.name, price },
       ipAddress: req.ip
     });
-    res.status(201).json({ ...product, images: product.images });
+    res.status(201).json({ ...product, images: safeJsonParse(product.images, []) });
   } catch (error) {
     logger_default.error({ err: error }, "Create product error");
     res.status(500).json({ error: "Erreur lors de la cr\xE9ation du produit" });
   }
 });
-router3.put("/api/products/:id", authenticateToken, requireAdmin, rateLimit(30, 6e4), async (req, res) => {
+router3.put("/api/products/:id", authenticateToken, requireAdmin, rateLimit(RATE_LIMITS.productsUpdate, RATE_WINDOW_MS), async (req, res) => {
   try {
     const { id } = req.params;
     const data = req.body;
@@ -1211,7 +1376,7 @@ router3.put("/api/products/:id", authenticateToken, requireAdmin, rateLimit(30, 
     if (updateData.material) updateData.material = sanitizeString(updateData.material);
     if (updateData.collection) updateData.collection = sanitizeString(updateData.collection);
     if (data.images !== void 0) {
-      updateData.images = data.images;
+      updateData.images = Array.isArray(data.images) ? data.images : safeJsonParse(data.images, []);
     }
     if (updateData.price !== void 0) {
       const p = Number(updateData.price);
@@ -1231,7 +1396,7 @@ router3.put("/api/products/:id", authenticateToken, requireAdmin, rateLimit(30, 
       details: { name: product.name, changes: Object.keys(updateData) },
       ipAddress: req.ip
     });
-    res.json({ ...product, images: product.images });
+    res.json({ ...product, images: safeJsonParse(product.images, []) });
   } catch {
     res.status(500).json({ error: "Erreur lors de la mise \xE0 jour" });
   }
@@ -1261,51 +1426,6 @@ var products_default = router3;
 
 // backend/routes/cart.ts
 var import_express4 = require("express");
-
-// backend/lib/helpers.ts
-function safeJsonParse(value, fallback = null) {
-  if (value === null || value === void 0) return fallback;
-  if (typeof value === "object") return value;
-  if (typeof value !== "string") return fallback;
-  if (!value) return fallback;
-  try {
-    return JSON.parse(value);
-  } catch {
-    return fallback;
-  }
-}
-async function calculateCartTotal(_cart, cartItems) {
-  let subtotal = 0;
-  for (const item of cartItems) {
-    const price = Number(item.product.price) || 0;
-    const qty = Number(item.quantity) || 0;
-    subtotal += price * qty;
-  }
-  const settings = await prisma.storeSettings.findMany({
-    where: { key: { in: ["shipping_fee", "free_shipping_threshold"] } }
-  });
-  const settingsMap = new Map(settings.map((s) => [s.key, s.value]));
-  const shippingFeeValue = parseInt(settingsMap.get("shipping_fee") || "0") || 0;
-  const freeThreshold = parseInt(settingsMap.get("free_shipping_threshold") || "0") || 0;
-  const shippingFee = subtotal > freeThreshold ? 0 : subtotal > 0 ? shippingFeeValue : 0;
-  const total = subtotal + shippingFee;
-  return { subtotal, discount: 0, shippingFee, total };
-}
-function formatCartItems(items) {
-  if (!Array.isArray(items)) return [];
-  return items.map((i) => ({
-    ...i,
-    product: {
-      ...i.product,
-      images: safeJsonParse(i.product?.images, []),
-      price: Number(i.product?.price) || 0,
-      stockQuantity: Number(i.product?.stockQuantity) || 0,
-      name: i.product?.name || "Produit"
-    }
-  }));
-}
-
-// backend/routes/cart.ts
 var router4 = (0, import_express4.Router)();
 router4.get("/api/cart", authenticateToken, async (req, res) => {
   try {
@@ -1362,13 +1482,13 @@ router4.put("/api/cart/items/:id", authenticateToken, async (req, res) => {
     res.status(500).json({ error: "Erreur" });
   }
 });
-router4.post("/api/cart/items", authenticateToken, rateLimit(30, 6e4), async (req, res) => {
+router4.post("/api/cart/items", authenticateToken, rateLimit(RATE_LIMITS.cartItems, RATE_WINDOW_MS, { keyBy: "user" }), async (req, res) => {
   try {
     const { productId, quantity = 1, selectedSize, selectedMaterial } = req.body;
     if (!productId || typeof quantity !== "number" || quantity < 1) {
       return res.status(400).json({ error: "Produit et quantite valide requis" });
     }
-    if (quantity > 99) {
+    if (quantity > CART_MAX_QUANTITY) {
       return res.status(400).json({ error: "Quantite maximale depassee" });
     }
     const product = await prisma.product.findUnique({ where: { id: productId } });
@@ -1438,6 +1558,48 @@ router4.delete("/api/cart/items/:id", authenticateToken, async (req, res) => {
     res.json({ ...updatedCart, ...totals, items: formatCartItems(updatedCart.items) });
   } catch {
     res.status(500).json({ error: "Erreur lors de la suppression" });
+  }
+});
+router4.post("/api/cart/coupon", authenticateToken, async (req, res) => {
+  try {
+    const { code } = req.body;
+    if (!code || typeof code !== "string") {
+      return res.status(400).json({ error: "Code promo requis" });
+    }
+    const normalized = code.trim().toUpperCase();
+    const coupon = await prisma.coupon.findFirst({ where: { code: normalized } });
+    if (!coupon || !coupon.isActive || new Date(coupon.expiryDate).getTime() <= Date.now()) {
+      return res.status(400).json({ error: "Code promo invalide ou expir\xE9" });
+    }
+    const cart = await prisma.cart.upsert({
+      where: { userId: req.userId },
+      create: { userId: req.userId, couponCode: normalized },
+      update: { couponCode: normalized },
+      include: { items: { include: { product: true } } }
+    });
+    const totals = await calculateCartTotal(cart, cart.items);
+    res.json({ ...cart, ...totals, items: formatCartItems(cart.items) });
+  } catch (error) {
+    logger_default.error({ err: error }, "Apply coupon error");
+    res.status(500).json({ error: "Erreur" });
+  }
+});
+router4.delete("/api/cart/coupon", authenticateToken, async (req, res) => {
+  try {
+    const cart = await prisma.cart.findUnique({
+      where: { userId: req.userId },
+      include: { items: { include: { product: true } } }
+    });
+    if (!cart) return res.json({ success: true });
+    const updated = await prisma.cart.update({
+      where: { userId: req.userId },
+      data: { couponCode: null },
+      include: { items: { include: { product: true } } }
+    });
+    const totals = await calculateCartTotal(updated, updated.items);
+    res.json({ ...updated, ...totals, items: formatCartItems(updated.items) });
+  } catch {
+    res.status(500).json({ error: "Erreur" });
   }
 });
 router4.delete("/api/cart", authenticateToken, async (req, res) => {
@@ -1748,7 +1910,7 @@ router5.get("/api/orders", authenticateToken, async (req, res) => {
 router5.get("/api/orders/all", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
+    const limit = Math.min(PAGINATION_MAX_LIMIT, Math.max(1, parseInt(req.query.limit) || PAGINATION_DEFAULT_LIMIT));
     const skip = (page - 1) * limit;
     const [orders, total] = await Promise.all([
       prisma.order.findMany({
@@ -1786,9 +1948,48 @@ router5.get("/api/orders/:id", authenticateToken, async (req, res) => {
     res.status(500).json({ error: "Erreur" });
   }
 });
-router5.post("/api/orders", authenticateToken, async (req, res) => {
+var IDEM_KEY_RE = /^[A-Za-z0-9-]{8,64}$/;
+function parseOrder(order) {
+  return {
+    ...order,
+    shippingAddress: safeJsonParse(order.shippingAddress, null),
+    statusHistory: safeJsonParse(order.statusHistory, [])
+  };
+}
+async function findIdempotentOrder(redis2, key, userId) {
+  const existing = await redis2.get(key);
+  if (!existing || existing === "pending") return existing;
+  const order = await prisma.order.findFirst({
+    where: { id: existing, userId },
+    include: { items: true }
+  });
+  return order ? parseOrder(order) : null;
+}
+router5.post("/api/orders", authenticateToken, rateLimit(RATE_LIMITS.orders, RATE_WINDOW_MS, { keyBy: "user" }), async (req, res) => {
   try {
     const { shippingAddress, cartItemIds } = req.body;
+    const rawKey = req.headers["idempotency-key"] || req.body.idempotencyKey;
+    const idemKey = typeof rawKey === "string" && IDEM_KEY_RE.test(rawKey) ? rawKey : null;
+    const redisKey2 = idemKey ? `idem:${req.userId}:${idemKey}` : null;
+    const redis2 = redisKey2 ? getRedis() : null;
+    if (redis2 && redisKey2) {
+      try {
+        const replay = await findIdempotentOrder(redis2, redisKey2, req.userId);
+        if (replay === "pending") {
+          return res.status(409).json({ error: "Commande d\xE9j\xE0 en cours de traitement" });
+        }
+        if (replay) return res.json(replay);
+        const claimed = await redis2.set(redisKey2, "pending", { ex: IDEMPOTENCY_PENDING_TTL_S, nx: true });
+        if (!claimed) {
+          const raced = await findIdempotentOrder(redis2, redisKey2, req.userId);
+          if (raced === "pending") {
+            return res.status(409).json({ error: "Commande d\xE9j\xE0 en cours de traitement" });
+          }
+          if (raced) return res.json(raced);
+        }
+      } catch {
+      }
+    }
     const sanitizedAddress = shippingAddress ? {
       fullName: sanitizeString(shippingAddress.fullName),
       phone: sanitizeString(shippingAddress.phone),
@@ -1818,9 +2019,9 @@ router5.post("/api/orders", authenticateToken, async (req, res) => {
       cart,
       itemsToOrder
     );
-    const orderNumber = `ORD-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
     const user = await prisma.user.findUnique({ where: { id: req.userId } });
-    const order = await prisma.$transaction(async (tx) => {
+    const generateOrderNumber = () => `ORD-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    const createOrderTx = (orderNumber) => prisma.$transaction(async (tx) => {
       for (const item of itemsToOrder) {
         const result = await tx.product.updateMany({
           where: {
@@ -1852,15 +2053,19 @@ router5.post("/api/orders", authenticateToken, async (req, res) => {
             { status: "CONFIRMED", label: "Commande confirmee", date: (/* @__PURE__ */ new Date()).toISOString(), completed: true }
           ]),
           items: {
-            create: itemsToOrder.map((item) => ({
-              productId: item.productId,
-              productName: item.product.name,
-              productImage: item.product.images?.[0] || "",
-              price: item.product.price,
-              quantity: item.quantity,
-              selectedSize: item.selectedSize,
-              selectedMaterial: item.selectedMaterial
-            }))
+            create: itemsToOrder.map((item) => {
+              const imgs = item.product.images;
+              const firstImg = Array.isArray(imgs) ? imgs[0] || "" : safeJsonParse(imgs, [])[0] || "";
+              return {
+                productId: item.productId,
+                productName: item.product.name,
+                productImage: firstImg,
+                price: item.product.price,
+                quantity: item.quantity,
+                selectedSize: item.selectedSize,
+                selectedMaterial: item.selectedMaterial
+              };
+            })
           }
         },
         include: { items: true }
@@ -1881,11 +2086,34 @@ router5.post("/api/orders", authenticateToken, async (req, res) => {
       await tx.cartItem.deleteMany({ where: { cartId: cart.id, id: { in: orderedIds } } });
       return order2;
     });
+    let order;
+    try {
+      order = await createOrderTx(generateOrderNumber());
+    } catch (e) {
+      if (e?.code === "P2002" && e?.meta?.target?.includes("orderNumber")) {
+        order = await createOrderTx(generateOrderNumber());
+      } else {
+        throw e;
+      }
+    }
+    if (redis2 && redisKey2) {
+      try {
+        await redis2.set(redisKey2, order.id, { ex: IDEMPOTENCY_TTL_S });
+      } catch {
+      }
+    }
     notifyNewOrder(order.id).catch(
       (err) => logger_default.error({ err, orderId: order.id }, "Failed to send new order notifications")
     );
     res.status(201).json(order);
   } catch (error) {
+    if (redisKey) {
+      try {
+        const r = getRedis();
+        if (r) await r.del(redisKey);
+      } catch {
+      }
+    }
     if (error.message && error.message.includes("en stock")) {
       return res.status(400).json({ error: error.message });
     }
@@ -2029,13 +2257,10 @@ router7.get("/api/notifications", authenticateToken, async (req, res) => {
     res.status(500).json({ error: "Erreur" });
   }
 });
-router7.patch("/api/notifications/:id/read", authenticateToken, async (req, res) => {
+router7.patch("/api/notifications/read-all", authenticateToken, async (req, res) => {
   try {
-    const notification = await prisma.notification.findUnique({ where: { id: req.params.id } });
-    if (!notification) return res.status(404).json({ error: "Notification non trouv\xE9e" });
-    if (notification.userId !== req.userId) return res.status(403).json({ error: "Acc\xE8s refus\xE9" });
-    await prisma.notification.update({
-      where: { id: req.params.id },
+    await prisma.notification.updateMany({
+      where: { userId: req.userId, read: false },
       data: { read: true }
     });
     res.json({ success: true });
@@ -2043,10 +2268,13 @@ router7.patch("/api/notifications/:id/read", authenticateToken, async (req, res)
     res.status(500).json({ error: "Erreur" });
   }
 });
-router7.patch("/api/notifications/read-all", authenticateToken, async (req, res) => {
+router7.patch("/api/notifications/:id/read", authenticateToken, async (req, res) => {
   try {
-    await prisma.notification.updateMany({
-      where: { userId: req.userId, read: false },
+    const notification = await prisma.notification.findUnique({ where: { id: req.params.id } });
+    if (!notification) return res.status(404).json({ error: "Notification non trouv\xE9e" });
+    if (notification.userId !== req.userId) return res.status(403).json({ error: "Acc\xE8s refus\xE9" });
+    await prisma.notification.update({
+      where: { id: req.params.id },
       data: { read: true }
     });
     res.json({ success: true });
@@ -2098,6 +2326,7 @@ var notifications_default = router7;
 var import_express8 = require("express");
 var import_zod3 = require("zod");
 var router8 = (0, import_express8.Router)();
+var VALID_CUSTOM_STATUSES = ["PENDING", "IN_PROGRESS", "QUOTE_SENT", "APPROVED", "COMPLETED", "CANCELLED"];
 var createCustomSchema = import_zod3.z.object({
   jewelryType: import_zod3.z.string().trim().min(1, "Type de bijou requis").max(200),
   material: import_zod3.z.string().trim().min(1, "Material requis").max(200),
@@ -2107,7 +2336,7 @@ var createCustomSchema = import_zod3.z.object({
   referenceImageUrl: import_zod3.z.string().max(500).optional()
 });
 var customStatusSchema = import_zod3.z.object({
-  status: import_zod3.z.enum(["PENDING", "IN_PROGRESS", "QUOTE_SENT", "APPROVED", "COMPLETED", "CANCELLED"])
+  status: import_zod3.z.enum(VALID_CUSTOM_STATUSES)
 });
 function validateCustom(schema, data) {
   const result = schema.safeParse(data);
@@ -2167,7 +2396,9 @@ router8.post("/api/custom-requests", authenticateToken, async (req, res) => {
         phone: sanitizeString(phone)
       }
     });
-    await notifyCustomRequest(req.userId, request.id);
+    notifyCustomRequest(req.userId, request.id).catch(
+      (err) => logger_default.error({ err, requestId: request.id }, "Failed to send custom request notifications")
+    );
     res.status(201).json(request);
   } catch {
     res.status(500).json({ error: "Erreur lors de la cr\xE9ation" });
@@ -2219,6 +2450,7 @@ var custom_default = router8;
 var import_express9 = require("express");
 var import_zod4 = require("zod");
 var router9 = (0, import_express9.Router)();
+var VALID_REPAIR_STATUSES = ["RECEIVED", "IN_PROGRESS", "WAITING_PARTS", "COMPLETED", "DELIVERED", "CANCELLED"];
 var createRepairSchema = import_zod4.z.object({
   jewelryType: import_zod4.z.string().trim().min(1, "Type de bijou requis").max(200),
   problemType: import_zod4.z.string().trim().min(1, "Type de probl\xE8me requis").max(200),
@@ -2227,7 +2459,7 @@ var createRepairSchema = import_zod4.z.object({
   photos: import_zod4.z.array(import_zod4.z.string()).optional()
 });
 var repairStatusSchema = import_zod4.z.object({
-  status: import_zod4.z.enum(["RECEIVED", "IN_PROGRESS", "WAITING_PARTS", "COMPLETED", "DELIVERED", "CANCELLED"])
+  status: import_zod4.z.enum(VALID_REPAIR_STATUSES)
 });
 function validateRepair(schema, data) {
   const result = schema.safeParse(data);
@@ -2294,7 +2526,9 @@ router9.post("/api/repairs", authenticateToken, async (req, res) => {
         phone: sanitizeString(phone)
       }
     });
-    await notifyRepairRequest(req.userId, repair.id);
+    notifyRepairRequest(req.userId, repair.id).catch(
+      (err) => logger_default.error({ err, requestId: repair.id }, "Failed to send repair request notifications")
+    );
     res.status(201).json(repair);
   } catch {
     res.status(500).json({ error: "Erreur" });
@@ -2346,11 +2580,10 @@ var repairs_default = router9;
 var import_express10 = require("express");
 var import_bcryptjs2 = __toESM(require("bcryptjs"), 1);
 var router10 = (0, import_express10.Router)();
-var GERANT_IDENTIFIER2 = process.env.GERANT_IDENTIFIER || "gerantSatoubaBijouterie6002";
 router10.get("/api/customers", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
+    const limit = Math.min(PAGINATION_MAX_LIMIT, Math.max(1, parseInt(req.query.limit) || PAGINATION_DEFAULT_LIMIT));
     const skip = (page - 1) * limit;
     const [customers, total] = await Promise.all([
       prisma.user.findMany({
@@ -2385,25 +2618,28 @@ router10.get("/api/customers", authenticateToken, requireAdmin, async (req, res)
 router10.get("/api/users", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const page = Math.max(1, parseInt(req.query.page) || 1);
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50));
+    const limit = Math.min(PAGINATION_MAX_LIMIT, Math.max(1, parseInt(req.query.limit) || PAGINATION_DEFAULT_LIMIT));
     const skip = (page - 1) * limit;
-    const [users, total] = await prisma.user.findMany({
-      where: { role: "ADMIN" },
-      select: {
-        id: true,
-        name: true,
-        identifier: true,
-        phone: true,
-        role: true,
-        createdAt: true,
-        _count: {
-          select: { orders: true, favorites: true }
-        }
-      },
-      orderBy: { createdAt: "desc" },
-      skip,
-      take: limit
-    });
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        where: { role: { in: ["ADMIN", "ARTISAN"] } },
+        select: {
+          id: true,
+          name: true,
+          identifier: true,
+          phone: true,
+          role: true,
+          createdAt: true,
+          _count: {
+            select: { orders: true, favorites: true }
+          }
+        },
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: limit
+      }),
+      prisma.user.count({ where: { role: { in: ["ADMIN", "ARTISAN"] } } })
+    ]);
     const result = users.map((u) => ({
       id: u.id,
       name: u.name,
@@ -2419,7 +2655,7 @@ router10.get("/api/users", authenticateToken, requireAdmin, async (req, res) => 
     res.status(500).json({ error: "Erreur" });
   }
 });
-router10.post("/api/users", authenticateToken, requireAdmin, rateLimit(10, 6e4), async (req, res) => {
+router10.post("/api/users", authenticateToken, requireAdmin, rateLimit(RATE_LIMITS.usersCreate, RATE_WINDOW_MS), async (req, res) => {
   try {
     const { name, identifier, password, phone, role = "ARTISAN" } = req.body;
     if (!name || !identifier || !password) {
@@ -2437,7 +2673,7 @@ router10.post("/api/users", authenticateToken, requireAdmin, rateLimit(10, 6e4),
     }
     if (role === "ADMIN") {
       const currentUser = await prisma.user.findUnique({ where: { id: req.userId }, select: { identifier: true } });
-      if (currentUser?.identifier !== GERANT_IDENTIFIER2) {
+      if (currentUser?.identifier !== GERANT_IDENTIFIER) {
         return res.status(403).json({ error: "Seul le g\xE9rant principal peut cr\xE9er des administrateurs" });
       }
     }
@@ -2448,7 +2684,7 @@ router10.post("/api/users", authenticateToken, requireAdmin, rateLimit(10, 6e4),
     if (existing) {
       return res.status(400).json({ error: "Un compte existe d\xE9j\xE0 avec cet identifiant" });
     }
-    const hashedPassword = await import_bcryptjs2.default.hash(password, 12);
+    const hashedPassword = await import_bcryptjs2.default.hash(password, BCRYPT_COST);
     const user = await prisma.user.create({
       data: {
         name: sanitizedName,
@@ -2536,6 +2772,7 @@ router10.delete("/api/users/:id", authenticateToken, requireAdmin, async (req, r
       await tx.cartItem.deleteMany({ where: { cart: { userId: req.params.id } } });
       await tx.cart.deleteMany({ where: { userId: req.params.id } });
       await tx.passwordResetToken.deleteMany({ where: { userId: req.params.id } });
+      await tx.refreshToken.deleteMany({ where: { userId: req.params.id } });
       await tx.user.delete({ where: { id: req.params.id } });
     });
     await logAction({
@@ -2660,12 +2897,10 @@ router13.post("/api/upload/handle", authenticateToken, requireAdmin, async (req,
     const jsonResponse = await (0, import_client2.handleUpload)({
       body,
       request: req,
-      onBeforeGenerateToken: async (pathname) => ({
+      onBeforeGenerateToken: async () => ({
         allowedContentTypes: ["image/jpeg", "image/png", "image/webp", "image/gif"],
-        maximumSizeInBytes: 5 * 1024 * 1024,
-        addRandomSuffix: true,
-        // L'admin est déjà validé par le middleware requireAdmin ci-dessus.
-        ...pathname ? {} : {}
+        maximumSizeInBytes: MAX_UPLOAD_BYTES,
+        addRandomSuffix: true
       }),
       onUploadCompleted: async () => {
       }
@@ -2715,8 +2950,7 @@ function getUpload() {
   });
   upload = (0, import_multer.default)({
     storage,
-    limits: { fileSize: 5 * 1024 * 1024 },
-    // 5 MB
+    limits: { fileSize: MAX_UPLOAD_BYTES },
     fileFilter: (_req, file, cb) => {
       const allowed = [".jpg", ".jpeg", ".png", ".webp", ".gif"];
       const ext = import_path.default.extname(file.originalname).toLowerCase();
@@ -2811,7 +3045,7 @@ router15.post("/api/sms/send", authenticateToken, requireAdmin, async (req, res)
     if (!phone || !message) {
       return res.status(400).json({ error: "Telephone et message requis" });
     }
-    if (message.length > 160) {
+    if (message.length > SMS_MAX_LENGTH) {
       return res.status(400).json({ error: "Message trop long (max 160 caracteres)" });
     }
     const result = await sendSMS({ to: phone, message });
@@ -2991,7 +3225,7 @@ router16.get("/", authenticateToken, requireAdmin, async (req, res) => {
 });
 var audit_logs_default = router16;
 
-// backend/routes/reviews.ts
+// backend/routes/likes.ts
 var import_express17 = require("express");
 var router17 = (0, import_express17.Router)();
 router17.get("/api/likes/:productId", async (req, res) => {
@@ -3045,15 +3279,18 @@ router17.get("/api/likes/all", authenticateToken, requireAdmin, async (_req, res
     res.status(500).json({ error: "Erreur" });
   }
 });
-var reviews_default = router17;
+var likes_default = router17;
 
 // backend/routes/coupons.ts
 var import_express18 = require("express");
 var router18 = (0, import_express18.Router)();
+function isValidDiscountPercent(d) {
+  return !isNaN(d) && d >= 1 && d <= 100;
+}
 router18.get("/api/coupons", async (_req, res) => {
   try {
     const coupons = await prisma.coupon.findMany({
-      where: { isActive: true },
+      where: { isActive: true, expiryDate: { gt: /* @__PURE__ */ new Date() } },
       select: { id: true, code: true, description: true, discountPercent: true, expiryDate: true }
     });
     res.json(coupons);
@@ -3076,7 +3313,7 @@ router18.post("/api/coupons", authenticateToken, requireAdmin, async (req, res) 
       return res.status(400).json({ error: "Code et pourcentage requis" });
     }
     const discount = Number(discountPercent);
-    if (isNaN(discount) || discount < 1 || discount > 100) {
+    if (!isValidDiscountPercent(discount)) {
       return res.status(400).json({ error: "Le pourcentage doit \xEAtre entre 1 et 100" });
     }
     const existing = await prisma.coupon.findFirst({ where: { code: code.toUpperCase() } });
@@ -3088,7 +3325,7 @@ router18.post("/api/coupons", authenticateToken, requireAdmin, async (req, res) 
         code: code.toUpperCase(),
         discountPercent: discount,
         description: sanitizeString(description) || "",
-        expiryDate: expiryDate ? new Date(expiryDate) : /* @__PURE__ */ new Date("2026-12-31")
+        expiryDate: expiryDate ? new Date(expiryDate) : new Date(COUPON_DEFAULT_EXPIRY)
       }
     });
     res.status(201).json(coupon);
@@ -3105,7 +3342,7 @@ router18.put("/api/coupons/:id", authenticateToken, requireAdmin, async (req, re
     }
     if (discountPercent !== void 0) {
       const d = Number(discountPercent);
-      if (isNaN(d) || d < 1 || d > 100) {
+      if (!isValidDiscountPercent(d)) {
         return res.status(400).json({ error: "Le pourcentage doit \xEAtre entre 1 et 100" });
       }
     }
@@ -3171,7 +3408,7 @@ if (process.env.NODE_ENV !== "test") {
 var configuredOrigins = (process.env.CORS_ORIGIN || process.env.APP_URL || "").split(",").map((s) => s.trim()).filter(Boolean);
 var vercelOrigins = [
   process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "",
-  "https://satoubabijouterie225.vercel.app"
+  PROD_URL
 ].filter(Boolean);
 var allowedOrigins = [.../* @__PURE__ */ new Set([...configuredOrigins, ...vercelOrigins])];
 app.use((0, import_cors.default)({
@@ -3190,8 +3427,8 @@ app.use((0, import_cors.default)({
   allowedHeaders: ["Content-Type", "Authorization"],
   maxAge: 86400
 }));
-app.use(import_express19.default.json({ limit: "1mb" }));
-app.use(import_express19.default.urlencoded({ extended: true, limit: "1mb" }));
+app.use(import_express19.default.json({ limit: JSON_BODY_LIMIT }));
+app.use(import_express19.default.urlencoded({ extended: true, limit: JSON_BODY_LIMIT }));
 function resolveUploadsDir() {
   if (process.env.UPLOADS_DIR) return process.env.UPLOADS_DIR;
   const cwdBackend = import_path2.default.join(process.cwd(), "backend", "uploads");
@@ -3225,7 +3462,7 @@ app.use(public_default);
 app.use(settings_default);
 app.use(upload_default);
 app.use("/api/audit-logs", audit_logs_default);
-app.use(reviews_default);
+app.use(likes_default);
 app.use(coupons_default);
 app.use((req, res, next) => {
   if (req.path.startsWith("/api/")) {

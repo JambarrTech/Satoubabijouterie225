@@ -35,3 +35,7 @@ export const STONE_COST: Record<string, number> = {
 export const LABOR_FEE = 5000;
 export const PRICE_ROUND_STEP = 5000;
 export const DEFAULT_MATERIAL_RATE = 35000;
+
+// Notifications in-app : polling léger tant que l'utilisateur est connecté
+// (pas de push temps réel : pas de FCM/SW côté front, cf. colonne pushTokens supprimée).
+export const NOTIFICATIONS_POLL_MS = 60 * 1000;

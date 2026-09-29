@@ -2,11 +2,11 @@ import helmet from 'helmet';
 import compression from 'compression';
 import { Express, Request, Response, NextFunction } from 'express';
 import { rateLimit } from '../lib/rateLimit';
-import { RATE_LIMITS, RATE_WINDOW_MS } from '../lib/config';
+import { RATE_LIMITS, RATE_WINDOW_MS, TRUST_PROXY } from '../lib/config';
 
 export function setupSecurity(app: Express) {
-  // Trust proxy when behind Nginx/Cloud Run/Load Balancer
-  app.set('trust proxy', 1);
+  // Vercel = 1 seul proxy devant l'app (X-Forwarded-For fiable pour req.ip).
+  app.set('trust proxy', TRUST_PROXY);
 
   // Security headers — production hardened
   app.use(helmet({

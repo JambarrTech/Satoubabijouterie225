@@ -24,7 +24,7 @@ import uploadRoutes from "./routes/upload";
 import healthRoutes from "./routes/health";
 import smsRoutes from "./routes/sms";
 import auditLogRoutes from "./routes/audit-logs";
-import reviewRoutes from "./routes/reviews";
+import likeRoutes from "./routes/likes";
 import couponRoutes from "./routes/coupons";
 
 const app = express();
@@ -133,7 +133,7 @@ app.use(publicRoutes);
 app.use(settingsRoutes);
 app.use(uploadRoutes);
 app.use('/api/audit-logs', auditLogRoutes);
-app.use(reviewRoutes);
+app.use(likeRoutes);
 app.use(couponRoutes);
 
 

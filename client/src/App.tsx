@@ -29,7 +29,7 @@ import { fetchCart, addToCart } from './lib/api/cart';
 import { fetchFavorites, toggleFavorite } from './lib/api/favorites';
 import { fetchNotifications, markNotificationAsRead } from './lib/api/notifications';
 import { apiGet } from './lib/apiClient';
-import { VALID_TABS } from './lib/constants';
+import { NOTIFICATIONS_POLL_MS, VALID_TABS } from './lib/constants';
 
 function readInitialNav(): { tab: string; productId: string | null } {
   try {
@@ -109,6 +109,11 @@ export default function App() {
     });
     fetchFavorites().then((favs) => setFavorites(favs.map(f => f.id))).catch(() => {});
     fetchNotifications().then(setNotifications).catch(() => {});
+    // Rafraîchit le badge tant que la session est active (pas de push temps réel)
+    const poll = setInterval(() => {
+      fetchNotifications().then(setNotifications).catch(() => {});
+    }, NOTIFICATIONS_POLL_MS);
+    return () => clearInterval(poll);
   }, [user]);
 
 

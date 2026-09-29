@@ -10,6 +10,14 @@ export const LOCKOUT_DURATION_MS = Number(process.env.LOCKOUT_DURATION_MS) || 10
 export const PASSWORD_RESET_EXPIRY_MS = Number(process.env.PASSWORD_RESET_EXPIRY_MS) || 10 * 60 * 1000;
 export const OTP_MIN = 100000;
 export const OTP_MAX = 999999;
+export const MAX_OTP_ATTEMPTS = Number(process.env.MAX_OTP_ATTEMPTS) || 5;
+
+// Confiance proxy : 1 saut sur Vercel (X-Forwarded-For fiable). Pilote par env si infra change.
+export const TRUST_PROXY = process.env.TRUST_PROXY ? Number(process.env.TRUST_PROXY) : 1;
+
+// Idempotence commandes : durée de vie (s) d'une clé d'idempotence (Redis, fail-open si absent).
+export const IDEMPOTENCY_TTL_S = Number(process.env.IDEMPOTENCY_TTL_S) || 24 * 60 * 60;
+export const IDEMPOTENCY_PENDING_TTL_S = 120;
 
 export const MAX_UPLOAD_BYTES = Number(process.env.MAX_UPLOAD_BYTES) || 5 * 1024 * 1024;
 export const JSON_BODY_LIMIT = process.env.JSON_BODY_LIMIT || '1mb';
