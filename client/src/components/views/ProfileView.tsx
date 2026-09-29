@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { User as UserIcon, Package, Heart, Wrench, Sparkles, LogOut, Check, Loader2  } from '../../ui/Icons';;
+import { Package, Heart, Wrench, Sparkles, LogOut, Check, Loader2  } from '../../ui/Icons';;
 import { User } from '../../types';
 import { fetchCurrentUser, updateCurrentUser } from '../../lib/api/auth';
 import { useToast } from '../ui/Toast';
@@ -81,16 +81,11 @@ export function ProfileView({ onNavigate, onLogout, onProfileUpdate }: ProfileVi
         transition={{ duration: 0.4 }}
         className="bg-gradient-to-r from-[#0B5D1E] to-[#064A15] p-6 sm:p-8 rounded-3xl text-white flex flex-col sm:flex-row items-center gap-6 shadow-xl"
       >
-        <div className="relative">
-          <img
-            src={user?.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80"}
-            alt=""
-            className="w-24 h-24 rounded-full object-cover border-4 border-white/20 shadow-lg"
-            referrerPolicy="no-referrer"
-          />
-          <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-[#D9A441] rounded-full flex items-center justify-center shadow-md">
-            <UserIcon size={14} className="text-white" />
-          </div>
+        {/* Photo de profil retirée (pas de photo) — monogramme à l'initiale */}
+        <div className="w-24 h-24 rounded-full bg-white/15 border-4 border-white/20 shadow-lg flex items-center justify-center">
+          <span className="font-serif text-3xl font-bold text-white">
+            {(user?.name || '?').trim().charAt(0).toUpperCase()}
+          </span>
         </div>
         <div className="text-center sm:text-left space-y-1 flex-1">
           <span className="px-3 py-1 rounded-full bg-[#D9A441] text-white text-[10px] font-bold uppercase tracking-widest">
