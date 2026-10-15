@@ -39,7 +39,7 @@ export function ProductDetailView({
 
   const handleWhatsApp = () => {
     const phone = settings?.whatsapp || '221055413074';
-    const brandName = settings?.brand_name || 'Satouba Bijouterie 255';
+    const brandName = settings?.brand_name || 'Satouba Bijouterie 225';
     const text = encodeURIComponent(`Bonjour ${brandName}, je suis intéressé(e) par le bijou : "${product.name}" (${product.price.toLocaleString()} FCFA). Est-il disponible ?`);
     window.open(`https://wa.me/${phone}?text=${text}`, '_blank');
   };

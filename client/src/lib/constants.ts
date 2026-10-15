@@ -26,7 +26,7 @@ export const MATERIAL_PRICES: Record<string, number> = {
   'Argent Massif': 2500,
 };
 export const STONE_COST: Record<string, number> = {
-  'Diamant Satouba Bijouterie 255': 500000,
+  'Diamant Satouba Bijouterie 225': 500000,
   'Rubis / Saphir': 300000,
   'Émeraude': 250000,
   'Zirconium éclat': 50000,
