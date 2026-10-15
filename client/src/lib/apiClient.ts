@@ -167,9 +167,13 @@ export async function apiUpload(file: File): Promise<{ url: string; filename: st
       const { upload } = await import('@vercel/blob/client');
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]+/g, '-');
       const uniquePath = `products/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${safeName}`;
+      // /api/upload/handle est protégé admin : le token doit être envoyé,
+      // sinon le backend répond 401 et l'upload échoue.
+      const token = getToken();
       const blob = await upload(uniquePath, file, {
         access: 'public',
         handleUploadUrl: '/api/upload/handle',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       return { url: blob.url, filename: blob.pathname || file.name };
     } catch (err: any) {

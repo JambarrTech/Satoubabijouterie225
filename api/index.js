@@ -2950,13 +2950,12 @@ var import_crypto3 = __toESM(require("crypto"), 1);
 var import_client2 = require("@vercel/blob/client");
 var import_meta = {};
 var router13 = (0, import_express13.Router)();
-var hasBlobToken = !!process.env.BLOB_READ_WRITE_TOKEN;
 router13.post("/api/upload/handle", authenticateToken, requireAdmin, async (req, res) => {
-  if (!hasBlobToken) {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
     return res.status(400).json({ error: "Vercel Blob n\u2019est pas configur\xE9 (BLOB_READ_WRITE_TOKEN manquant)" });
   }
   try {
-    const body = await req.body;
+    const body = req.body;
     const jsonResponse = await (0, import_client2.handleUpload)({
       body,
       request: req,
@@ -3028,7 +3027,13 @@ function getUpload() {
   return upload;
 }
 router13.post("/api/upload", authenticateToken, requireAdmin, (req, res) => {
-  getUpload().single("image")(req, res, (err) => {
+  let handler;
+  try {
+    handler = getUpload().single("image");
+  } catch (err) {
+    return res.status(500).json({ error: err.message || "Upload local non disponible sur ce serveur. Activez Vercel Blob (VITE_UPLOAD_BLOB=true)." });
+  }
+  handler(req, res, (err) => {
     if (err instanceof import_multer.default.MulterError) {
       if (err.code === "LIMIT_FILE_SIZE") {
         return res.status(400).json({ error: "Le fichier ne doit pas d\xE9passer 5 Mo." });
@@ -3046,7 +3051,13 @@ router13.post("/api/upload", authenticateToken, requireAdmin, (req, res) => {
   });
 });
 router13.post("/api/upload/multiple", authenticateToken, requireAdmin, (req, res) => {
-  getUpload().array("images", 5)(req, res, (err) => {
+  let handler;
+  try {
+    handler = getUpload().array("images", 5);
+  } catch (err) {
+    return res.status(500).json({ error: err.message || "Upload local non disponible sur ce serveur. Activez Vercel Blob (VITE_UPLOAD_BLOB=true)." });
+  }
+  handler(req, res, (err) => {
     if (err instanceof import_multer.default.MulterError) {
       if (err.code === "LIMIT_FILE_SIZE") {
         return res.status(400).json({ error: "Chaque fichier ne doit pas d\xE9passer 5 Mo." });

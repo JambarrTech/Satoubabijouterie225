@@ -16,16 +16,17 @@ const router = Router();
 // le navigateur via token. Parcourt la limite de body serverless.
 // Actif si BLOB_READ_WRITE_TOKEN est configuré (Vercel).
 // ============================================================
-const hasBlobToken = !!process.env.BLOB_READ_WRITE_TOKEN;
 
 // POST /api/upload/handle — génère un token d'upload pour Vercel Blob.
 // Réservé admin. Valide le type MIME (images uniquement).
 router.post('/api/upload/handle', authenticateToken, requireAdmin, async (req, res) => {
-  if (!hasBlobToken) {
+  // Vérifié à chaque requête (pas au chargement du module) pour supporter
+  // les env injectées au runtime (Vercel serverless).
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
     return res.status(400).json({ error: 'Vercel Blob n\u2019est pas configuré (BLOB_READ_WRITE_TOKEN manquant)' });
   }
   try {
-    const body = (await req.body) as HandleUploadBody;
+    const body = req.body as HandleUploadBody;
     const jsonResponse = await handleUpload({
       body,
       request: req,
@@ -106,7 +107,13 @@ function getUpload(): multer.Multer {
 
 // Fallback: POST /api/upload — upload a single image (dev local)
 router.post('/api/upload', authenticateToken, requireAdmin, (req, res) => {
-  getUpload().single('image')(req, res, (err) => {
+  let handler: ReturnType<multer.Multer['single']>;
+  try {
+    handler = getUpload().single('image');
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || 'Upload local non disponible sur ce serveur. Activez Vercel Blob (VITE_UPLOAD_BLOB=true).' });
+  }
+  handler(req, res, (err) => {
     if (err instanceof multer.MulterError) {
       if (err.code === 'LIMIT_FILE_SIZE') {
         return res.status(400).json({ error: 'Le fichier ne doit pas dépasser 5 Mo.' });
@@ -127,7 +134,13 @@ router.post('/api/upload', authenticateToken, requireAdmin, (req, res) => {
 
 // Fallback: POST /api/upload/multiple — upload up to 5 images (dev local)
 router.post('/api/upload/multiple', authenticateToken, requireAdmin, (req, res) => {
-  getUpload().array('images', 5)(req, res, (err) => {
+  let handler: ReturnType<multer.Multer['array']>;
+  try {
+    handler = getUpload().array('images', 5);
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || 'Upload local non disponible sur ce serveur. Activez Vercel Blob (VITE_UPLOAD_BLOB=true).' });
+  }
+  handler(req, res, (err) => {
     if (err instanceof multer.MulterError) {
       if (err.code === 'LIMIT_FILE_SIZE') {
         return res.status(400).json({ error: 'Chaque fichier ne doit pas dépasser 5 Mo.' });
